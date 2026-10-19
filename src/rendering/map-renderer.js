@@ -1188,7 +1188,7 @@ export function createMapRenderer(host, { onSelect = () => {}, motion = true } =
     draw();
   }
   function changeZoom(factor) {
-    zoom = Math.min(4.5, Math.max(0.7, zoom * factor));
+    zoom = Math.min(12, Math.max(0.7, zoom * factor));
     camera.zoom = zoom;
     camera.updateProjectionMatrix();
     draw();

@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#211c36" />
     <title>Wilderness Almanac</title>
   </head>
@@ -214,7 +214,16 @@
       </template>
       <section id="hex-smooth-riverlands" aria-label="World map" hidden>
         <header class="hp-top">
-          <div>
+          <button
+            type="button"
+            id="hp-mobile-menu"
+            class="hp-mobile-only hp-mobile-menu"
+            aria-label="Return to campaign menu"
+            title="Return to campaign menu"
+          >
+            ←
+          </button>
+          <div class="hp-heading">
             <h1 class="hp-title">The quiet frontier</h1>
             <p class="hp-seed">
               Seed <output id="hp-current-seed"></output>
@@ -294,72 +303,109 @@
             </span>
           </div>
         </header>
-        <div class="hp-scene" id="hp-scene">
-          <div class="hp-fallback" id="hp-loading">Preparing the landscape…</div>
+        <div class="hp-map-stage">
+          <div class="hp-scene" id="hp-scene">
+            <div class="hp-fallback" id="hp-loading">Preparing the landscape…</div>
+          </div>
+          <div class="hp-mobile-only hp-mobile-map-controls" aria-label="Map view controls">
+            <button
+              type="button"
+              id="hp-expand-map"
+              class="hp-mobile-only hp-expand-map"
+              aria-label="Expand map to viewport"
+              aria-pressed="false"
+              title="Expand map to viewport"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                width="20"
+                height="20"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                aria-hidden="true"
+              >
+                <path class="hp-expand-icon" d="M9 3H3v6m12-6h6v6M3 15v6h6m12-6v6h-6" />
+                <path class="hp-collapse-icon" d="M3 9h6V3m6 0v6h6M9 21v-6H3m18 0h-6v6" />
+              </svg>
+            </button>
+            <button class="hp-zoom" id="hp-mobile-in" type="button" aria-label="Zoom in">+</button>
+            <button class="hp-zoom" id="hp-mobile-out" type="button" aria-label="Zoom out">
+              −
+            </button>
+          </div>
         </div>
         <div class="hp-status">
           <select id="hp-selection" aria-label="Selected hex"></select>
           <span>Drag to pan · Scroll or pinch to zoom</span>
           <output id="hp-message" aria-live="polite"></output>
         </div>
-        <form class="hp-palette" id="hp-palette-form">
-          <div class="hp-colors">
-            <label class="hp-color">
-              <span class="hp-swatch">
-                <input
-                  type="color"
-                  id="hp-ground"
-                  value="#282039"
-                  aria-label="Ground seed colour"
-                />
-              </span>
-              <span>Ground<span class="hp-hex-code" id="hp-ground-value">#282039</span></span>
-            </label>
-            <label class="hp-color">
-              <span class="hp-swatch">
-                <input type="color" id="hp-water" value="#237d89" aria-label="Water seed colour" />
-              </span>
-              <span>Water<span class="hp-hex-code" id="hp-water-value">#237D89</span></span>
-            </label>
-            <label class="hp-color">
-              <span class="hp-swatch">
-                <input
-                  type="color"
-                  id="hp-elements"
-                  value="#e5b96e"
-                  aria-label="Elements seed colour"
-                />
-              </span>
-              <span>Elements<span class="hp-hex-code" id="hp-elements-value">#E5B96E</span></span>
-            </label>
-          </div>
-          <div class="hp-palette-controls">
-            <select id="hp-preset" aria-label="Colour palette">
-              <option value="dusk">Dusk &amp; gold</option>
-              <option value="ember">Ember coast</option>
-              <option value="moss">Moss &amp; bone</option>
-              <option value="alien">Alien orchard</option>
-              <option value="custom" hidden>Custom</option>
-            </select>
-            <label class="hp-sr-only" for="hp-palette-name">Palette name</label>
-            <input
-              id="hp-palette-name"
-              type="text"
-              maxlength="60"
-              required
-              placeholder="New palette name"
-              autocomplete="off"
-            />
-            <button type="submit">Save palette</button>
-          </div>
-          <div class="hp-map-navigation">
-            <label class="hp-motion">
-              <input type="checkbox" id="hp-motion" checked />
-              <span>Movement</span>
-            </label>
-            <button type="button" id="hp-return-menu">← Return to menu</button>
-          </div>
-        </form>
+        <details class="hp-map-options" id="hp-map-options" open>
+          <summary>Palette &amp; settings <span aria-hidden="true">⌃</span></summary>
+          <form class="hp-palette" id="hp-palette-form">
+            <div class="hp-colors">
+              <label class="hp-color">
+                <span class="hp-swatch">
+                  <input
+                    type="color"
+                    id="hp-ground"
+                    value="#282039"
+                    aria-label="Ground seed colour"
+                  />
+                </span>
+                <span>Ground<span class="hp-hex-code" id="hp-ground-value">#282039</span></span>
+              </label>
+              <label class="hp-color">
+                <span class="hp-swatch">
+                  <input
+                    type="color"
+                    id="hp-water"
+                    value="#237d89"
+                    aria-label="Water seed colour"
+                  />
+                </span>
+                <span>Water<span class="hp-hex-code" id="hp-water-value">#237D89</span></span>
+              </label>
+              <label class="hp-color">
+                <span class="hp-swatch">
+                  <input
+                    type="color"
+                    id="hp-elements"
+                    value="#e5b96e"
+                    aria-label="Elements seed colour"
+                  />
+                </span>
+                <span>Elements<span class="hp-hex-code" id="hp-elements-value">#E5B96E</span></span>
+              </label>
+            </div>
+            <div class="hp-palette-controls">
+              <select id="hp-preset" aria-label="Colour palette">
+                <option value="dusk">Dusk &amp; gold</option>
+                <option value="ember">Ember coast</option>
+                <option value="moss">Moss &amp; bone</option>
+                <option value="alien">Alien orchard</option>
+                <option value="custom" hidden>Custom</option>
+              </select>
+              <label class="hp-sr-only" for="hp-palette-name">Palette name</label>
+              <input
+                id="hp-palette-name"
+                type="text"
+                maxlength="60"
+                required
+                placeholder="New palette name"
+                autocomplete="off"
+              />
+              <button type="submit">Save palette</button>
+            </div>
+            <div class="hp-map-navigation">
+              <label class="hp-motion">
+                <input type="checkbox" id="hp-motion" checked />
+                <span>Movement</span>
+              </label>
+              <button type="button" id="hp-return-menu">← Return to menu</button>
+            </div>
+          </form>
+        </details>
         <dialog id="hp-new-map-dialog" aria-labelledby="hp-dialog-title">
           <form id="hp-new-map-form" class="hp-new-map-form">
             <h2 id="hp-dialog-title">New Map</h2>

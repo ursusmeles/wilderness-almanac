@@ -40,6 +40,37 @@ const dialog = element('new-map-dialog');
 const listeners = new AbortController();
 const listen = (target, type, handler) =>
   target.addEventListener(type, handler, { signal: listeners.signal });
+const mobileLayout = window.matchMedia(
+  '(max-width: 760px), (max-width: 1024px) and (max-height: 500px)',
+);
+const mapOptions = element('map-options');
+const expandMap = element('expand-map');
+let expanded = false;
+
+function setExpanded(enabled) {
+  expanded = enabled;
+  root.classList.toggle('hp-map-expanded', enabled);
+  document.body.classList.toggle('hp-map-expanded', enabled);
+  const label = enabled ? 'Exit expanded map' : 'Expand map to viewport';
+  expandMap.setAttribute('aria-label', label);
+  expandMap.setAttribute('aria-pressed', String(enabled));
+  expandMap.title = label;
+}
+
+listen(expandMap, 'click', () => setExpanded(!expanded));
+listen(document, 'keydown', (event) => {
+  if (event.key === 'Escape' && expanded) {
+    event.preventDefault();
+    setExpanded(false);
+  }
+});
+function syncMobileLayout() {
+  mapOptions.open = !mobileLayout.matches;
+  if (!mobileLayout.matches) setExpanded(false);
+}
+listen(mobileLayout, 'change', syncMobileLayout);
+syncMobileLayout();
+
 const campaignDefaults = {
   seed: saved.seed,
   colors: (saved.colors ?? palettes.dusk).slice(),
@@ -117,6 +148,7 @@ function openCampaign(campaign) {
     }),
   );
   renderer?.setMap(prepareMap(world, dressing), { resetView: true });
+  if (mobileLayout.matches) renderer?.zoom(1.6);
   renderer?.select(selected);
   element('current-seed').textContent = world.seed;
   root.querySelector('.hp-title').textContent = campaign.name;
@@ -176,6 +208,8 @@ function paletteLabel(candidate) {
 listen(selection, 'change', () => renderer?.select(selection.value));
 listen(element('in'), 'click', () => renderer?.zoom(1.2));
 listen(element('out'), 'click', () => renderer?.zoom(1 / 1.2));
+listen(element('mobile-in'), 'click', () => renderer?.zoom(1.2));
+listen(element('mobile-out'), 'click', () => renderer?.zoom(1 / 1.2));
 listen(element('copy-seed'), 'click', async () => {
   try {
     await copyText(world.seed);
@@ -199,7 +233,8 @@ listen(element('motion'), 'change', (event) => {
   renderer?.setMotion(movement);
   persist();
 });
-listen(element('return-menu'), 'click', () => {
+function returnToMenu() {
+  setExpanded(false);
   persist();
   renderer?.setMotion(false);
   root.hidden = true;
@@ -213,7 +248,9 @@ listen(element('return-menu'), 'click', () => {
   document.title = 'Wilderness Almanac';
   campaignMenu.show();
   document.getElementById('new-campaign').focus({ preventScroll: true });
-});
+}
+listen(element('return-menu'), 'click', returnToMenu);
+listen(element('mobile-menu'), 'click', returnToMenu);
 listen(element('new-map'), 'click', () => newMap(freshSeed()));
 listen(element('map-settings'), 'click', () => {
   element('seed').value = freshSeed();
@@ -299,6 +336,7 @@ if (linked.seed) {
 } else campaignMenu.show();
 if (import.meta.hot)
   import.meta.hot.dispose(() => {
+    setExpanded(false);
     listeners.abort();
     renderer?.dispose();
     campaignMenu.dispose();
