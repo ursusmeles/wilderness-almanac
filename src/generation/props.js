@@ -1,11 +1,11 @@
-import { DIRECTIONS, neighbours, distance } from './hex.js';
+import { neighbours, distance } from './hex.js';
 import { randomFor } from './seed.js';
 import { fitsHex, fitsTree, minimumSpacing, lowProp } from './legacy.js';
 import { surfaceHeight } from './math.js';
 import { POI_ANCHOR } from './points-of-interest.js';
+import { TOKEN_ANCHOR, isForest, populateForests } from './forest-props.js';
 
-export const TOKEN_ANCHOR = { x: 0.5, z: 0.16, r: 0.1 };
-const forest = (cell) => cell.terrain === 'light forest' || cell.terrain === 'dense forest';
+export { TOKEN_ANCHOR } from './forest-props.js';
 
 export function generatePropDressing(world, variant, mountainSurfaces) {
   const states = world.cells.map((cell) => {
@@ -24,30 +24,7 @@ export function generatePropDressing(world, variant, mountainSurfaces) {
   const mouths = new Set(
     world.cells.filter((cell) => cell.water === 'river').map((cell) => cell.downstream),
   );
-  const edges = randomFor(world.seed, `forest-edges:${variant}`);
-  for (const cell of states) {
-    if (!forest(cell) || cell.pointOfLight) continue;
-    for (let k = 0; k < 3; k++) {
-      const [q, r] = DIRECTIONS[k];
-      const other = byKey.get(`${cell.q + q},${cell.r + r}`);
-      if (!other || !forest(other) || other.pointOfLight || other.elevation !== cell.elevation)
-        continue;
-      const chance =
-        cell.sparse && other.sparse
-          ? 0.1
-          : cell.terrain === 'dense forest' && other.terrain === 'dense forest'
-            ? 0.82
-            : 0.4;
-      if (edges() > chance) continue;
-      const link = {
-        cross: (edges() - 0.5) * 0.2,
-        scale: 0.66 + edges() * 0.06,
-        variant: edges() < 0.5 ? cell.treeVariant : other.treeVariant,
-      };
-      cell.links[k] = link;
-      other.links[k + 3] = { ...link, cross: -link.cross };
-    }
-  }
+  populateForests(states, world.seed, variant);
   return states.map((cell) => {
     const random = cell.random;
     const integer = (lo, hi) => lo + Math.floor(random() * (hi - lo + 1));
@@ -77,16 +54,13 @@ export function generatePropDressing(world, variant, mountainSurfaces) {
         pedestalDepth: Math.max(...heights) - Math.min(...heights) + 0.035,
       });
     }
-    const linked = cell.links.findIndex(Boolean);
-    const lead = linked < 0 ? null : (linked * Math.PI) / 3;
-    const cluster = {
-      x: (random() - 0.5) * 0.15 + (lead === null ? -0.1 : 0.2 * Math.cos(lead)),
-      z: (random() - 0.5) * 0.15 + (lead === null ? -0.05 : 0.2 * Math.sin(lead)),
-      angle: random() * Math.PI,
-    };
+    // Keep the non-forest dressing stream unchanged after removing local patches.
+    random();
+    random();
+    random();
     function tryPlace(kind, x, z, footprint, extra = {}) {
       if (
-        !(kind === 'tree' && forest(cell) && !cell.pointOfLight
+        !(kind === 'tree' && isForest(cell)
           ? fitsTree(cell, x, z, footprint)
           : fitsHex(x, z, footprint))
       )
@@ -109,15 +83,6 @@ export function generatePropDressing(world, variant, mountainSurfaces) {
         return false;
       if (
         props.some((prop) => Math.hypot(x - prop.x, z - prop.z) < minimumSpacing(candidate, prop))
-      )
-        return false;
-      if (
-        extra.zone === 'outlier' &&
-        (Math.hypot(x - cluster.x, z - cluster.z) < 0.47 ||
-          props.some(
-            (p) =>
-              p.kind === 'tree' && Math.hypot(x - p.x, z - p.z) < footprint + p.footprint + 0.035,
-          ))
       )
         return false;
       const y = surface ? surfaceHeight(surface, x, z) : 0;
@@ -147,22 +112,8 @@ export function generatePropDressing(world, variant, mountainSurfaces) {
       for (let attempt = 0; attempt < 420; attempt++) {
         const angle = random() * Math.PI * 2,
           d = Math.sqrt(random());
-        let x, z;
-        if (
-          kind === 'tree' &&
-          forest(cell) &&
-          !cell.pointOfLight &&
-          !cell.sparse &&
-          extra.zone !== 'outlier'
-        ) {
-          const u = Math.cos(angle) * d * (attempt > 250 ? 0.515 : 0.47),
-            v = Math.sin(angle) * d * (attempt > 250 ? 0.395 : 0.36);
-          x = cluster.x + u * Math.cos(cluster.angle) - v * Math.sin(cluster.angle);
-          z = cluster.z + u * Math.sin(cluster.angle) + v * Math.cos(cluster.angle);
-        } else {
-          x = Math.cos(angle) * d * 0.76;
-          z = Math.sin(angle) * d * 0.76;
-        }
+        const x = Math.cos(angle) * d * 0.76;
+        const z = Math.sin(angle) * d * 0.76;
         if (tryPlace(kind, x, z, footprint, extra)) return true;
       }
       return false;
@@ -219,36 +170,6 @@ export function generatePropDressing(world, variant, mountainSurfaces) {
           variant: integer(0, 2),
           angle: orientation + (random() - 0.5) * 0.2,
         });
-      }
-    } else if (forest(cell)) {
-      for (let k = 0; k < 6; k++) {
-        const link = cell.links[k];
-        if (!link) continue;
-        const angle = (k * Math.PI) / 3,
-          nx = Math.cos(angle),
-          nz = Math.sin(angle);
-        for (const inward of cell.sparse ? [0.744] : [0.744, 0.55, 0.36]) {
-          const cross = link.cross + (inward === 0.744 ? 0 : (random() - 0.5) * 0.07);
-          tryPlace('tree', nx * inward - nz * cross, nz * inward + nx * cross, 0.24 * link.scale, {
-            scale: link.scale,
-            variant: link.variant,
-            zone: 'edge',
-          });
-        }
-      }
-      const count = cell.sparse
-        ? integer(3, 5)
-        : cell.terrain === 'dense forest'
-          ? integer(12, 16)
-          : integer(6, 9);
-      for (let n = props.length; n < count; n++) {
-        const scale = 0.57 + random() * 0.2;
-        const species = cell.treeVariant === 0 && random() < 0.2 ? 2 : cell.treeVariant;
-        place('tree', 0.24 * scale, { scale, variant: species, zone: 'cluster' });
-      }
-      if (!cell.sparse && random() < 0.44) {
-        const scale = 0.54 + random() * 0.14;
-        place('tree', 0.24 * scale, { scale, variant: cell.treeVariant, zone: 'outlier' });
       }
     } else if (cell.terrain === 'wetlands') {
       for (let n = 0, count = integer(2, 3); n < count; n++) {

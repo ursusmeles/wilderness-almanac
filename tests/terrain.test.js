@@ -177,7 +177,10 @@ test('dressing retains crown clusters, links, spacing, token clearance and terra
         linkedEdges++;
         const [q, r] = DIRECTIONS[side],
           other = dressByKey.get(`${cell.q + q},${cell.r + r}`);
-        assert.equal(other.links[(side + 3) % 6].cross, -data.links[side].cross);
+        assert.equal(other.links[(side + 3) % 6], true);
+        assert.equal(byKey.get(other.key).elevation, cell.elevation);
+        assert.ok(byKey.get(other.key).terrain.includes('forest'));
+        assert.ok(!byKey.get(other.key).pointOfLight);
       }
       for (let i = 0; i < data.props.length; i++) {
         const prop = data.props[i];
