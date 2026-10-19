@@ -101,12 +101,13 @@ export function riverFieldFor(cell, fields) {
   };
 }
 
-export function prepareMap(world, dressing) {
+export function prepareMap(world, dressing, { cellKeys } = {}) {
   const fields = prepareRiverGeometry(world);
   const { byKey, mouths } = fields;
   const dressByKey = new Map(dressing.cells.map((cell) => [cell.key, cell]));
   const mountains = prepareMountainRanges(world, dressing);
-  return world.cells.map((cell) => {
+  const cells = cellKeys ? world.cells.filter((cell) => cellKeys.includes(cell.key)) : world.cells;
+  return cells.map((cell) => {
     const river = cell.water === 'river';
     const openWater = cell.water === 'ocean' || cell.water === 'lake';
     const data = {

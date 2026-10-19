@@ -8,7 +8,211 @@
   </head>
   <body>
     <main>
-      <section id="hex-smooth-riverlands" aria-label="World map">
+      <section id="campaign-menu" class="campaign-menu" aria-labelledby="almanac-title">
+        <header class="almanac-heading">
+          <svg class="almanac-mark" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+            <path d="m24 3 19 11v22L24 47 5 36V14Z" stroke="currentColor" />
+            <path d="m5 14 19 11 19-11M24 25v22M14 30l10-17 10 17-10-5Z" stroke="currentColor" />
+          </svg>
+          <h1 id="almanac-title">Wilderness Almanac</h1>
+          <p>A place for your worlds.</p>
+        </header>
+        <div class="campaign-library">
+          <div class="campaign-toolbar">
+            <h2>Your campaigns <span id="campaign-count">0</span></h2>
+            <button type="button" id="import-campaign" class="menu-button">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                aria-hidden="true"
+              >
+                <path d="M12 16V3m-4 4 4-4 4 4M4 14v6h16v-6" />
+              </svg>
+              Import campaign
+            </button>
+            <input type="file" id="campaign-file" accept=".json,application/json" hidden />
+          </div>
+          <ul id="campaign-list" class="campaign-list" aria-label="Saved campaigns"></ul>
+          <button type="button" id="new-campaign" class="new-campaign">
+            <span class="new-campaign-symbol" aria-hidden="true">+</span>
+            <span><strong>New campaign</strong><span>A new seed. An unexplored world.</span></span>
+            <span class="new-campaign-arrow" aria-hidden="true">↗</span>
+          </button>
+          <p class="campaign-storage-note">
+            Saved on this device. Export a campaign to take it with you.
+          </p>
+          <div class="campaign-feedback">
+            <output id="campaign-message" class="campaign-message" aria-live="polite"></output>
+            <button type="button" id="undo-delete-campaign" class="menu-button" hidden>
+              Undo deletion
+            </button>
+          </div>
+        </div>
+      </section>
+      <template id="campaign-template">
+        <li class="campaign-card">
+          <div class="campaign-icon">
+            <img width="112" height="112" alt="" />
+            <button
+              type="button"
+              class="menu-icon-button campaign-icon-refresh"
+              data-action="shuffle"
+              aria-label="Shuffle campaign icon"
+              title="Choose another hex"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                aria-hidden="true"
+              >
+                <path d="M20 7v5h-5M4 17v-5h5M19 12a7 7 0 0 0-12-5L4 10m16 4-3 3a7 7 0 0 1-12-5" />
+              </svg>
+            </button>
+          </div>
+          <div class="campaign-details">
+            <form class="campaign-name-form">
+              <input
+                class="campaign-name"
+                type="text"
+                maxlength="100"
+                required
+                autocomplete="off"
+                spellcheck="false"
+              />
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                aria-hidden="true"
+              >
+                <path d="m15 4 5 5M4 20l5-1L21 7l-5-5L4 14Z" />
+              </svg>
+            </form>
+            <dl class="campaign-metadata">
+              <div>
+                <dt>Created</dt>
+                <dd class="campaign-date"></dd>
+              </div>
+              <div>
+                <dt>Palette</dt>
+                <dd class="campaign-palette"></dd>
+              </div>
+              <div>
+                <dt>Settlements</dt>
+                <dd class="campaign-settlements"></dd>
+              </div>
+              <div>
+                <dt>POIs</dt>
+                <dd class="campaign-pois"></dd>
+              </div>
+              <div class="campaign-ratio">
+                <dt>Water / land</dt>
+                <dd></dd>
+              </div>
+            </dl>
+            <div class="campaign-seed-row">
+              <span>Seed <span class="campaign-seed"></span></span>
+              <button
+                type="button"
+                class="menu-icon-button"
+                data-action="copy"
+                aria-label="Copy seed"
+                title="Copy seed"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  aria-hidden="true"
+                >
+                  <rect x="8" y="8" width="12" height="12" rx="2" />
+                  <path d="M16 8V4H4v12h4" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                class="menu-icon-button"
+                data-action="share"
+                aria-label="Share map"
+                title="Share map"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  aria-hidden="true"
+                >
+                  <circle cx="18" cy="5" r="3" />
+                  <circle cx="6" cy="12" r="3" />
+                  <circle cx="18" cy="19" r="3" />
+                  <path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="campaign-actions">
+            <button
+              type="button"
+              class="menu-icon-button campaign-enter"
+              data-action="enter"
+              aria-label="Enter campaign"
+              title="Enter campaign"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                aria-hidden="true"
+              >
+                <path d="M14 4h6v16h-6M3 12h13m-5-5 5 5-5 5" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              class="menu-icon-button"
+              data-action="download"
+              aria-label="Download campaign JSON"
+              title="Download campaign JSON"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                aria-hidden="true"
+              >
+                <path d="M12 3v13m-5-5 5 5 5-5M4 16v5h16v-5" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              class="menu-icon-button campaign-delete"
+              data-action="delete"
+              aria-label="Delete campaign"
+              title="Delete campaign"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                aria-hidden="true"
+              >
+                <path d="M3 6h18M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7m4-7v7" />
+              </svg>
+            </button>
+          </div>
+        </li>
+      </template>
+      <section id="hex-smooth-riverlands" aria-label="World map" hidden>
         <header class="hp-top">
           <div>
             <h1 class="hp-title">The quiet frontier</h1>
@@ -148,10 +352,13 @@
             />
             <button type="submit">Save palette</button>
           </div>
-          <label class="hp-motion">
-            <input type="checkbox" id="hp-motion" checked />
-            <span>Movement</span>
-          </label>
+          <div class="hp-map-navigation">
+            <label class="hp-motion">
+              <input type="checkbox" id="hp-motion" checked />
+              <span>Movement</span>
+            </label>
+            <button type="button" id="hp-return-menu">← Return to menu</button>
+          </div>
         </form>
         <dialog id="hp-new-map-dialog" aria-labelledby="hp-dialog-title">
           <form id="hp-new-map-form" class="hp-new-map-form">

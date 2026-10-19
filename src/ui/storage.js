@@ -15,6 +15,9 @@ export function readPreferences(storage) {
           : undefined,
       variant: Number.isSafeInteger(saved.variant) && saved.variant >= 0 ? saved.variant : 0,
       colors: validColors(saved.colors) ? saved.colors : undefined,
+      ...(typeof saved.campaignId === 'string' && saved.campaignId.length <= 128
+        ? { campaignId: saved.campaignId }
+        : {}),
       ...(typeof saved.motion === 'boolean' ? { motion: saved.motion } : {}),
       palettes: Array.isArray(saved.palettes)
         ? saved.palettes.filter(

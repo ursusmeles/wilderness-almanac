@@ -10,10 +10,12 @@ import { prepareMountainRanges } from './mountain-surfaces.js';
 import { generatePointsOfLight } from './points-of-light.js';
 import { generatePointsOfInterest } from './points-of-interest.js';
 
+export const GENERATOR_VERSION = 6;
+
 export function generateWorld(seed) {
   const world = {
     schemaVersion: 1,
-    generatorVersion: 6,
+    generatorVersion: GENERATOR_VERSION,
     seed: normalizeSeed(seed),
     ...createTopology(),
     scale: { hexSpacingKm: 18 },

@@ -5,6 +5,8 @@ import { createMapRenderer } from './rendering/map-renderer.js';
 import { palettes, paletteTheme } from './palette.js';
 import { readPreferences, savePreferences } from './ui/storage.js';
 import { readMapLink, mapLink, copyText, describeHex } from './ui/map-link.js';
+import { createCampaign, replaceCampaignMap } from './ui/campaigns.js';
+import { createCampaignMenu } from './ui/campaign-menu.js';
 
 const root = document.getElementById('hex-smooth-riverlands');
 const element = (id) => root.querySelector(`#hp-${id}`);
@@ -24,6 +26,9 @@ let colors = linked.colors ?? saved.colors ?? palettes.dusk.slice();
 const savedPalettes = saved.palettes ?? [];
 let world;
 let dressing;
+let activeCampaign;
+let renderer;
+let currentPaletteName;
 let variant =
   linked.variant ?? (linked.seed && linked.seed !== saved.seed ? 0 : (saved.variant ?? 0));
 let movement = saved.motion ?? true;
@@ -35,16 +40,25 @@ const dialog = element('new-map-dialog');
 const listeners = new AbortController();
 const listen = (target, type, handler) =>
   target.addEventListener(type, handler, { signal: listeners.signal });
-const renderer = createMapRenderer(element('scene'), {
-  motion: movement,
-  onSelect(key) {
-    selected = key;
-    selection.value = key;
-    root.dataset.selected = key;
-  },
-});
+const campaignDefaults = {
+  seed: saved.seed,
+  colors: (saved.colors ?? palettes.dusk).slice(),
+  variant: saved.variant ?? 0,
+  paletteName: '',
+};
+let campaignMenu;
 
 function persist() {
+  if (activeCampaign) {
+    Object.assign(activeCampaign, {
+      seed: world.seed,
+      variant,
+      colors: colors.slice(),
+      paletteName: currentPaletteName,
+    });
+  }
+  campaignDefaults.colors = colors.slice();
+  campaignDefaults.paletteName = currentPaletteName;
   try {
     history.replaceState(
       history.state,
@@ -54,19 +68,41 @@ function persist() {
   } catch {
     /* Sandboxed embeddings can restrict history updates. */
   }
-  return savePreferences(storage, {
+  const preferencesSaved = savePreferences(storage, {
     seed: world.seed,
     variant,
     colors,
     palettes: savedPalettes,
     motion: movement,
+    campaignId: activeCampaign?.id,
   });
+  const campaignSaved = activeCampaign ? campaignMenu.update(activeCampaign) : true;
+  if (!campaignSaved)
+    message.textContent =
+      'Browser storage is unavailable. Download your campaign from the menu to keep it.';
+  return preferencesSaved && campaignSaved;
 }
 
-function newMap(seed, { keepDressing = false } = {}) {
-  world = generateWorld(seed);
-  if (!keepDressing) variant++;
+function openCampaign(campaign) {
+  activeCampaign = campaign;
+  world = generateWorld(campaign.seed);
+  campaign.nameEdited ??= campaign.name !== world.name;
+  colors = campaign.colors.slice();
+  variant = campaign.variant;
+  currentPaletteName = campaign.paletteName;
+  root.hidden = false;
+  if (!renderer)
+    renderer = createMapRenderer(element('scene'), {
+      motion: movement,
+      onSelect(key) {
+        selected = key;
+        selection.value = key;
+        root.dataset.selected = key;
+      },
+    });
+  renderer?.setMotion(movement);
   dressing = generateDressing(world, variant);
+  applyPalette();
   selection.replaceChildren(
     ...world.cells.map((cell) => {
       const option = document.createElement('option');
@@ -83,14 +119,19 @@ function newMap(seed, { keepDressing = false } = {}) {
   renderer?.setMap(prepareMap(world, dressing), { resetView: true });
   renderer?.select(selected);
   element('current-seed').textContent = world.seed;
-  root.querySelector('.hp-title').textContent = world.name;
-  document.title = `${world.name} · Wilderness Almanac`;
+  root.querySelector('.hp-title').textContent = campaign.name;
+  document.title = `${campaign.name} · Wilderness Almanac`;
   root.dataset.mapName = world.name;
   root.dataset.seed = world.seed;
   root.dataset.variant = String(variant);
   root.dataset.hexCount = String(world.cells.length);
   message.textContent = `${world.cells.length} hexes · ${world.regions.length} regions`;
   persist();
+}
+
+function newMap(seed) {
+  const nextWorld = generateWorld(seed);
+  campaignMenu.enter(replaceCampaignMap(activeCampaign, nextWorld, world.name));
 }
 
 function updatePaletteOptions() {
@@ -119,7 +160,17 @@ function applyPalette() {
   const builtin = Object.keys(palettes).find((key) => same(palettes[key]));
   const custom = savedPalettes.findIndex((palette) => same(palette.colors));
   preset.value = builtin ?? (custom >= 0 ? `saved:${custom}` : 'custom');
+  if (!currentPaletteName) currentPaletteName = preset.selectedOptions[0].textContent;
   if (world) persist();
+}
+
+function paletteLabel(candidate) {
+  const same = (other) =>
+    other.every((color, index) => color.toLowerCase() === candidate[index].toLowerCase());
+  const builtin = Object.keys(palettes).find((key) => same(palettes[key]));
+  return builtin
+    ? preset.querySelector(`option[value="${builtin}"]`).textContent
+    : (savedPalettes.find((palette) => same(palette.colors))?.name ?? 'Custom');
 }
 
 listen(selection, 'change', () => renderer?.select(selection.value));
@@ -147,6 +198,21 @@ listen(element('motion'), 'change', (event) => {
   movement = event.target.checked;
   renderer?.setMotion(movement);
   persist();
+});
+listen(element('return-menu'), 'click', () => {
+  persist();
+  renderer?.setMotion(false);
+  root.hidden = true;
+  const url = new URL(window.location.href);
+  ['seed', 'variant', 'colors'].forEach((key) => url.searchParams.delete(key));
+  try {
+    history.replaceState(history.state, '', url);
+  } catch {
+    /* Sandboxed embeddings can restrict history updates. */
+  }
+  document.title = 'Wilderness Almanac';
+  campaignMenu.show();
+  document.getElementById('new-campaign').focus({ preventScroll: true });
 });
 listen(element('new-map'), 'click', () => newMap(freshSeed()));
 listen(element('map-settings'), 'click', () => {
@@ -182,12 +248,14 @@ listen(preset, 'change', () => {
   const palette = palettes[preset.value] ?? savedPalettes[savedIndex]?.colors;
   if (palette) {
     colors = palette.slice();
+    currentPaletteName = preset.selectedOptions[0].textContent;
     applyPalette();
   }
 });
 ['ground', 'water', 'elements'].forEach((name, index) =>
   listen(element(name), 'input', (event) => {
     colors[index] = event.target.value;
+    currentPaletteName = 'Custom';
     applyPalette();
   }),
 );
@@ -207,6 +275,7 @@ listen(element('palette-form'), 'submit', (event) => {
   if (index < 0) savedPalettes.push(palette);
   else savedPalettes[index] = palette;
   updatePaletteOptions();
+  currentPaletteName = name;
   applyPalette();
   message.textContent = persist()
     ? `Palette “${name}” saved`
@@ -217,9 +286,20 @@ listen(element('palette-name'), 'input', () => element('palette-name').setCustom
 
 updatePaletteOptions();
 applyPalette();
-newMap(linked.seed ?? saved.seed ?? freshSeed(), { keepDressing: true });
+campaignDefaults.paletteName = paletteLabel(campaignDefaults.colors);
+campaignMenu = createCampaignMenu({ storage, previous: campaignDefaults, onEnter: openCampaign });
+if (linked.seed) {
+  const state = { seed: linked.seed, variant, colors, campaignId: saved.campaignId };
+  let campaign = campaignMenu.findReplay(state);
+  if (!campaign) {
+    campaign = createCampaign(generateWorld(linked.seed), colors, currentPaletteName, variant);
+    campaignMenu.add(campaign);
+  }
+  campaignMenu.enter(campaign);
+} else campaignMenu.show();
 if (import.meta.hot)
   import.meta.hot.dispose(() => {
     listeners.abort();
     renderer?.dispose();
+    campaignMenu.dispose();
   });

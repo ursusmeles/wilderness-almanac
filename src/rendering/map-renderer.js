@@ -25,7 +25,7 @@ export function createMapRenderer(host, { onSelect = () => {}, motion = true } =
       powerPreference: 'low-power',
     });
   } catch (error) {
-    loading.textContent = 'This preview needs WebGL support.';
+    if (loading) loading.textContent = 'This preview needs WebGL support.';
     return;
   }
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -1174,7 +1174,7 @@ export function createMapRenderer(host, { onSelect = () => {}, motion = true } =
       height = 4;
     for (const cell of cells) {
       const ridgeHeight = cell.surface ? Math.max(...cell.surface.vertices.map((v) => v[1])) : 0;
-      const point = new THREE.Vector3(cell.wx, cell.top + ridgeHeight, cell.wz);
+      const point = new THREE.Vector3(cell.g.position.x, cell.top + ridgeHeight, cell.g.position.z);
       width = Math.max(width, Math.abs(point.dot(right)) + 1.5);
       height = Math.max(height, Math.abs(point.dot(up)) + 1.5);
     }
@@ -1324,7 +1324,7 @@ export function createMapRenderer(host, { onSelect = () => {}, motion = true } =
   listen(reducedMotion, 'change', updateMotion);
   listen(document, 'visibilitychange', updateMotion);
   updateMotion();
-  loading.hidden = true;
+  if (loading) loading.hidden = true;
   return {
     setMotion(enabled) {
       motionEnabled = enabled;
@@ -1344,6 +1344,10 @@ export function createMapRenderer(host, { onSelect = () => {}, motion = true } =
     },
     select: choose,
     zoom: changeZoom,
+    snapshot() {
+      draw();
+      return renderer.domElement.toDataURL('image/png');
+    },
     setPalette(seeds) {
       color = createColorScale(seeds);
       applyPalette();
