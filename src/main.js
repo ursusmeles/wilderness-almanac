@@ -84,7 +84,7 @@ function newMap(seed, { keepDressing = false } = {}) {
   renderer?.select(selected);
   element('current-seed').textContent = world.seed;
   root.querySelector('.hp-title').textContent = world.name;
-  document.title = `${world.name} · Hex sandbox`;
+  document.title = `${world.name} · Wilderness Almanac`;
   root.dataset.mapName = world.name;
   root.dataset.seed = world.seed;
   root.dataset.variant = String(variant);

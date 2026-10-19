@@ -1,4 +1,4 @@
-# Hex sandbox - The quiet frontier
+# Wilderness Almanac
 
 A vanilla JavaScript / Three.js / Vite prototype for an isometric TTRPG campaign map. The current preview includes geography, hydrology, elevation, seed-bound names, terrain types, settlements, points of interest, crossings and clustered low-poly props.
 
