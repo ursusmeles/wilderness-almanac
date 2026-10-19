@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { installTreeSway, installWaveDrift } from './ambient-motion.js';
+import { installTreeSway, installWaveDrift, windWeight } from './ambient-motion.js';
 import { createPoiBuilder } from './poi-props.js';
+import { createSettlementBuilder, roofGeometry } from './settlement-props.js';
 import { createColorScale, palettes } from '../palette.js';
 import { randomStream, surfaceHeight, TOP_RADIUS } from '../generation/math.js';
 import {
@@ -87,6 +88,8 @@ export function createMapRenderer(host, { onSelect = () => {}, motion = true } =
     rockLight: [2, 0.82, 0.25],
     rockMid: [2, 0.55, 0.45],
     grass: [2, 0.63, 0.8],
+    reeds: [2, 0.63, 0.8],
+    reedHead: [2, 0.55, 0.45],
     soil: [0, 0.32, 0.65],
     crop: [2, 0.7, 0.8],
     ridge: [0, 0.43, 0.8],
@@ -96,6 +99,8 @@ export function createMapRenderer(host, { onSelect = () => {}, motion = true } =
     wall: [2, 0.79, 0.4],
     roof: [2, 0.49, 1.1],
     roofLight: [2, 0.62, 1],
+    straw: [2, 0.76, 0.8],
+    strawDark: [2, 0.64, 0.75],
     door: [2, 0.26, 0.6],
     riverShore: [0, 0.35, 0.85],
     riverGround: [0, 0.39, 1.1],
@@ -118,6 +123,7 @@ export function createMapRenderer(host, { onSelect = () => {}, motion = true } =
   materials.riverGround.flatShading = false;
   materials.riverCliff.flatShading = false;
   materials.grass.side = THREE.DoubleSide;
+  materials.reeds.side = THREE.DoubleSide;
   materials.rock.side = THREE.DoubleSide;
   materials.rockMid.side = THREE.DoubleSide;
   materials.rockLight.side = THREE.DoubleSide;
@@ -134,7 +140,7 @@ export function createMapRenderer(host, { onSelect = () => {}, motion = true } =
   const tintedMaterials = new Map();
   const ambientTime = { value: 0 };
   const waveDirection = { value: new THREE.Vector2(1, 0) };
-  for (const role of ['leaf', 'leafLight', 'leafDark', 'trunk'])
+  for (const role of ['leaf', 'leafLight', 'leafDark', 'trunk', 'reeds', 'reedHead'])
     installTreeSway(materials[role], ambientTime);
   const treeDepth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
   installTreeSway(treeDepth, ambientTime);
@@ -146,14 +152,18 @@ export function createMapRenderer(host, { onSelect = () => {}, motion = true } =
     side: THREE.DoubleSide,
   });
   installWaveDrift(materials.wave, ambientTime, waveDirection);
-  function propMaterial(role, temperature = 0) {
-    if (!temperature) return materials[role];
-    const key = `${role}:${temperature}`;
+  function roleColor(role, temperature = 0, foliageTone = 0) {
+    const [index, lightness, chroma] = roles[role];
+    return color(index, lightness + foliageTone * 0.014, chroma, temperature, foliageTone * 2);
+  }
+  function propMaterial(role, temperature = 0, foliageTone = 0) {
+    if (!temperature && !foliageTone) return materials[role];
+    const key = `${role}:${temperature}:${foliageTone}`;
     if (!tintedMaterials.has(key)) {
       const material = materials[role].clone();
       if (materials[role].userData.treeSway) installTreeSway(material, ambientTime);
-      material.color.set(color(...roles[role], temperature));
-      tintedMaterials.set(key, { material, role, temperature });
+      material.color.set(roleColor(role, temperature, foliageTone));
+      tintedMaterials.set(key, { material, role, temperature, foliageTone });
     }
     return tintedMaterials.get(key).material;
   }
@@ -220,6 +230,7 @@ export function createMapRenderer(host, { onSelect = () => {}, motion = true } =
   function makeTree(parent, prop) {
     const g = new THREE.Group();
     g.userData.tree = true;
+    g.userData.wind = { height: 0.8, strength: 1 };
     g.position.set(prop.x, prop.y || 0, prop.z);
     g.rotation.y = prop.angle;
     g.scale.setScalar(prop.scale);
@@ -235,7 +246,7 @@ export function createMapRenderer(host, { onSelect = () => {}, motion = true } =
       const crown = addMesh(
         g,
         new THREE.DodecahedronGeometry(0.23, 0),
-        propMaterial('leaf', prop.temperature),
+        propMaterial('leaf', prop.temperature, prop.foliageTone),
         0,
         0.52,
         0,
@@ -244,7 +255,7 @@ export function createMapRenderer(host, { onSelect = () => {}, motion = true } =
       addMesh(
         g,
         new THREE.DodecahedronGeometry(0.16, 0),
-        propMaterial('leafLight', prop.temperature),
+        propMaterial('leafLight', prop.temperature, prop.foliageTone),
         0,
         0.73,
         0,
@@ -306,107 +317,11 @@ export function createMapRenderer(host, { onSelect = () => {}, motion = true } =
       materials.ridgeMeadow,
     ]);
   }
-  function roofGeometry(w, d, h) {
-    const a = [-w / 2, 0, -d / 2],
-      b = [w / 2, 0, -d / 2],
-      c = [0, h, -d / 2],
-      d0 = [-w / 2, 0, d / 2],
-      e = [w / 2, 0, d / 2],
-      f = [0, h, d / 2];
-    return geometryFrom([
-      ...a,
-      ...c,
-      ...b,
-      ...d0,
-      ...e,
-      ...f,
-      ...a,
-      ...d0,
-      ...f,
-      ...a,
-      ...f,
-      ...c,
-      ...b,
-      ...c,
-      ...f,
-      ...b,
-      ...f,
-      ...e,
-    ]);
-  }
-  function makeHouse(parent, prop) {
-    const g = new THREE.Group();
-    g.position.set(prop.x, prop.y || 0, prop.z);
-    g.rotation.y = prop.angle;
-    g.scale.setScalar(prop.scale);
-    const height = prop.variant === 2 ? 0.43 : 0.33;
-    addMesh(
-      g,
-      new THREE.BoxGeometry(0.36, height, 0.45),
-      propMaterial('wall', prop.temperature),
-      0,
-      height / 2,
-      0,
-    );
-    const roof = addMesh(
-      g,
-      roofGeometry(0.46, 0.55, prop.variant === 1 ? 0.19 : 0.27),
-      propMaterial(prop.variant === 1 ? 'roofLight' : 'roof', prop.temperature),
-      0,
-      height,
-      0,
-    );
-    roof.material.side = THREE.DoubleSide;
-    addMesh(
-      g,
-      new THREE.BoxGeometry(0.09, 0.18, 0.012),
-      propMaterial('door', prop.temperature),
-      0.06,
-      0.09,
-      0.232,
-    );
-    if (prop.variant === 2)
-      addMesh(
-        g,
-        new THREE.BoxGeometry(0.065, 0.2, 0.07),
-        propMaterial('wall', prop.temperature),
-        -0.1,
-        height + 0.14,
-        -0.08,
-      );
-    parent.add(g);
-  }
-  function makeTower(parent, prop) {
-    const g = new THREE.Group();
-    g.position.set(prop.x, prop.y || 0, prop.z);
-    g.rotation.y = prop.angle;
-    g.scale.setScalar(prop.scale);
-    addMesh(
-      g,
-      new THREE.CylinderGeometry(0.22, 0.25, 0.67, 6),
-      propMaterial('wall', prop.temperature),
-      0,
-      0.335,
-      0,
-    );
-    addMesh(
-      g,
-      new THREE.ConeGeometry(0.33, 0.39, 6),
-      propMaterial('roof', prop.temperature),
-      0,
-      0.865,
-      0,
-    );
-    addMesh(
-      g,
-      new THREE.BoxGeometry(0.12, 0.24, 0.015),
-      propMaterial('door', prop.temperature),
-      0,
-      0.12,
-      0.22,
-    );
-    parent.add(g);
-  }
+  const { makeHouse, makeTower, makeHall, makeBarrier } = createSettlementBuilder({
+    addMesh,
+    propMaterial,
+    roofGeometry,
+  });
   function makeRock(parent, prop) {
     const rand = randomStream(prop.detailSeed),
       geo =
@@ -454,12 +369,14 @@ export function createMapRenderer(host, { onSelect = () => {}, motion = true } =
     const mesh = addMesh(
       parent,
       geo,
-      propMaterial('grass', prop.temperature),
+      propMaterial(prop.wind ? 'reeds' : 'grass', prop.temperature),
       prop.x,
       prop.y || 0,
       prop.z,
     );
     mesh.castShadow = false;
+    if (prop.wind && !parent.userData.wind)
+      mesh.userData.wind = { height: 0.22 * prop.scale, strength: 0.38 };
   }
   function makePuddle(parent, prop) {
     const points = [],
@@ -483,11 +400,12 @@ export function createMapRenderer(host, { onSelect = () => {}, motion = true } =
     mesh.castShadow = false;
   }
   function makeReeds(parent, prop) {
-    makeGrass(parent, { ...prop, scale: prop.scale * 1.7, variant: 2 });
     const g = new THREE.Group();
     g.position.set(prop.x, prop.y, prop.z);
     g.rotation.y = prop.angle;
     g.scale.setScalar(prop.scale);
+    g.userData.wind = { height: 0.34 * prop.scale, strength: 0.5 };
+    makeGrass(g, { ...prop, x: 0, y: 0, z: 0, angle: 0, scale: 1.7, variant: 2, wind: true });
     for (let i = 0; i < 3; i++) {
       const x = (i - 1) * 0.025,
         z = (i % 2) * 0.025,
@@ -495,7 +413,7 @@ export function createMapRenderer(host, { onSelect = () => {}, motion = true } =
       addMesh(
         g,
         new THREE.CylinderGeometry(0.004, 0.006, height, 3),
-        propMaterial('grass', prop.temperature),
+        propMaterial('reeds', prop.temperature),
         x,
         height / 2,
         z,
@@ -503,7 +421,7 @@ export function createMapRenderer(host, { onSelect = () => {}, motion = true } =
       addMesh(
         g,
         new THREE.BoxGeometry(0.018, 0.045, 0.018),
-        propMaterial('rockMid', prop.temperature),
+        propMaterial('reedHead', prop.temperature),
         x,
         height,
         z,
@@ -545,10 +463,6 @@ export function createMapRenderer(host, { onSelect = () => {}, motion = true } =
         );
     }
     parent.add(g);
-  }
-  function makeHall(parent, prop) {
-    makeHouse(parent, { ...prop, scale: prop.scale, variant: 2 });
-    makeTower(parent, { ...prop, x: prop.x - 0.07, z: prop.z - 0.04, scale: prop.scale * 0.7 });
   }
   const makePoi = createPoiBuilder({
     addMesh,
@@ -1023,6 +937,7 @@ export function createMapRenderer(host, { onSelect = () => {}, motion = true } =
         else if (prop.kind === 'house') makeHouse(propRoot, prop);
         else if (prop.kind === 'tower') makeTower(propRoot, prop);
         else if (prop.kind === 'hall') makeHall(propRoot, prop);
+        else if (prop.kind === 'city-wall' || prop.kind === 'fence') makeBarrier(propRoot, prop);
         else if (prop.kind === 'rock') makeRock(propRoot, prop);
         else if (prop.kind === 'grass') makeGrass(propRoot, prop);
         else if (prop.kind === 'puddle') makePuddle(propRoot, prop);
@@ -1054,14 +969,14 @@ export function createMapRenderer(host, { onSelect = () => {}, motion = true } =
         geometry.applyMatrix4(object.matrixWorld);
         for (const name of Object.keys(geometry.attributes))
           if (name !== 'position' && name !== 'normal') geometry.deleteAttribute(name);
-        let tree = object.parent;
-        while (tree && !tree.userData.tree) tree = tree.parent;
-        const base = tree ? new THREE.Vector3().setFromMatrixPosition(tree.matrixWorld).y : 0;
+        let plant = object;
+        while (plant && !plant.userData.wind) plant = plant.parent;
+        const base = plant ? new THREE.Vector3().setFromMatrixPosition(plant.matrixWorld).y : 0;
         const positions = geometry.attributes.position;
         const sway = new Float32Array(positions.count),
           phase = new Float32Array(positions.count);
         for (let i = 0; i < positions.count; i++) {
-          sway[i] = tree ? Math.min(1, Math.max(0, (positions.getY(i) - base) / 0.8)) ** 2 : 0;
+          sway[i] = plant ? windWeight(positions.getY(i) - base, plant.userData.wind) : 0;
           phase[i] = object.userData.wavePhase ?? 0;
         }
         geometry.setAttribute('swayWeight', new THREE.BufferAttribute(sway, 1));
@@ -1152,8 +1067,8 @@ export function createMapRenderer(host, { onSelect = () => {}, motion = true } =
   function applyPalette() {
     scene.background = new THREE.Color(color.background());
     Object.entries(roles).forEach(([key, args]) => materials[key].color.set(color(...args)));
-    for (const { material, role, temperature } of tintedMaterials.values())
-      material.color.set(color(...roles[role], temperature));
+    for (const { material, role, temperature, foliageTone } of tintedMaterials.values())
+      material.color.set(roleColor(role, temperature, foliageTone));
     materials.line.color.set(color(2, 0.94, 0.55));
     materials.hover.color.set(color(2, 0.83, 0.4));
     materials.wave.color.set(color(1, 0.64, 0.75));

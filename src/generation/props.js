@@ -4,6 +4,7 @@ import { fitsHex, fitsTree, minimumSpacing, lowProp } from './legacy.js';
 import { surfaceHeight } from './math.js';
 import { POI_ANCHOR } from './points-of-interest.js';
 import { TOKEN_ANCHOR, isForest, populateForests } from './forest-props.js';
+import { settlementBarriers, isBarrier, barrierDistance } from './settlement-props.js';
 
 export { TOKEN_ANCHOR } from './forest-props.js';
 
@@ -25,6 +26,7 @@ export function generatePropDressing(world, variant, mountainSurfaces) {
     world.cells.filter((cell) => cell.water === 'river').map((cell) => cell.downstream),
   );
   populateForests(states, world.seed, variant);
+  const barriers = settlementBarriers(world, variant);
   return states.map((cell) => {
     const random = cell.random;
     const integer = (lo, hi) => lo + Math.floor(random() * (hi - lo + 1));
@@ -54,6 +56,7 @@ export function generatePropDressing(world, variant, mountainSurfaces) {
         pedestalDepth: Math.max(...heights) - Math.min(...heights) + 0.035,
       });
     }
+    props.push(...(barriers.get(cell.key) ?? []));
     // Keep the non-forest dressing stream unchanged after removing local patches.
     random();
     random();
@@ -82,7 +85,11 @@ export function generatePropDressing(world, variant, mountainSurfaces) {
       )
         return false;
       if (
-        props.some((prop) => Math.hypot(x - prop.x, z - prop.z) < minimumSpacing(candidate, prop))
+        props.some((prop) =>
+          isBarrier(prop)
+            ? barrierDistance(prop, x, z) < footprint + prop.footprint + 0.025
+            : Math.hypot(x - prop.x, z - prop.z) < minimumSpacing(candidate, prop),
+        )
       )
         return false;
       const y = surface ? surfaceHeight(surface, x, z) : 0;
@@ -156,12 +163,14 @@ export function generatePropDressing(world, variant, mountainSurfaces) {
         3;
       if (type === 'city' && centre) place('hall', 0.25, { scale: 0.75 });
       else if (type === 'town' || (type === 'village' && random() < 0.35))
-        place('tower', 0.16, { scale: 0.55 });
-      const count = type === 'city' ? (centre ? 12 : 10) : type === 'town' ? 8 : 4;
+        place('tower', 0.16, { scale: 0.55, ...(type === 'village' ? { roof: 'straw' } : {}) });
+      const style = randomFor(world.seed, `settlement-buildings:${cell.key}:${variant}`);
+      const count =
+        type === 'city' ? (centre ? 14 : 12) : type === 'town' ? 8 : 2 + Math.floor(style() * 3);
       for (let n = 0; n < count; n++) {
         const scale =
           type === 'city'
-            ? 0.36 + random() * 0.08
+            ? 0.31 + random() * 0.07
             : type === 'town'
               ? 0.42 + random() * 0.1
               : 0.49 + random() * 0.13;
@@ -169,6 +178,8 @@ export function generatePropDressing(world, variant, mountainSurfaces) {
           scale,
           variant: integer(0, 2),
           angle: orientation + (random() - 0.5) * 0.2,
+          ...(type === 'village' ? { roof: 'straw' } : {}),
+          ...(type === 'city' ? { storeys: style() < 0.85 ? 2 + Math.floor(style() * 2) : 1 } : {}),
         });
       }
     } else if (cell.terrain === 'wetlands') {
@@ -195,17 +206,24 @@ export function generatePropDressing(world, variant, mountainSurfaces) {
         place('tree', 0.24 * scale, { scale, variant: 0, flank: true });
       }
     }
-    const rockCount = cell.terrain === 'meadow' ? integer(1, 3) : integer(0, 2);
-    for (let n = 0; n < rockCount; n++)
-      place('rock', 0.065 + random() * 0.045, { variant: integer(0, 2) });
-    for (let n = 0, count = integer(1, 2); n < count; n++)
-      place('grass', 0.065, { scale: 0.7 + random() * 0.4, variant: integer(0, 2) });
+    if (cell.pointOfLight?.type !== 'city') {
+      const rockCount = cell.terrain === 'meadow' ? integer(1, 3) : integer(0, 2);
+      for (let n = 0; n < rockCount; n++)
+        place('rock', 0.065 + random() * 0.045, { variant: integer(0, 2) });
+      for (let n = 0, count = integer(1, 2); n < count; n++)
+        place('grass', 0.065, {
+          scale: 0.7 + random() * 0.4,
+          variant: integer(0, 2),
+          ...(cell.terrain === 'wetlands' ? { wind: true } : {}),
+        });
+    }
     return {
       key: cell.key,
       placementSeed: integer(0, 4294967295),
       props,
       links: cell.links,
       sparse: cell.sparse,
+      ...(cell.forest ? { forest: cell.forest } : {}),
     };
   });
 }

@@ -2,15 +2,17 @@ import { DIRECTIONS, neighbours } from './hex.js';
 import { randomFor } from './seed.js';
 import { fitsHex, fitsTree, minimumSpacing } from './legacy.js';
 import { POI_ANCHOR } from './points-of-interest.js';
+import { isForest, forestProfiles } from './forest-types.js';
 
 export const TOKEN_ANCHOR = { x: 0.5, z: 0.16, r: 0.1 };
-export const isForest = (cell) =>
-  !cell.water && !cell.pointOfLight && ['light forest', 'dense forest'].includes(cell.terrain);
+export { isForest } from './forest-types.js';
 
 // A shared canopy is sampled before trees are assigned to rendering hexes. Hex
 // edges only clip the outer forest/cliff boundary; they never plant linking rows.
 export function populateForests(states, seed, variant) {
   const byKey = new Map(states.map((cell) => [cell.key, cell]));
+  const profiles = forestProfiles(states, seed);
+  for (const cell of states) cell.forest = profiles.get(cell.key);
   const forests = states.filter(isForest).sort((a, b) => a.q - b.q || a.r - b.r);
   const available = new Set(forests.map((cell) => cell.key));
   for (const start of forests) {
@@ -79,6 +81,9 @@ function plantCanopy(group, byKey, seed, variant) {
     ]),
   );
   const reservations = new Map(group.map((cell) => [cell.key, [cell, ...neighbours(cell, byKey)]]));
+  const appearances = new Map(
+    group.map((cell) => [cell.key, randomFor(seed, `forest-tree-style:${variant}:${cell.key}`)]),
+  );
   // One spatial index enforces trunk spacing across hex boundaries as well.
   const buckets = new Map();
   const bucketSize = 0.25;
@@ -99,7 +104,12 @@ function plantCanopy(group, byKey, seed, variant) {
       return u * u + v * v < 1;
     });
     if (!canopy && random() > 0.012) continue;
-    const scale = 0.57 + random() * 0.2;
+    const appearance = appearances.get(cell.key);
+    const count = cell.props.length;
+    const incoming = cell.forest.mixed && (count === 1 || (count > 1 && appearance() < 0.3));
+    const deciduous = (cell.forest.family === 'deciduous') !== incoming;
+    const species = deciduous ? 1 : appearance() < 0.2 ? 2 : 0;
+    const scale = deciduous ? 0.55 + appearance() * 0.25 : 0.57 + appearance() * 0.2;
     const prop = { kind: 'tree', x: wx - cell.wx, z: wz - cell.wz, footprint: 0.24 * scale };
     if (!fitsTree(cell, prop.x, prop.z, prop.footprint)) continue;
     if (
@@ -129,7 +139,6 @@ function plantCanopy(group, byKey, seed, variant) {
       }
     }
     if (crowded) continue;
-    const species = cell.treeVariant === 0 && random() < 0.2 ? 2 : cell.treeVariant;
     Object.assign(prop, {
       y: 0,
       scale,
@@ -138,6 +147,7 @@ function plantCanopy(group, byKey, seed, variant) {
       detailSeed: integer(1, 1000000),
       temperature: ((species === 1 ? 1 : -1) * integer(0, 3)) / 3,
       zone: canopy ? 'canopy' : 'outlier',
+      ...(deciduous ? { foliageTone: Math.floor(appearance() * 3) - 1 } : {}),
     });
     cell.props.push(prop);
     const bucketKey = `${bx},${bz}`;

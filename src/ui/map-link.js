@@ -45,7 +45,9 @@ export async function copyText(text) {
 }
 
 export function describeHex(cell) {
-  const label = cell.pointOfLight?.type ?? (cell.water === 'lake' ? 'lake' : cell.terrain);
+  const label =
+    cell.pointOfLight?.type ??
+    (cell.water === 'lake' ? 'lake' : (cell.forest?.name ?? cell.terrain));
   const articles = {
     ruins: 'ruins',
     encampment: 'an encampment',

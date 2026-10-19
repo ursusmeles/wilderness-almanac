@@ -12,6 +12,7 @@ import { randomFor } from '../src/generation/seed.js';
 import { components, distance, neighbours, DIRECTIONS } from '../src/generation/hex.js';
 import { fitsHex, fitsTree, lowProp, minimumSpacing } from '../src/generation/legacy.js';
 import { TOKEN_ANCHOR } from '../src/generation/props.js';
+import { isBarrier, barrierEnds, barrierDistance } from '../src/generation/settlement-props.js';
 import { createColorScale, palettes } from '../src/palette.js';
 
 test('names replay in sentence case from the 30-by-30 Sheet snapshot', () => {
@@ -195,6 +196,14 @@ test('dressing retains crown clusters, links, spacing, token clearance and terra
           continue;
         }
         assert.ok(!cell.water);
+        if (isBarrier(prop)) {
+          assert.ok(barrierEnds(prop).every(([x, z]) => fitsHex(x, z, prop.footprint)));
+          assert.ok(
+            barrierDistance(prop, TOKEN_ANCHOR.x, TOKEN_ANCHOR.z) >=
+              TOKEN_ANCHOR.r + prop.footprint,
+          );
+          continue;
+        }
         assert.ok(
           prop.kind === 'tree' && woodland
             ? fitsTree({ links: data.links }, prop.x, prop.z, prop.footprint)
@@ -206,6 +215,13 @@ test('dressing retains crown clusters, links, spacing, token clearance and terra
               TOKEN_ANCHOR.r + prop.footprint * 0.48,
           );
         for (const other of data.props.slice(0, i)) {
+          if (isBarrier(other)) {
+            assert.ok(
+              barrierDistance(other, prop.x, prop.z) >=
+                prop.footprint + other.footprint + 0.025 - 1e-9,
+            );
+            continue;
+          }
           const gap = Math.hypot(prop.x - other.x, prop.z - other.z);
           assert.ok(gap >= minimumSpacing(prop, other) - 1e-9);
           if (

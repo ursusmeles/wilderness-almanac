@@ -35,7 +35,7 @@ export function createColorScale(seeds) {
       -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
     ];
   }
-  function color(index, L, Cscale = 1, temperature = 0) {
+  function color(index, L, Cscale = 1, temperature = 0, hueShift = 0) {
     const seed = fromHex(seeds[index]);
     if (temperature) {
       const target = ((temperature > 0 ? 25 : 250) * Math.PI) / 180;
@@ -50,6 +50,7 @@ export function createColorScale(seeds) {
         Math.min(Math.abs(delta), (8 * Math.PI) / 180) *
         Math.min(1, Math.abs(temperature));
     }
+    seed[2] += (hueShift * Math.PI) / 180;
     let C = seed[1] * Cscale;
     let rgb = rgbOf(Math.max(0.04, Math.min(0.96, L)), C, seed[2]);
     for (let n = 0; n < 25 && rgb.some((v) => v < 0 || v > 1); n++) {

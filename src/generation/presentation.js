@@ -116,6 +116,7 @@ export function prepareMap(world, dressing, { cellKeys } = {}) {
       top: cell.water ? 0.2 : 0.34 + Math.min(cell.elevation, 3) * ELEVATION_STEP,
       tone: ['light forest', 'farmlands'].includes(cell.terrain),
       props: dressByKey.get(cell.key)?.props ?? [],
+      ...(dressByKey.get(cell.key)?.forest ? { forest: dressByKey.get(cell.key).forest } : {}),
       surface: null,
       ...mountains.get(cell.key),
     };

@@ -12,6 +12,7 @@ import { prepareRiverGeometry, riverFieldFor } from '../src/generation/presentat
 import { riverLandValue, riverIslandValue } from '../src/generation/river-surfaces.js';
 import { distance, neighbours } from '../src/generation/hex.js';
 import { fitsHex } from '../src/generation/legacy.js';
+import { isBarrier, barrierDistance } from '../src/generation/settlement-props.js';
 
 test('POIs replay without changing earlier generation or moving on Regenerate', () => {
   const world = generateWorld('7');
@@ -43,7 +44,9 @@ test('POIs replay without changing earlier generation or moving on Regenerate', 
       assert.ok(Number.isFinite(poi.y) && poi.pedestalDepth >= 0.035 - 1e-9);
       for (const prop of cell.props.filter((p) => p !== poi))
         assert.ok(
-          Math.hypot(prop.x - poi.x, prop.z - poi.z) >=
+          (isBarrier(prop)
+            ? barrierDistance(prop, poi.x, poi.z)
+            : Math.hypot(prop.x - poi.x, prop.z - poi.z)) >=
             prop.footprint + poi.footprint + 0.025 - 1e-9,
         );
     }

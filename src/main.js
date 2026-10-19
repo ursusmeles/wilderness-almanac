@@ -134,11 +134,12 @@ function openCampaign(campaign) {
   renderer?.setMotion(movement);
   dressing = generateDressing(world, variant);
   applyPalette();
+  const dressedCells = new Map(dressing.cells.map((cell) => [cell.key, cell]));
   selection.replaceChildren(
     ...world.cells.map((cell) => {
       const option = document.createElement('option');
       option.value = cell.key;
-      option.textContent = describeHex(cell);
+      option.textContent = describeHex({ ...cell, forest: dressedCells.get(cell.key)?.forest });
       option.dataset.elevation = String(cell.elevation);
       option.dataset.terrain = cell.terrain;
       option.dataset.settlement = cell.pointOfLight?.type ?? '';

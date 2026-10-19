@@ -1,3 +1,7 @@
+export function windWeight(height, { height: reach = 0.8, strength = 1 } = {}) {
+  return Math.min(1, Math.max(0, height / reach)) ** 2 * strength;
+}
+
 export function installTreeSway(material, time) {
   material.userData.treeSway = true;
   material.customProgramCacheKey = () => 'hex-tree-sway-v2';
