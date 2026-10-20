@@ -1,0 +1,32 @@
+[
+  {
+    "seed": "7",
+    "variant": 0,
+    "colors": ["#cdab8f", "#0b365e", "#11b329"],
+    "expected": {
+      "meshes": 853,
+      "vertices": 825937,
+      "digest": "bc6f1106d1f4822c88847133bdae1295dbe1bdb940edd074c8aeb7aba7e1509a"
+    }
+  },
+  {
+    "seed": "77",
+    "variant": 1,
+    "colors": ["#000000", "#243f4a", "#ffb600"],
+    "expected": {
+      "meshes": 973,
+      "vertices": 590970,
+      "digest": "7d2ab72f62f5aa75f520ee7637fe8f6dec72595040247a2c5fefed120b867f86"
+    }
+  },
+  {
+    "seed": "19",
+    "variant": 2,
+    "colors": ["#c7ffee", "#477480", "#99c1f1"],
+    "expected": {
+      "meshes": 962,
+      "vertices": 798193,
+      "digest": "c8f34dd63cb70c34e85b45e67f977d498f6295db2c13688c7d922d6d9d17d8db"
+    }
+  }
+]

@@ -75,3 +75,43 @@ export function installWaveDrift(material, time, direction) {
       );
   };
 }
+
+export function createAmbientLoop({ renderer, ambientTime, draw, motion }) {
+  const listeners = new AbortController();
+  const listen = (target, event, handler) =>
+    target.addEventListener(event, handler, { signal: listeners.signal });
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  let motionEnabled = motion;
+  let lastFrame = -Infinity;
+  const updateMotion = () => {
+    const enabled = motionEnabled && !reducedMotion.matches && !document.hidden;
+    lastFrame = -Infinity;
+    renderer.domElement.dataset.motion = enabled ? 'ambient' : 'still';
+    renderer.setAnimationLoop(
+      enabled
+        ? (time) => {
+            if (time - lastFrame < 50) return;
+            if (Number.isFinite(lastFrame)) ambientTime.value += (time - lastFrame) / 1000;
+            lastFrame = time;
+            draw();
+          }
+        : null,
+    );
+    if (!enabled) {
+      draw();
+    }
+  };
+  listen(reducedMotion, 'change', updateMotion);
+  listen(document, 'visibilitychange', updateMotion);
+  updateMotion();
+  return {
+    setMotion(enabled) {
+      motionEnabled = enabled;
+      updateMotion();
+    },
+    dispose() {
+      renderer.setAnimationLoop(null);
+      listeners.abort();
+    },
+  };
+}
