@@ -3,7 +3,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { installTreeSway, installWaveDrift, windWeight } from './ambient-motion.js';
 import { createPoiBuilder } from './poi-props.js';
 import { createSettlementBuilder, roofGeometry } from './settlement-props.js';
-import { palettes } from '../palette.js';
+import { palettes, DEFAULT_PALETTE } from '../palette.js';
 import { createMapPalette, materialRoles } from '../map-palette.js';
 import { randomStream, surfaceHeight, TOP_RADIUS } from '../generation/math.js';
 import {
@@ -74,7 +74,7 @@ export function createMapRenderer(
   shadowFloor.position.y = -0.12;
   shadowFloor.receiveShadow = true;
   scene.add(shadowFloor);
-  let color = createMapPalette(palettes.dusk);
+  let color = createMapPalette(palettes[DEFAULT_PALETTE]);
   const materials = {};
   Object.keys(materialRoles)
     .filter((key) => key !== 'hover' && key !== 'wave')

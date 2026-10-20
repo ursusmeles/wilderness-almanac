@@ -21,19 +21,19 @@ The URL contains the seed, dressing variant and palette. A valid URL seed takes 
 
 Three editable seed colours feed the opinionated OKLCH palette system. Ground seed brightness has the strongest influence, water a moderate influence and elements a restrained influence. Near-black tile sides, trunks and recesses retain their original shading; surface lightness and depth stay coordinated. Automatic material contrast checks separate water/shorelines, foliage and selection highlights, including identical or extreme seed colours. Precise RGB gamut fitting retains as much saturation as possible. Interface colours retain their own readable dark-theme scale. The preset terrain colours remain close to their established appearance.
 
-Nine built-in palettes are available. Dusk & gold, Ember coast and Moss & bone retain their original colours; Alien orchard is removed from the preset list. “Default colours” is the natural green/blue preset; initial campaign defaults still follow the existing saved-preference/Dusk behaviour.
+Nine built-in palettes are available. Dusk & gold, Ember coast and Moss & bone retain their original colours; Alien orchard is removed from the preset list. “Verdant Kingdoms” is the natural green/blue preset. New campaigns start with Forbidden Lands; existing campaigns retain their saved colours.
 
-| Palette         | Ground    | Water     | Elements  |
-| --------------- | --------- | --------- | --------- |
-| Dusk & gold     | `#282039` | `#237D89` | `#E5B96E` |
-| Ember coast     | `#322333` | `#2A6775` | `#ED8965` |
-| Moss & bone     | `#1E302C` | `#477480` | `#DAD2A4` |
-| Default colours | `#66945C` | `#397CAF` | `#6CAD48` |
-| Thronefall      | `#000000` | `#243F4A` | `#FFB600` |
-| Glacial mint    | `#C7FFEE` | `#477480` | `#99C1F1` |
-| Autumn copper   | `#633F32` | `#315F70` | `#E26D32` |
-| Sand & sage     | `#E6CB8A` | `#3F8D91` | `#618253` |
-| Forbidden Lands | `#CDAB8F` | `#0B365E` | `#11B329` |
+| Palette          | Ground    | Water     | Elements  |
+| ---------------- | --------- | --------- | --------- |
+| Dusk & gold      | `#282039` | `#237D89` | `#E5B96E` |
+| Ember coast      | `#322333` | `#2A6775` | `#ED8965` |
+| Moss & bone      | `#1E302C` | `#477480` | `#DAD2A4` |
+| Verdant Kingdoms | `#66945C` | `#397CAF` | `#6CAD48` |
+| Thronefall       | `#000000` | `#243F4A` | `#FFB600` |
+| Glacial mint     | `#C7FFEE` | `#477480` | `#99C1F1` |
+| Autumn copper    | `#633F32` | `#315F70` | `#E26D32` |
+| Sand & sage      | `#E6CB8A` | `#3F8D91` | `#618253` |
+| Forbidden Lands  | `#CDAB8F` | `#0B365E` | `#11B329` |
 
 Thronefall pairs a pure-black ground seed with saturated warm gold and slate water. Glacial mint uses the supplied reference colours exactly. Swatches show the seed colours; the opinionated material scale still derives readable rendered shades.
 

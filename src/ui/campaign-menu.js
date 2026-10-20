@@ -17,7 +17,7 @@ import {
   MAX_CAMPAIGN_BYTES,
 } from './campaigns.js';
 
-export function createCampaignMenu({ storage, previous, onEnter }) {
+export function createCampaignMenu({ storage, previous, defaultPalette, onEnter }) {
   const menu = document.getElementById('campaign-menu');
   const list = document.getElementById('campaign-list');
   const status = document.getElementById('campaign-message');
@@ -303,7 +303,7 @@ export function createCampaignMenu({ storage, previous, onEnter }) {
   listen(document.getElementById('new-campaign'), 'click', () => {
     const seed = crypto.randomUUID();
     const world = generateWorld(seed);
-    const campaign = createCampaign(world, previous.colors, previous.paletteName);
+    const campaign = createCampaign(world, defaultPalette.colors, defaultPalette.paletteName);
     add(campaign);
     enter(campaign);
   });

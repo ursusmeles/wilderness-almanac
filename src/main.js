@@ -1,7 +1,7 @@
 import { generateWorld, generateDressing } from './generation/world.js';
 import { prepareMap } from './generation/presentation.js';
 import { createMapRenderer } from './rendering/map-renderer.js';
-import { palettes, paletteTheme } from './palette.js';
+import { palettes, paletteTheme, DEFAULT_PALETTE } from './palette.js';
 import { readPreferences, savePreferences } from './ui/storage.js';
 import { readMapLink, mapLink, copyText, describeHex, shortCoordinates } from './ui/map-link.js';
 import { createMapConsole } from './ui/map-console.js';
@@ -22,7 +22,7 @@ const freshSeed = () =>
   Array.from(crypto.getRandomValues(new Uint32Array(2)), (part) =>
     part.toString(16).padStart(8, '0'),
   ).join('-');
-let colors = linked.colors ?? saved.colors ?? palettes.dusk.slice();
+let colors = linked.colors ?? saved.colors ?? palettes[DEFAULT_PALETTE].slice();
 const savedPalettes = saved.palettes ?? [];
 let world;
 let cellsByKey = new Map();
@@ -121,9 +121,9 @@ function syncMobileLayout() {
 listen(mobileLayout, 'change', syncMobileLayout);
 syncMobileLayout();
 
-const campaignDefaults = {
+const previousMap = {
   seed: saved.seed,
-  colors: (saved.colors ?? palettes.dusk).slice(),
+  colors: (saved.colors ?? palettes[DEFAULT_PALETTE]).slice(),
   variant: saved.variant ?? 0,
   paletteName: '',
 };
@@ -138,8 +138,6 @@ function persist() {
       paletteName: currentPaletteName,
     });
   }
-  campaignDefaults.colors = colors.slice();
-  campaignDefaults.paletteName = currentPaletteName;
   try {
     history.replaceState(
       history.state,
@@ -384,8 +382,16 @@ listen(element('palette-name'), 'input', () => element('palette-name').setCustom
 
 updatePaletteOptions();
 applyPalette();
-campaignDefaults.paletteName = paletteLabel(campaignDefaults.colors);
-campaignMenu = createCampaignMenu({ storage, previous: campaignDefaults, onEnter: openCampaign });
+previousMap.paletteName = paletteLabel(previousMap.colors);
+campaignMenu = createCampaignMenu({
+  storage,
+  previous: previousMap,
+  defaultPalette: {
+    colors: palettes[DEFAULT_PALETTE],
+    paletteName: paletteLabel(palettes[DEFAULT_PALETTE]),
+  },
+  onEnter: openCampaign,
+});
 if (linked.seed) {
   const state = { seed: linked.seed, variant, colors, campaignId: saved.campaignId };
   let campaign = campaignMenu.findReplay(state);

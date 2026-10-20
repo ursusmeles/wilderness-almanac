@@ -10,6 +10,8 @@ export const palettes = {
   forbidden: ['#cdab8f', '#0b365e', '#11b329'],
 };
 
+export const DEFAULT_PALETTE = 'forbidden';
+
 function linear(v) {
   return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
 }
