@@ -159,6 +159,7 @@ export function createCampaignMenu({ storage, previous, onEnter }) {
         `${data.stats.waterPercent}% / ${data.stats.landPercent}%`;
       ratio.title = `${data.stats.openWater} ocean/lake hexes : ${data.stats.land} land hexes (river channels excluded)`;
       card.querySelector('.campaign-seed').textContent = campaign.seed;
+      card.querySelector('.campaign-seed').title = campaign.seed;
       labelActions(card, campaign);
       list.append(card);
     }

@@ -151,6 +151,7 @@ function openCampaign(campaign) {
   if (mobileLayout.matches) renderer?.zoom(1.6);
   renderer?.select(selected);
   element('current-seed').textContent = world.seed;
+  element('current-seed').title = world.seed;
   root.querySelector('.hp-title').textContent = campaign.name;
   document.title = `${campaign.name} · Wilderness Almanac`;
   root.dataset.mapName = world.name;

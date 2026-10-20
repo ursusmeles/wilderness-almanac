@@ -13,6 +13,9 @@
   font-display: swap;
 }
 :root {
+  --radius-sm: 2px;
+  --radius-md: 3px;
+  --radius-lg: 4px;
   --font-body: 'Geist', system-ui, sans-serif;
   --font-pixel: 'Geist Pixel Square', ui-monospace, monospace;
 }
@@ -55,7 +58,7 @@ main {
   display: flex;
   flex-direction: column;
   border: 1px solid var(--hp-line);
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
   box-shadow: 0 18px 60px #0003;
   max-width: 100%;
   container-type: inline-size;
@@ -99,7 +102,7 @@ main {
 #hex-smooth-riverlands select {
   border: 1px solid var(--hp-line);
   background: var(--hp-bg);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   padding: 6px 9px;
   min-height: 34px;
 }
@@ -256,12 +259,12 @@ main {
 #hex-smooth-riverlands .hp-color:has(input:focus-visible) {
   outline: 2px solid var(--hp-text);
   outline-offset: 3px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
 }
 #hex-smooth-riverlands input[type='text'] {
   border: 1px solid var(--hp-line);
   background: var(--hp-bg);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   padding: 7px 10px;
   min-width: 0;
   min-height: 36px;
@@ -272,7 +275,7 @@ main {
 #hex-smooth-riverlands .hp-seed {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 6px;
   color: var(--hp-muted);
   font-size: 11px;
@@ -282,6 +285,10 @@ main {
 #hex-smooth-riverlands .hp-seed output {
   font-family: var(--font-pixel);
   max-width: min(32ch, 100%);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 #hex-smooth-riverlands .hp-seed-action {
   display: inline-grid;
@@ -365,20 +372,20 @@ main {
   display: inline-flex;
 }
 #hex-smooth-riverlands .hp-new-map-actions button:first-child {
-  border-radius: 6px 0 0 6px;
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
 }
 #hex-smooth-riverlands #hp-map-settings {
   display: grid;
   place-items: center;
   padding: 6px 9px;
   border-left: 0;
-  border-radius: 0 6px 6px 0;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
 }
 #hex-smooth-riverlands dialog {
   background: var(--hp-bg);
   color: var(--hp-text);
   border: 1px solid var(--hp-line);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   width: min(420px, calc(100% - 32px));
   padding: 24px;
 }
@@ -652,7 +659,7 @@ body.hp-map-expanded {
   height: 24px;
   padding: 0 6px;
   border: 1px solid var(--menu-line);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   color: var(--menu-muted);
   font: 12px/1 var(--font-pixel);
 }
@@ -678,7 +685,7 @@ body.hp-map-expanded {
   align-items: center;
   gap: 8px;
   border: 1px solid var(--menu-line);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--menu-bg) 92%, var(--menu-text));
   padding: 9px 13px;
   font-size: 12px !important;
@@ -709,7 +716,7 @@ body.hp-map-expanded {
   gap: 24px;
   padding: 20px;
   border: 1px solid var(--menu-line);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   background: color-mix(in srgb, var(--menu-bg) 96%, var(--menu-text));
   color: var(--menu-text);
 }
@@ -721,7 +728,7 @@ body.hp-map-expanded {
   width: 148px;
   height: 148px;
   border: 1px solid color-mix(in srgb, var(--menu-line) 70%, transparent);
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
   background: var(--menu-bg);
 }
@@ -787,7 +794,7 @@ body.hp-map-expanded {
 .campaign-name-form .campaign-name {
   width: 100%;
   min-width: 0;
-  padding: 3px 24px 5px 0;
+  padding: 3px 28px 5px 0;
   border: 0;
   border-bottom: 1px solid transparent;
   border-radius: 0;
@@ -824,11 +831,7 @@ body.hp-map-expanded {
 .campaign-metadata dd {
   margin: 0;
   overflow-wrap: anywhere;
-}
-.campaign-settlements,
-.campaign-pois {
-  font-family: var(--font-pixel);
-  font-size: 13px;
+  font: 13px/1.5 var(--font-pixel);
 }
 .campaign-seed-row {
   display: flex;
@@ -838,11 +841,16 @@ body.hp-map-expanded {
   font-size: 11px;
 }
 .campaign-seed-row > span {
+  display: flex;
+  align-items: baseline;
   min-width: 0;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
   margin-right: 5px;
 }
 .campaign-seed {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font: 12px/1.5 var(--font-pixel);
   margin-left: 5px;
 }
@@ -854,7 +862,7 @@ body.hp-map-expanded {
   height: 38px;
   padding: 0;
   border: 1px solid var(--menu-line);
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   background: transparent;
 }
 .menu-icon-button svg {
@@ -905,7 +913,7 @@ body.hp-map-expanded {
   min-height: 100px;
   padding: 20px;
   border: 1px dashed var(--menu-line);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   background: transparent;
 }
 .new-campaign-symbol {
@@ -914,7 +922,7 @@ body.hp-map-expanded {
   width: 42px;
   height: 42px;
   border: 1px solid var(--menu-line);
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   color: var(--menu-accent);
   font-size: 26px;
   font-weight: 300;
@@ -964,7 +972,7 @@ body.hp-map-expanded {
   width: min(440px, calc(100% - 32px));
   padding: 28px;
   border: 1px solid var(--menu-line);
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
   background: var(--menu-bg);
   color: var(--menu-text);
   box-shadow: 0 24px 100px #0006;
@@ -1054,7 +1062,7 @@ body.hp-map-expanded {
   }
   .campaign-name-form .campaign-name {
     font-size: 19px;
-    padding-right: 20px;
+    padding-right: 28px;
   }
   .campaign-metadata {
     grid-area: meta;
@@ -1072,10 +1080,14 @@ body.hp-map-expanded {
   }
   .campaign-seed-row {
     grid-area: seed;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
   }
   .campaign-seed-row > span {
-    flex-basis: 100%;
+    flex: 1;
+    margin-right: 0;
+  }
+  .campaign-metadata dd {
+    font-size: 12px;
   }
   .campaign-actions {
     grid-area: actions;
@@ -1123,4 +1135,32 @@ body.hp-map-expanded {
   .campaign-menu button {
     transition: none;
   }
+}
+
+.ui-icon,
+.campaign-menu svg.ui-icon,
+#hex-smooth-riverlands svg.ui-icon {
+  display: block;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+#hex-smooth-riverlands .hp-collapse-icon.ui-icon {
+  display: none;
+}
+#hex-smooth-riverlands.hp-map-expanded .hp-expand-icon.ui-icon {
+  display: none;
+}
+#hex-smooth-riverlands.hp-map-expanded .hp-collapse-icon.ui-icon {
+  display: block;
+}
+#hex-smooth-riverlands .hp-zoom {
+  display: grid;
+  place-items: center;
+}
+#hex-smooth-riverlands :is(#hp-regenerate, #hp-return-menu) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }

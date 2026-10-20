@@ -33,9 +33,11 @@ No backend, account, API key, or environment variables are required. Three.js re
 
 ## Interface
 
-Geist Pixel Square is used for the logo, titles and selected numeric/status details; Geist Sans handles body text and controls. Both WOFF2 fonts are self-hosted and preloaded, with the SIL Open Font License included in `public/fonts/`. A render-blocking stylesheet, inline dark-page defaults prevent the unstyled white-page/oversized-logo flash without a loading screen. The menu tagline is “DM toolbox for sandbox RPG campaigns”; the new-campaign slot reads “An unexplored world”.
+Geist Pixel Square is used for the wordmark, titles, all campaign metadata values, seeds and status details; Geist Sans handles body text and controls. Both WOFF2 fonts are self-hosted and preloaded, with the SIL Open Font License included in `public/fonts/`. A render-blocking stylesheet and inline dark-page defaults prevent the unstyled white-page/oversized-logo flash without a loading screen. The menu tagline is “DM toolbox for sandbox RPG campaigns”; the new-campaign slot reads “An unexplored world”.
 
 The menu and campaign cards use a fixed dusk-and-gold theme, independent of campaign palettes; terrain previews and maps retain their campaign colours. The hex mark is removed, and the title/tagline form a tightly spaced, left-aligned heading group. Desktop actions occupy a two-column, three-row grid: Enter spans the top four cells, with export and delete below. Mobile cards use a tall terrain preview beside stacked title, metadata, seed and actions. Refresh stays hidden until the preview is tapped or reached by keyboard.
+
+Pixelarticons supplies the UI symbols through a local 17-icon SVG sprite (about 3.4 KB), with its MIT license and source revision in `public/icons/`. Only selected paths are included; no icon dependency, icon font or CDN is loaded. Icons retain their native 24px grid and inherit interface colours. Corners use shared 2/3/4px radius tokens. Mobile campaign and map seed rows keep copy/share alongside the seed; long seeds visually truncate, retain their full tooltip, and copy/share their complete values. The delete confirmation only asks whether to remove the named campaign from this device.
 
 ## Structure
 
