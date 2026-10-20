@@ -44,6 +44,13 @@ test('campaign JSON replays the exact world, dressing and palette across devices
   const defaultCampaign = createCampaign(world, colors, 'Custom');
   assert.equal(defaultCampaign.name, world.name);
   assert.notEqual(defaultCampaign.id, campaign.id);
+  assert.ok(
+    world.cells.some(
+      (cell) =>
+        cell.key === defaultCampaign.iconKey &&
+        (cell.pointOfLight || cell.pointsOfInterest?.length),
+    ),
+  );
 });
 
 test('campaign import rejects malformed, oversized, incompatible and incomplete files', () => {
@@ -130,6 +137,12 @@ test('New Map replaces a campaign world while preserving its identity and palett
   assert.equal(updated.seed, replacement.seed);
   assert.equal(updated.variant, 0);
   assert.ok(campaignIconCandidates(replacement).some((cell) => cell.key === updated.iconKey));
+  assert.ok(
+    replacement.cells.some(
+      (cell) =>
+        cell.key === updated.iconKey && (cell.pointOfLight || cell.pointsOfInterest?.length),
+    ),
+  );
   const replay = importCampaign(exportCampaign(updated));
   assert.deepEqual(generateWorld(replay.seed), replacement);
   assert.equal(replay.iconKey, updated.iconKey);
@@ -154,7 +167,7 @@ test('default campaign names follow New Map while edited names survive, includin
   assert.equal(importCampaign(exportCampaign(updated)).nameEdited, false);
 });
 
-test('icon choices include varied terrain and meadow features, excluding open water and empty meadows', () => {
+test('initial icons use settlement/POI tiles; refresh rolls the pool before selecting a tile', () => {
   const base = { terrain: 'meadow', water: null, pointOfLight: null, pointsOfInterest: [] };
   const cells = [
     { ...base, key: '0,0' },
@@ -173,17 +186,50 @@ test('icon choices include varied terrain and meadow features, excluding open wa
   assert.deepEqual(eligible, cells.slice(3));
   assert.equal(
     chooseCampaignIcon(model, undefined, () => 0),
-    '3,0',
+    '8,0',
   );
   assert.equal(
     chooseCampaignIcon(model, '3,0', () => 0),
-    '4,0',
+    '8,0',
   );
   assert.equal(
     chooseCampaignIcon(model, '4,0', () => 0.999),
+    '7,0',
+  );
+  assert.equal(
+    chooseCampaignIcon(model, undefined, () => 0.999),
     '9,0',
   );
+  const roll = (pool, tile) => {
+    const values = [pool, tile];
+    return chooseCampaignIcon(model, '3,0', () => values.shift());
+  };
+  assert.equal(roll(0.499999, 0.999), '9,0');
+  assert.equal(roll(0.5, 0), '4,0');
+  // Two landmark tiles and five terrain tiles still receive equal pool odds.
+  const counts = new Map();
+  for (let i = 0; i < 1000; i++) {
+    const values = [i / 1000, ((i * 137) % 1000) / 1000];
+    const key = chooseCampaignIcon(model, 'not-a-key', () => values.shift());
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  assert.equal(counts.get('8,0') + counts.get('9,0'), 500);
+  assert.equal(
+    [...counts.values()].reduce((sum, count) => sum + count, 0),
+    1000,
+  );
+  assert.equal(counts.size, 7, 'Both pools reach every eligible tile');
   assert.equal(chooseCampaignIcon({ cells: [cells[3]] }, '3,0'), '3,0');
+  assert.equal(chooseCampaignIcon({ cells: cells.slice(3, 8) }), undefined);
+  assert.equal(
+    chooseCampaignIcon({ cells: [cells[8], cells[3]] }, '8,0', () => 0),
+    '3,0',
+  );
+  assert.equal(
+    chooseCampaignIcon({ cells: [cells[8], cells[9]] }, '8,0', () => 0.9),
+    '9,0',
+  );
+  assert.equal(chooseCampaignIcon({ cells: [] }, 'missing'), undefined);
   assert.equal(chooseCampaignIcon({ cells: cells.slice(0, 3) }), undefined);
   const older = { ...campaign };
   delete older.iconKey;

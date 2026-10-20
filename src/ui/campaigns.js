@@ -72,7 +72,15 @@ export function campaignIconCandidates(world) {
 export function chooseCampaignIcon(world, previousKey, random = Math.random) {
   const eligible = campaignIconCandidates(world);
   const alternatives = eligible.filter((cell) => cell.key !== previousKey);
-  const candidates = alternatives.length ? alternatives : eligible;
+  const landmark = (cell) => cell.pointOfLight || cell.pointsOfInterest?.length;
+  const landmarks = alternatives.filter(landmark);
+  let candidates = landmarks;
+  if (previousKey !== undefined) {
+    const terrain = alternatives.filter((cell) => !landmark(cell));
+    // Roll the pool first, so its size cannot bias the 50/50 split.
+    const pools = random() < 0.5 ? [landmarks, terrain] : [terrain, landmarks];
+    candidates = pools.find((pool) => pool.length) ?? eligible;
+  }
   return candidates.length ? candidates[Math.floor(random() * candidates.length)].key : undefined;
 }
 
