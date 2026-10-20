@@ -1,12 +1,9 @@
 import { generateWorld } from '../generation/world.js';
-import { campaignWorld, campaignDressing } from '../generation/campaign-world.js';
-import { prepareMap } from '../generation/presentation.js';
-import { tilePreview } from './tile-preview.js';
+import { campaignWorld } from '../generation/campaign-world.js';
+import { loadThumbnail } from './thumbnail-cache.js';
 import { copyText, mapLink } from './map-link.js';
+import { createCampaignStore } from './campaign-store.js';
 import {
-  readCampaigns,
-  readDeletedCampaign,
-  saveCampaigns,
   createCampaign,
   campaignStats,
   importCampaign,
@@ -16,9 +13,9 @@ import {
   campaignIconCandidates,
   chooseCampaignIcon,
   MAX_CAMPAIGN_BYTES,
-} from './campaigns.js';
+} from '../application/campaigns.js';
 
-export function createCampaignMenu({ storage, previous, defaultPalette, onEnter }) {
+export function createCampaignMenu({ storage, previous, defaultPalette, onEnter, saveStatus }) {
   const menu = document.getElementById('campaign-menu');
   const list = document.getElementById('campaign-list');
   const status = document.getElementById('campaign-message');
@@ -30,8 +27,9 @@ export function createCampaignMenu({ storage, previous, defaultPalette, onEnter 
   const listen = (target, type, callback) =>
     target.addEventListener(type, callback, { signal: listeners.signal });
   const cached = new Map();
-  let campaigns = readCampaigns(storage);
-  let deletedCampaign = readDeletedCampaign(storage);
+  const store = createCampaignStore(storage);
+  const campaigns = store.campaigns;
+  let deletedCampaign = store.deletedCampaign;
   let storageAvailable = true;
   let pendingDeleteId;
 
@@ -43,11 +41,31 @@ export function createCampaignMenu({ storage, previous, defaultPalette, onEnter 
     });
   }
 
+  function recoveryNotice() {
+    const { reason, readOnly, preservedCount, hasRecovery } = store.status();
+    const message = document.getElementById('campaign-recovery-message');
+    let text = '';
+    if (reason === 'conflict')
+      text =
+        'Saved campaigns changed in another tab. Download your current campaigns before reloading this page.';
+    else if (reason === 'unreadable')
+      text =
+        'Some saved data cannot be read by this version. It has been kept unchanged. New campaigns can only be kept in this session.';
+    else if (readOnly)
+      text =
+        'Browser storage cannot be read. Download any campaigns you create before closing this page.';
+    else if (preservedCount)
+      text = `${preservedCount} saved ${preservedCount === 1 ? 'campaign cannot' : 'campaigns cannot'} be opened by this version. ${preservedCount === 1 ? 'Its' : 'Their'} data is preserved in your library.`;
+    if (message.textContent !== text) message.textContent = text;
+    document.getElementById('campaign-recovery').hidden = !message.textContent;
+    document.getElementById('download-campaign-recovery').hidden = !hasRecovery;
+  }
+
   function save() {
-    storageAvailable = saveCampaigns(storage, campaigns, deletedCampaign);
+    storageAvailable = store.save(campaigns, deletedCampaign);
+    saveStatus.update('campaigns', storageAvailable);
+    recoveryNotice();
     undoDelete.hidden = !deletedCampaign;
-    if (!storageAvailable)
-      status.textContent = 'Browser storage is unavailable. Download your campaigns to keep them.';
     return storageAvailable;
   }
 
@@ -58,8 +76,8 @@ export function createCampaignMenu({ storage, previous, defaultPalette, onEnter 
     save();
   }
 
-  if (!campaigns) {
-    campaigns = [];
+  recoveryNotice();
+  if (store.missing) {
     if (previous.seed) {
       const world = generateWorld(previous.seed);
       campaigns.push(
@@ -67,10 +85,6 @@ export function createCampaignMenu({ storage, previous, defaultPalette, onEnter 
       );
     }
     save();
-  }
-
-  function preview(tile, campaign) {
-    return tilePreview(tile, campaign.colors);
   }
 
   function campaignData(campaign) {
@@ -82,7 +96,6 @@ export function createCampaignMenu({ storage, previous, defaultPalette, onEnter 
         signature,
         world,
         stats: campaignStats(world),
-        dressing: campaignDressing(campaign, world),
       };
       cached.set(campaign.id, data);
     }
@@ -90,21 +103,25 @@ export function createCampaignMenu({ storage, previous, defaultPalette, onEnter 
       campaign.iconKey = chooseCampaignIcon(data.world);
       save();
     }
-    const iconSignature = JSON.stringify([campaign.iconKey, campaign.colors]);
-    if (data.iconSignature !== iconSignature) {
-      data.tile = prepareMap(data.world, data.dressing, { cellKeys: [campaign.iconKey] })[0];
-      data.icon = preview(data.tile, campaign);
-      data.iconSignature = iconSignature;
-    }
     return data;
   }
 
-  function paintIcon(card, campaign, data) {
+  async function paintIcon(card, campaign) {
     const img = card.querySelector('.campaign-icon img');
-    img.hidden = !data.icon;
-    if (data.icon) img.src = data.icon;
-    img.alt = `${data.tile?.terrain ?? 'Terrain'} hex from ${campaign.name}`;
+    const placeholder = card.querySelector('.campaign-icon-placeholder');
+    const request = {};
+    card.iconRequest = request;
+    img.hidden = true;
+    placeholder.hidden = false;
+    for (const [index, role] of ['ground', 'water', 'elements'].entries())
+      placeholder.style.setProperty(`--preview-${role}`, campaign.colors[index]);
+    img.alt = `Terrain hex from ${campaign.name}`;
     img.dataset.hexKey = campaign.iconKey ?? '';
+    const image = await loadThumbnail(campaign);
+    if (!card.isConnected || card.iconRequest !== request) return;
+    img.hidden = !image;
+    placeholder.hidden = Boolean(image);
+    if (image) img.src = image;
   }
 
   function labelActions(card, campaign) {
@@ -133,7 +150,7 @@ export function createCampaignMenu({ storage, previous, defaultPalette, onEnter 
       name.value = campaign.name;
       name.setAttribute('aria-label', `Campaign name: ${campaign.name}`);
       name.title = 'Edit campaign name';
-      paintIcon(card, campaign, data);
+
       card.querySelector('.campaign-date').textContent = new Intl.DateTimeFormat(undefined, {
         year: 'numeric',
         month: 'short',
@@ -150,6 +167,7 @@ export function createCampaignMenu({ storage, previous, defaultPalette, onEnter 
       card.querySelector('.campaign-seed').title = campaign.seed;
       labelActions(card, campaign);
       list.append(card);
+      void paintIcon(card, campaign);
     }
   }
 
@@ -159,25 +177,42 @@ export function createCampaignMenu({ storage, previous, defaultPalette, onEnter 
     save();
   }
 
-  function enter(campaign) {
+  async function enter(campaign) {
     expireUndo();
-    menu.hidden = true;
-    onEnter(campaign);
+    status.textContent = 'Opening campaign…';
+    try {
+      if ((await onEnter(campaign)) !== false) menu.hidden = true;
+    } catch (error) {
+      menu.hidden = false;
+      render();
+      status.textContent = `Could not open the map. ${error.message}`;
+    }
   }
 
-  function download(campaign) {
-    const date = new Date();
-    const blob = new Blob([exportCampaign(campaign, date)], { type: 'application/json' });
+  function downloadFile(source, filename) {
+    const blob = new Blob([source], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = campaignFilename(campaign, date);
+    link.download = filename;
     document.body.append(link);
     link.click();
     link.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function download(campaign) {
+    const date = new Date();
+    downloadFile(exportCampaign(campaign, date), campaignFilename(campaign, date));
     status.textContent = `Downloaded “${campaign.name}”`;
   }
+
+  listen(document.getElementById('download-campaign-recovery'), 'click', () => {
+    const source = store.recovery();
+    if (source == null) return;
+    downloadFile(source, campaignFilename({ name: 'recovery' }));
+    status.textContent = 'Recovery file downloaded. Keep it with your campaign backups.';
+  });
 
   function rename(input) {
     expireUndo();
@@ -240,7 +275,7 @@ export function createCampaignMenu({ storage, previous, defaultPalette, onEnter 
       const data = campaignData(campaign);
       campaign.iconKey = chooseCampaignIcon(data.world, campaign.iconKey);
       const saved = save();
-      paintIcon(button.closest('.campaign-card'), campaign, campaignData(campaign));
+      void paintIcon(button.closest('.campaign-card'), campaign);
       if (saved) status.textContent = 'Campaign icon updated';
       return;
     }
@@ -321,6 +356,12 @@ export function createCampaignMenu({ storage, previous, defaultPalette, onEnter 
   return {
     add,
     enter,
+    download,
+    refreshThumbnail(campaign) {
+      const card = [...list.children].find((card) => card.dataset.id === campaign.id);
+      const current = campaigns.find((item) => item.id === campaign.id);
+      if (card && current) void paintIcon(card, current);
+    },
     findReplay(state) {
       return findCampaignReplay(campaigns, state);
     },

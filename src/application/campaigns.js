@@ -2,7 +2,6 @@ import { GENERATOR_VERSION } from '../generation/world.js';
 import { validateHexEdits } from '../generation/hex-edits.js';
 import { campaignWorld, campaignDressing } from '../generation/campaign-world.js';
 
-const KEY = 'wilderness-almanac:campaigns-v1';
 export const MAX_CAMPAIGN_BYTES = 4 * 1024 * 1024;
 const text = (value, max) =>
   typeof value === 'string' && value.trim().length > 0 && value.length <= max;
@@ -99,42 +98,6 @@ export function replaceCampaignMap(campaign, world, previousWorldName) {
     variant: 0,
     iconKey: chooseCampaignIcon(world),
   });
-}
-
-export function readCampaigns(storage) {
-  try {
-    const saved = JSON.parse(storage.getItem(KEY));
-    if (saved?.version !== 1 || !Array.isArray(saved.campaigns)) return null;
-    return saved.campaigns.flatMap((campaign) => {
-      try {
-        return [validateCampaign(campaign)];
-      } catch {
-        return [];
-      }
-    });
-  } catch {
-    return null;
-  }
-}
-
-export function readDeletedCampaign(storage) {
-  try {
-    const saved = JSON.parse(storage.getItem(KEY));
-    const deleted = saved?.version === 1 ? saved.deletedCampaign : null;
-    if (!Number.isSafeInteger(deleted?.index) || deleted.index < 0) return null;
-    return { campaign: validateCampaign(deleted.campaign), index: deleted.index };
-  } catch {
-    return null;
-  }
-}
-
-export function saveCampaigns(storage, campaigns, deletedCampaign = null) {
-  try {
-    storage.setItem(KEY, JSON.stringify({ version: 1, campaigns, deletedCampaign }));
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 export function exportCampaign(campaign, date = new Date()) {

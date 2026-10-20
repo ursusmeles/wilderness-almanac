@@ -16,6 +16,8 @@ Build a world, find a place worth exploring, and make it your own. Wilderness Al
 - **Keep several adventures.** Name your campaigns, choose their tile icons and return to them from the campaign library.
 - **Explore on desktop or mobile.** Pan and zoom, fold away the tool panels, or expand the map to fill the browser viewport. Trees, reeds and water have optional ambient motion.
 
+Campaign icons use cached 3D previews. Until a matching preview is available, the card shows a tile in the campaign’s colours.
+
 Wilderness Almanac is actively developing. The Hex Inspector is functional; the Campaign Tracker panel is a placeholder for future campaign tools.
 
 ## Getting started
@@ -30,6 +32,8 @@ Campaigns save automatically **in your current browser**. There are no accounts 
 
 - **Share map** copies a link with the seed, dressing variant and palette. It recreates the generated map, but does **not** include your hex edits or visited status.
 - **Export campaign** downloads the complete campaign replay record, including edits and dressing locks. Import it on another device to continue working.
+
+If campaign saving fails, a persistent warning stays visible and the map offers **Download campaign**. Saved campaigns that this version cannot read are preserved; **Download recovery file** backs up the stored library. Keep recovery files for troubleshooting or a compatible app version; they are separate from individual campaign exports.
 
 Exports are named `wilderness-almanac-[campaignname]-[YYYY-MM-DD].json`. Replay files depend on their generator version; unsupported versions are rejected rather than silently producing a different map.
 

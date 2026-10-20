@@ -715,6 +715,20 @@ body.hp-map-expanded {
   border-radius: 0;
   background: transparent;
 }
+.campaign-icon-placeholder {
+  display: block;
+  width: 75%;
+  aspect-ratio: 1;
+  margin: auto;
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  background: linear-gradient(
+    145deg,
+    var(--preview-elements) 0 22%,
+    var(--preview-ground) 22% 78%,
+    var(--preview-water) 78%
+  );
+  transform: scaleY(0.72);
+}
 .campaign-icon-toggle:focus-visible {
   outline-offset: -3px !important;
 }
@@ -1194,6 +1208,33 @@ body.hp-map-expanded {
   #campaign-workspace .hp-map-options.is-collapsed #hp-return-menu {
     padding: 0;
   }
+}
+
+/* Save failures stay visible independently of temporary action messages. */
+.save-warning {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  padding: 10px 12px;
+  border: 1px solid currentColor;
+  border-radius: var(--radius-md);
+  color: var(--hp-text, var(--menu-text));
+  background: var(--hp-bg, var(--menu-bg));
+  font: 400 12px/1.5 var(--font-body);
+  flex-shrink: 0;
+}
+.save-warning p {
+  flex: 1 1 200px;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.campaign-menu .save-warning {
+  margin-top: 12px;
+}
+#campaign-workspace .save-warning {
+  margin: 0 12px 8px;
 }
 
 /* Campaign workspace. The map keeps its original desktop width and mobile height. */

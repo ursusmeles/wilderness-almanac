@@ -15,7 +15,7 @@ import {
   exportCampaign,
   importCampaign,
   replaceCampaignMap,
-} from '../src/ui/campaigns.js';
+} from '../src/application/campaigns.js';
 import { neighbours, distance } from '../src/generation/hex.js';
 import { minimumSpacing } from '../src/generation/prop-placement.js';
 import { readPreferences, savePreferences } from '../src/ui/storage.js';

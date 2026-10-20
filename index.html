@@ -85,6 +85,15 @@
           <p class="campaign-storage-note">
             Saved on this device. Export a campaign to take it with you.
           </p>
+          <div id="campaign-save-warning" class="save-warning" role="status" hidden>
+            <p id="campaign-save-message"></p>
+          </div>
+          <div id="campaign-recovery" class="save-warning" role="status" hidden>
+            <p id="campaign-recovery-message"></p>
+            <button type="button" id="download-campaign-recovery" class="menu-button">
+              Download recovery file
+            </button>
+          </div>
           <div class="campaign-feedback">
             <output id="campaign-message" class="campaign-message" aria-live="polite"></output>
             <button type="button" id="undo-delete-campaign" class="menu-button" hidden>
@@ -131,7 +140,8 @@
               aria-label="Show campaign icon controls"
               aria-expanded="false"
             >
-              <img width="112" height="112" alt="" />
+              <span class="campaign-icon-placeholder" aria-hidden="true"></span>
+              <img width="112" height="112" alt="" hidden />
             </button>
             <button
               type="button"
@@ -504,6 +514,10 @@
             aria-live="polite"
             aria-atomic="true"
           ></span>
+        </div>
+        <div id="hp-save-warning" class="save-warning" role="status" hidden>
+          <p id="hp-save-message"></p>
+          <button type="button" id="hp-download-unsaved">Download campaign</button>
         </div>
         <section class="hp-map-options" id="hp-map-options" aria-label="Palette and settings">
           <form class="hp-palette" id="hp-palette-form">

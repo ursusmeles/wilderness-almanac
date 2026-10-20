@@ -5,8 +5,9 @@ Read `README.md`, `docs/DEVELOPMENT.md` and `docs/PROJECT_STATE.md` before makin
 ## Architecture and compatibility
 
 - Use `src/generation/world.js` for the deterministic pipeline, `src/map-data.js` for topology, and the focused modules in `src/generation/` for placement and numeric surfaces. `src/generation.js` is the public API.
-- Keep world/dressing data and numeric geometry independent of Three.js and the DOM. Use `src/generation/campaign-world.js` for campaign edits, `src/rendering/` for meshes and motion, `src/ui/` for tools/persistence, and `src/main.js` for application coordination.
+- Keep world/dressing data and numeric geometry independent of Three.js and the DOM. Use `src/generation/campaign-world.js` for campaign edits, `src/rendering/` for meshes and motion, `src/ui/` for tools/persistence, and `src/application/campaign-session.js` for campaign state/actions/history. Keep `src/main.js` focused on UI coordination.
 - Preserve seed replay and current visuals when refactoring. Deliberately version world-generation changes; retain campaign import validation, existing save migrations and dressing locks.
+- Keep renderer/Three.js imports behind the lazy `src/ui/map-view.js` entry. Menu icons use the optional thumbnail cache and palette fallback.
 - Keep the checked-in rule snapshot in `src/data/world-rules.json`; there is no runtime spreadsheet dependency.
 - Avoid unrelated features or renderer/framework/dependency migrations during fixes. Three.js is intentionally pinned to the existing version.
 
@@ -21,6 +22,7 @@ Read `README.md`, `docs/DEVELOPMENT.md` and `docs/PROJECT_STATE.md` before makin
 ## Verification and maintenance
 
 - For generation changes, run `npm test`. For runnable source changes, run `npm run build`. Run `npm run format:check` and check the diff for whitespace errors.
+- For changes to campaign actions, navigation, loading or shared responsive layouts, build and run `npm run test:e2e`. `npm run check` runs all CI checks; install Chromium with `npx playwright install chromium` first.
 - For visual changes, inspect in a real browser when available and state verification limitations. Check desktop and mobile layouts when touching shared styles.
 - Update the relevant maintainer docs when behaviour or architecture changes. Avoid chronological task logs and stale test counts in the README.
 - Keep the AGPLv3 application license and bundled third-party font/icon licenses and attribution intact.

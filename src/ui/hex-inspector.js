@@ -3,12 +3,11 @@ import { POI_TYPES, SETTLEMENT_TYPES, variantsFor } from '../generation/hex-edit
 import { inspectDistances } from '../generation/campaign-world.js';
 import { describeHex } from './map-link.js';
 import { icon } from './panels.js';
-import { tilePreview } from './tile-preview.js';
 
 const title = (text) => (text ? text[0].toUpperCase() + text.slice(1) : 'None');
 export function createHexInspector(
   host,
-  { onApply, onVisit, onLock, onRegenerate, onReset, onUndo, visible },
+  { onApply, onVisit, onLock, onRegenerate, onReset, onUndo, visible, preview },
 ) {
   const listeners = new AbortController();
   const listen = (target, event, handler) =>
@@ -173,13 +172,22 @@ export function createHexInspector(
     if (previewTile === state.tile && previewColors === state.colors.join(',')) return;
     frame = requestAnimationFrame(() => {
       if (!visible()) return;
-      const src = tilePreview(state.tile, state.colors);
+      const src = preview(state.tile, state.colors);
       previewTile = state.tile;
       previewColors = state.colors.join(',');
       el('preview').hidden = !src;
       if (src) el('preview').src = src;
       el('preview').alt = `Isometric view of ${el('name').textContent}`;
     });
+  }
+  function beforeLeave(action) {
+    if (dirty) {
+      pending = action;
+      if (!unsaved.open) unsaved.showModal();
+      return false;
+    }
+    setEditing(false);
+    return true;
   }
   return {
     update(next) {
@@ -209,14 +217,9 @@ export function createHexInspector(
       if (!editing || !same) setEditing(false);
       refreshPreview();
     },
+    beforeLeave,
     beforeSelection(key, select) {
-      if (state?.cell.key !== key && dirty) {
-        pending = select;
-        if (!unsaved.open) unsaved.showModal();
-        return false;
-      }
-      if (state?.cell.key !== key) setEditing(false);
-      return true;
+      return state?.cell.key === key || beforeLeave(select);
     },
     error: (message) => {
       el('feedback').textContent = message;
