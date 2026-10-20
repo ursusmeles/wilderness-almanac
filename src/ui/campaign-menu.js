@@ -151,6 +151,7 @@ export function createCampaignMenu({ storage, previous, defaultPalette, onEnter,
       name.setAttribute('aria-label', `Campaign name: ${campaign.name}`);
       name.title = 'Edit campaign name';
 
+      card.querySelector('.campaign-date').dateTime = campaign.createdAt;
       card.querySelector('.campaign-date').textContent = new Intl.DateTimeFormat(undefined, {
         year: 'numeric',
         month: 'short',

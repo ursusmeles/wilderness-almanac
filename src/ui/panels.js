@@ -1,5 +1,5 @@
 export const icon = (name, className = '') =>
-  `<svg class="ui-icon ${className}" viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden="true" focusable="false"><use href="/icons/pixelarticons.svg#${name}"></use></svg>`;
+  `<svg class="ui-icon ${className}" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons/pixelarticons.svg#${name}"></use></svg>`;
 
 export function createPanels(root, preferences, onChange) {
   const listeners = new AbortController();
@@ -27,7 +27,7 @@ export function createPanels(root, preferences, onChange) {
     panel.className = `hp-tool-panel hp-${id}-panel`;
     panel.dataset.panel = id;
     panel.setAttribute('aria-labelledby', `hp-${id}-title`);
-    panel.innerHTML = `<header class="hp-panel-bar"><h2 id="hp-${id}-title">${name}</h2><div class="hp-panel-buttons"><button type="button" class="hp-panel-order hp-move-up" data-direction="-1" aria-label="Move ${name} up" title="Move panel up">${icon('arrow-bar-up')}</button><button type="button" class="hp-panel-order hp-move-down" data-direction="1" aria-label="Move ${name} down" title="Move panel down">${icon('arrow-bar-down')}</button><button type="button" class="hp-panel-horizontal" data-horizontal aria-controls="hp-${id}-body">${icon('chevron-up')}</button><button type="button" data-collapse aria-controls="hp-${id}-body">${icon('chevron-up')}</button></div></header><div class="hp-panel-body" id="hp-${id}-body"></div>`;
+    panel.innerHTML = `<header class="hp-panel-bar cluster"><h2 id="hp-${id}-title">${name}</h2><div class="hp-panel-buttons"><button type="button" class="hp-panel-order hp-move-up" data-direction="-1" aria-label="Move ${name} up" title="Move panel up">${icon('arrow-bar-up')}</button><button type="button" class="hp-panel-order hp-move-down" data-direction="1" aria-label="Move ${name} down" title="Move panel down">${icon('arrow-bar-down')}</button><button type="button" class="hp-panel-horizontal" data-horizontal aria-controls="hp-${id}-body">${icon('chevron-up')}</button><button type="button" data-collapse aria-controls="hp-${id}-body">${icon('chevron-up')}</button></div></header><div class="hp-panel-body" id="hp-${id}-body"></div>`;
     panels[id] = panel;
     panel.addEventListener(
       'click',

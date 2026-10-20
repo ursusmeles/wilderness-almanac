@@ -35,52 +35,26 @@
           <h1 id="almanac-title"><span>Wilderness</span> <span>Almanac</span></h1>
           <p>DM toolbox for sandbox RPG campaigns</p>
         </hgroup>
-        <div class="campaign-library">
-          <div class="campaign-toolbar">
-            <h2>Your campaigns <span id="campaign-count">0</span></h2>
+        <section class="campaign-library" aria-labelledby="campaign-library-title">
+          <header class="campaign-toolbar cluster">
+            <h2 id="campaign-library-title">Your campaigns <span id="campaign-count">0</span></h2>
             <button type="button" id="import-campaign" class="menu-button">
-              <svg
-                class="ui-icon"
-                viewBox="0 0 24 24"
-                width="24"
-                height="24"
-                fill="currentColor"
-                aria-hidden="true"
-                focusable="false"
-              >
+              <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <use href="/icons/pixelarticons.svg#upload"></use>
               </svg>
               Import campaign
             </button>
             <input type="file" id="campaign-file" accept=".json,application/json" hidden />
-          </div>
-          <ul id="campaign-list" class="campaign-list" aria-label="Saved campaigns"></ul>
-          <button type="button" id="new-campaign" class="new-campaign">
-            <span class="new-campaign-symbol" aria-hidden="true"
-              ><svg
-                class="ui-icon"
-                viewBox="0 0 24 24"
-                width="24"
-                height="24"
-                fill="currentColor"
-                aria-hidden="true"
-                focusable="false"
-              >
-                <use href="/icons/pixelarticons.svg#plus"></use></svg
-            ></span>
+          </header>
+          <ul id="campaign-list" class="campaign-list stack" aria-label="Saved campaigns"></ul>
+          <button type="button" id="new-campaign" class="new-campaign cluster">
+            <svg class="ui-icon new-campaign-symbol" viewBox="0 0 24 24" aria-hidden="true">
+              <use href="/icons/pixelarticons.svg#plus"></use>
+            </svg>
             <span><strong>New campaign</strong><span>An unexplored world</span></span>
-            <span class="new-campaign-arrow" aria-hidden="true"
-              ><svg
-                class="ui-icon"
-                viewBox="0 0 24 24"
-                width="24"
-                height="24"
-                fill="currentColor"
-                aria-hidden="true"
-                focusable="false"
-              >
-                <use href="/icons/pixelarticons.svg#arrow-right"></use></svg
-            ></span>
+            <svg class="ui-icon new-campaign-arrow" viewBox="0 0 24 24" aria-hidden="true">
+              <use href="/icons/pixelarticons.svg#arrow-right"></use>
+            </svg>
           </button>
           <p class="campaign-storage-note">
             Saved on this device. Export a campaign to take it with you.
@@ -94,24 +68,16 @@
               Download recovery file
             </button>
           </div>
-          <div class="campaign-feedback">
+          <div class="campaign-feedback stack">
             <output id="campaign-message" class="campaign-message" aria-live="polite"></output>
             <button type="button" id="undo-delete-campaign" class="menu-button" hidden>
-              <svg
-                class="ui-icon"
-                viewBox="0 0 24 24"
-                width="24"
-                height="24"
-                fill="currentColor"
-                aria-hidden="true"
-                focusable="false"
-              >
+              <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <use href="/icons/pixelarticons.svg#undo"></use>
               </svg>
               Undo deletion
             </button>
           </div>
-        </div>
+        </section>
         <dialog
           id="delete-campaign-dialog"
           aria-labelledby="delete-campaign-title"
@@ -123,7 +89,7 @@
             <p id="delete-campaign-description">
               Remove <strong id="delete-campaign-name"></strong> from this device?
             </p>
-            <div class="dialog-actions">
+            <div class="dialog-actions cluster">
               <button class="menu-button" value="cancel" autofocus>Keep campaign</button>
               <button class="menu-button menu-danger" value="delete">Delete campaign</button>
             </div>
@@ -150,15 +116,7 @@
               aria-label="Shuffle campaign icon"
               title="Choose another hex"
             >
-              <svg
-                class="ui-icon"
-                viewBox="0 0 24 24"
-                width="24"
-                height="24"
-                fill="currentColor"
-                aria-hidden="true"
-                focusable="false"
-              >
+              <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <use href="/icons/pixelarticons.svg#refresh"></use>
               </svg>
             </button>
@@ -173,22 +131,14 @@
                 autocomplete="off"
                 spellcheck="false"
               />
-              <svg
-                class="ui-icon"
-                viewBox="0 0 24 24"
-                width="24"
-                height="24"
-                fill="currentColor"
-                aria-hidden="true"
-                focusable="false"
-              >
+              <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <use href="/icons/pixelarticons.svg#pencil"></use>
               </svg>
             </form>
             <dl class="campaign-metadata">
               <div>
                 <dt>Created</dt>
-                <dd class="campaign-date"></dd>
+                <dd><time class="campaign-date"></time></dd>
               </div>
               <div>
                 <dt>Palette</dt>
@@ -216,15 +166,7 @@
                 aria-label="Copy seed"
                 title="Copy seed"
               >
-                <svg
-                  class="ui-icon"
-                  viewBox="0 0 24 24"
-                  width="24"
-                  height="24"
-                  fill="currentColor"
-                  aria-hidden="true"
-                  focusable="false"
-                >
+                <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                   <use href="/icons/pixelarticons.svg#copy"></use>
                 </svg>
               </button>
@@ -235,15 +177,7 @@
                 aria-label="Share map"
                 title="Share map"
               >
-                <svg
-                  class="ui-icon"
-                  viewBox="0 0 24 24"
-                  width="24"
-                  height="24"
-                  fill="currentColor"
-                  aria-hidden="true"
-                  focusable="false"
-                >
+                <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                   <use href="/icons/pixelarticons.svg#share"></use>
                 </svg>
               </button>
@@ -257,15 +191,7 @@
               aria-label="Enter campaign"
               title="Enter campaign"
             >
-              <svg
-                class="ui-icon"
-                viewBox="0 0 24 24"
-                width="24"
-                height="24"
-                fill="currentColor"
-                aria-hidden="true"
-                focusable="false"
-              >
+              <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <use href="/icons/pixelarticons.svg#login"></use>
               </svg>
             </button>
@@ -276,15 +202,7 @@
               aria-label="Download campaign JSON"
               title="Download campaign JSON"
             >
-              <svg
-                class="ui-icon"
-                viewBox="0 0 24 24"
-                width="24"
-                height="24"
-                fill="currentColor"
-                aria-hidden="true"
-                focusable="false"
-              >
+              <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <use href="/icons/pixelarticons.svg#download"></use>
               </svg>
             </button>
@@ -295,15 +213,7 @@
               aria-label="Delete campaign"
               title="Delete campaign"
             >
-              <svg
-                class="ui-icon"
-                viewBox="0 0 24 24"
-                width="24"
-                height="24"
-                fill="currentColor"
-                aria-hidden="true"
-                focusable="false"
-              >
+              <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <use href="/icons/pixelarticons.svg#trash"></use>
               </svg>
             </button>
@@ -311,7 +221,7 @@
         </li>
       </template>
       <section id="campaign-workspace" aria-label="Campaign workspace" hidden>
-        <header class="hp-top">
+        <header class="hp-top cluster">
           <button
             type="button"
             id="hp-mobile-menu"
@@ -319,19 +229,11 @@
             aria-label="Return to campaign menu"
             title="Return to campaign menu"
           >
-            <svg
-              class="ui-icon"
-              viewBox="0 0 24 24"
-              width="24"
-              height="24"
-              fill="currentColor"
-              aria-hidden="true"
-              focusable="false"
-            >
+            <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
               <use href="/icons/pixelarticons.svg#arrow-left"></use>
             </svg>
           </button>
-          <div class="hp-heading">
+          <hgroup class="hp-heading">
             <h1 class="hp-title">The quiet frontier</h1>
             <p class="hp-seed">
               Seed <output id="hp-current-seed"></output>
@@ -342,15 +244,7 @@
                 aria-label="Copy seed"
                 title="Copy seed"
               >
-                <svg
-                  class="ui-icon"
-                  viewBox="0 0 24 24"
-                  width="24"
-                  height="24"
-                  fill="currentColor"
-                  aria-hidden="true"
-                  focusable="false"
-                >
+                <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                   <use href="/icons/pixelarticons.svg#copy"></use>
                 </svg>
               </button>
@@ -361,21 +255,13 @@
                 aria-label="Share map"
                 title="Copy seed link. Transfer hex edits with campaign JSON."
               >
-                <svg
-                  class="ui-icon"
-                  viewBox="0 0 24 24"
-                  width="24"
-                  height="24"
-                  fill="currentColor"
-                  aria-hidden="true"
-                  focusable="false"
-                >
+                <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                   <use href="/icons/pixelarticons.svg#share"></use>
                 </svg>
               </button>
             </p>
-          </div>
-          <div class="hp-tools">
+          </hgroup>
+          <div class="hp-tools cluster">
             <span class="hp-new-map-actions">
               <button type="button" id="hp-new-map">New Map</button>
               <button
@@ -384,57 +270,25 @@
                 aria-label="New map settings"
                 title="New map settings"
               >
-                <svg
-                  class="ui-icon"
-                  viewBox="0 0 24 24"
-                  width="24"
-                  height="24"
-                  fill="currentColor"
-                  aria-hidden="true"
-                  focusable="false"
-                >
+                <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                   <use href="/icons/pixelarticons.svg#settings-cog"></use>
                 </svg>
               </button>
             </span>
             <button type="button" id="hp-regenerate">
-              <svg
-                class="ui-icon"
-                viewBox="0 0 24 24"
-                width="24"
-                height="24"
-                fill="currentColor"
-                aria-hidden="true"
-                focusable="false"
-              >
+              <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <use href="/icons/pixelarticons.svg#refresh"></use>
               </svg>
               Regenerate
             </button>
-            <span class="hp-zooms">
+            <span class="hp-zooms" role="group" aria-label="Map zoom">
               <button class="hp-zoom" id="hp-out" type="button" aria-label="Zoom out">
-                <svg
-                  class="ui-icon"
-                  viewBox="0 0 24 24"
-                  width="24"
-                  height="24"
-                  fill="currentColor"
-                  aria-hidden="true"
-                  focusable="false"
-                >
+                <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                   <use href="/icons/pixelarticons.svg#minus"></use>
                 </svg>
               </button>
               <button class="hp-zoom" id="hp-in" type="button" aria-label="Zoom in">
-                <svg
-                  class="ui-icon"
-                  viewBox="0 0 24 24"
-                  width="24"
-                  height="24"
-                  fill="currentColor"
-                  aria-hidden="true"
-                  focusable="false"
-                >
+                <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                   <use href="/icons/pixelarticons.svg#plus"></use>
                 </svg>
               </button>
@@ -445,7 +299,11 @@
           <div class="hp-scene" id="hp-scene">
             <div class="hp-fallback" id="hp-loading">Preparing the landscape…</div>
           </div>
-          <div class="hp-mobile-only hp-mobile-map-controls" aria-label="Map view controls">
+          <div
+            class="hp-mobile-only hp-mobile-map-controls"
+            role="group"
+            aria-label="Map view controls"
+          >
             <button
               type="button"
               id="hp-expand-map"
@@ -454,51 +312,19 @@
               aria-pressed="false"
               title="Expand map to viewport"
             >
-              <svg
-                class="ui-icon hp-expand-icon"
-                viewBox="0 0 24 24"
-                width="24"
-                height="24"
-                fill="currentColor"
-                aria-hidden="true"
-                focusable="false"
-              >
+              <svg class="ui-icon hp-expand-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <use href="/icons/pixelarticons.svg#scale"></use></svg
-              ><svg
-                class="ui-icon hp-collapse-icon"
-                viewBox="0 0 24 24"
-                width="24"
-                height="24"
-                fill="currentColor"
-                aria-hidden="true"
-                focusable="false"
-              >
+              ><svg class="ui-icon hp-collapse-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <use href="/icons/pixelarticons.svg#close"></use>
               </svg>
             </button>
             <button class="hp-zoom" id="hp-mobile-in" type="button" aria-label="Zoom in">
-              <svg
-                class="ui-icon"
-                viewBox="0 0 24 24"
-                width="24"
-                height="24"
-                fill="currentColor"
-                aria-hidden="true"
-                focusable="false"
-              >
+              <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <use href="/icons/pixelarticons.svg#plus"></use>
               </svg>
             </button>
             <button class="hp-zoom" id="hp-mobile-out" type="button" aria-label="Zoom out">
-              <svg
-                class="ui-icon"
-                viewBox="0 0 24 24"
-                width="24"
-                height="24"
-                fill="currentColor"
-                aria-hidden="true"
-                focusable="false"
-              >
+              <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <use href="/icons/pixelarticons.svg#minus"></use>
               </svg>
             </button>
@@ -509,7 +335,7 @@
           <output id="hp-message" aria-live="off"></output>
           <span
             id="hp-announcement"
-            class="hp-sr-only"
+            class="sr-only"
             role="status"
             aria-live="polite"
             aria-atomic="true"
@@ -521,7 +347,7 @@
         </div>
         <section class="hp-map-options" id="hp-map-options" aria-label="Palette and settings">
           <form class="hp-palette" id="hp-palette-form">
-            <div class="hp-colors">
+            <div class="hp-colors stack">
               <label class="hp-color">
                 <span class="hp-swatch">
                   <input
@@ -531,7 +357,7 @@
                     aria-label="Ground seed colour"
                   />
                 </span>
-                <span>Ground<span class="hp-hex-code" id="hp-ground-value">#CDAB8F</span></span>
+                <span>Ground<code class="hp-hex-code" id="hp-ground-value">#CDAB8F</code></span>
               </label>
               <label class="hp-color">
                 <span class="hp-swatch">
@@ -542,7 +368,7 @@
                     aria-label="Water seed colour"
                   />
                 </span>
-                <span>Water<span class="hp-hex-code" id="hp-water-value">#0B365E</span></span>
+                <span>Water<code class="hp-hex-code" id="hp-water-value">#0B365E</code></span>
               </label>
               <label class="hp-color">
                 <span class="hp-swatch">
@@ -553,10 +379,10 @@
                     aria-label="Elements seed colour"
                   />
                 </span>
-                <span>Elements<span class="hp-hex-code" id="hp-elements-value">#11B329</span></span>
+                <span>Elements<code class="hp-hex-code" id="hp-elements-value">#11B329</code></span>
               </label>
             </div>
-            <div class="hp-palette-controls">
+            <div class="hp-palette-controls stack">
               <select id="hp-preset" aria-label="Colour palette">
                 <option value="forbidden">Forbidden Lands</option>
                 <option value="dusk">Dusk &amp; gold</option>
@@ -569,8 +395,8 @@
                 <option value="sand">Sand &amp; sage</option>
                 <option value="custom" hidden>Custom</option>
               </select>
-              <div id="hp-palette-create" class="hp-palette-create">
-                <label class="hp-sr-only" for="hp-palette-name">Palette name</label>
+              <div id="hp-palette-create" class="hp-palette-create stack">
+                <label class="sr-only" for="hp-palette-name">Palette name</label>
                 <input
                   id="hp-palette-name"
                   type="text"
@@ -582,7 +408,7 @@
                 <button type="submit">Save palette</button>
               </div>
             </div>
-            <div class="hp-map-navigation">
+            <div class="hp-map-navigation stack">
               <button
                 type="button"
                 id="hp-motion"
@@ -603,15 +429,7 @@
                   aria-expanded="true"
                   aria-controls="hp-palette-form"
                 >
-                  <svg
-                    class="ui-icon"
-                    viewBox="0 0 24 24"
-                    width="24"
-                    height="24"
-                    fill="currentColor"
-                    aria-hidden="true"
-                    focusable="false"
-                  >
+                  <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                     <use href="/icons/pixelarticons.svg#chevron-up"></use>
                   </svg>
                 </button>
@@ -621,15 +439,7 @@
                   aria-label="Return to menu"
                   title="Return to menu"
                 >
-                  <svg
-                    class="ui-icon"
-                    viewBox="0 0 24 24"
-                    width="24"
-                    height="24"
-                    fill="currentColor"
-                    aria-hidden="true"
-                    focusable="false"
-                  >
+                  <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                     <use href="/icons/pixelarticons.svg#arrow-left"></use>
                   </svg>
                   <span class="hp-return-label">Return to menu</span>
@@ -639,7 +449,7 @@
           </form>
         </section>
         <dialog id="hp-new-map-dialog" aria-labelledby="hp-dialog-title">
-          <form id="hp-new-map-form" class="hp-new-map-form">
+          <form id="hp-new-map-form" class="hp-new-map-form stack">
             <h2 id="hp-dialog-title">New Map</h2>
             <label for="hp-seed">Map seed</label>
             <input
@@ -651,7 +461,7 @@
               autocomplete="off"
               spellcheck="false"
             />
-            <div class="hp-tools">
+            <div class="hp-tools cluster">
               <button id="hp-cancel-new-map" type="button">Cancel</button>
               <button type="submit">Create map</button>
             </div>

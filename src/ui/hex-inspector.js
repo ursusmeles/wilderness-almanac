@@ -14,14 +14,14 @@ export function createHexInspector(
     target.addEventListener(event, handler, { signal: listeners.signal });
   host.innerHTML = `<div class="hp-inspector-overview"><button type="button" id="hp-hex-visited" class="hp-motion hp-hex-visited" role="switch" aria-label="Visited"><span class="hp-motion-light" aria-hidden="true"></span><span id="hp-hex-visited-state">Not yet visited</span></button><div class="hp-hex-preview-frame"><img id="hp-hex-preview" width="240" height="240" alt="" /></div><div class="hp-inspector-heading"><span class="hp-eyebrow">Selected hex</span><h3 id="hp-hex-name"></h3><span id="hp-hex-address" class="hp-pixel"></span>
     <dl class="hp-hex-distances" aria-label="Distances in hex steps"><div><dt>Nearest settlement</dt><dd id="hp-hex-distance-settlement"></dd></div><div><dt>Nearest river</dt><dd id="hp-hex-distance-river"></dd></div><div><dt>Nearest open water</dt><dd id="hp-hex-distance-water"></dd></div></dl></div></div>
-    <div class="hp-inspector-content"><form id="hp-hex-form"><fieldset id="hp-hex-fields" disabled><div class="hp-hex-fields">
+    <form id="hp-hex-form" class="hp-inspector-content" aria-labelledby="hp-hex-name"><fieldset id="hp-hex-fields" class="hp-hex-fields grid-pair" disabled>
     <label>Terrain<select id="hp-hex-terrain"></select></label><label>Settlement<select id="hp-hex-settlement"></select></label>
     <label>Point of interest<select id="hp-hex-poi"></select></label><label id="hp-hex-subtype-label">POI variant<select id="hp-hex-subtype"></select></label>
     <label>Elevation<select id="hp-hex-elevation"><option value="0">0 · Lowland</option><option value="1">1 · Low rise</option><option value="2">2 · Upland</option><option value="3">3 · Highland</option><option value="4">4 · Mountains</option></select></label><label>Crossing<select id="hp-hex-crossing"><option value="">None</option><option value="bridge">Bridge</option><option value="ferry">Ferry</option></select></label>
-    </div><p id="hp-hex-constraint" class="hp-field-note" hidden></p></fieldset>
+    <p id="hp-hex-constraint" class="hp-field-note" hidden></p></fieldset>
     <output id="hp-hex-feedback" class="hp-hex-feedback" role="alert"></output>
     <div class="hp-inspector-action-cluster"><div class="hp-inspector-edit-actions"><button type="button" id="hp-hex-edit">${icon('pencil')}Edit hex</button><button type="submit" id="hp-hex-apply" hidden>Apply changes</button><button type="button" id="hp-hex-cancel" hidden>Cancel</button><button type="button" id="hp-hex-undo">${icon('undo')}Undo</button><button type="button" id="hp-hex-reset">Reset hex</button></div>
-    <div class="hp-inspector-actions"><button type="button" id="hp-hex-regenerate">${icon('refresh')}Regenerate hex</button><button type="button" id="hp-hex-lock" role="switch" aria-label="Lock hex dressing">${icon('lock')}<span id="hp-hex-lock-state"></span></button></div></div></form></div>`;
+    <div class="hp-inspector-actions"><button type="button" id="hp-hex-regenerate">${icon('refresh')}Regenerate hex</button><button type="button" id="hp-hex-lock" role="switch" aria-label="Lock hex dressing">${icon('lock')}<span id="hp-hex-lock-state"></span></button></div></div></form>`;
   const el = (name) => host.querySelector(`#hp-hex-${name}`);
   for (const [name, label] of Object.entries({
     terrain: 'Terrain',
@@ -55,7 +55,7 @@ export function createHexInspector(
   const unsaved = document.createElement('dialog');
   unsaved.className = 'hp-inspector-dialog';
   unsaved.setAttribute('aria-labelledby', 'hp-unsaved-title');
-  unsaved.innerHTML = `<h2 id="hp-unsaved-title">Unapplied hex changes</h2><p>Apply or discard your changes before inspecting another hex.</p><div class="hp-tools"><button type="button" data-unsaved="keep">Keep editing</button><button type="button" data-unsaved="discard">Discard</button><button type="button" data-unsaved="apply">Apply changes</button></div>`;
+  unsaved.innerHTML = `<h2 id="hp-unsaved-title">Unapplied hex changes</h2><p>Apply or discard your changes before inspecting another hex.</p><div class="hp-tools cluster"><button type="button" data-unsaved="keep">Keep editing</button><button type="button" data-unsaved="discard">Discard</button><button type="button" data-unsaved="apply">Apply changes</button></div>`;
   host.closest('#campaign-workspace').append(unsaved);
 
   function constraints() {

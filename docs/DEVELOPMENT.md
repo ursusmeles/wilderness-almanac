@@ -99,6 +99,8 @@ Deletion requires confirmation. Undo deletion expires on the next campaign actio
 
 ## Interface conventions
 
+Styles follow CUBE CSS in ordered `reset`, `tokens`, `base`, `compositions`, `utilities`, `blocks` and `exceptions` layers. Use native nesting within blocks, `cluster`/`stack`/`grid-pair` for composition, and shared rem-based spacing, typography and control tokens. Keep state overrides in `exceptions`; reserve `!important` for the native `hidden` contract. Prefer labelled semantic HTML and remove wrappers when the parent can own the layout.
+
 Use Geist Sans for body copy and controls, and Geist Pixel Square for titles, metadata values, seeds and status details. Fonts are local and preloaded. Keep the render-blocking stylesheet and inline dark defaults in `index.html` so the initial paint does not flash white or unstyled content.
 
 The campaign library has a fixed dusk-and-gold theme. Map controls follow their campaign palette. Keep shared 2/3/4px radius tokens, 12px control labels, 40px desktop controls and 44px touch targets; compact icon controls retain their established target sizes. Use only the needed Pixelarticons paths in the local SVG sprite and retain its source/license notes.
