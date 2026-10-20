@@ -18,6 +18,9 @@
   --radius-lg: 4px;
   --font-body: 'Geist', system-ui, sans-serif;
   --font-pixel: 'Geist Pixel Square', ui-monospace, monospace;
+  --control-size: 40px;
+  --control-compact-size: 32px;
+  --control-font: 400 12px/1.25 var(--font-body);
 }
 html {
   background: #171321;
@@ -35,7 +38,7 @@ body {
   display: none !important;
 }
 main {
-  --panel-margin: clamp(12px, 2vw, 24px);
+  --panel-margin: clamp(6px, 1vw, 12px);
   padding: var(--panel-margin);
   box-sizing: border-box;
   min-height: 100dvh;
@@ -49,6 +52,9 @@ main {
   --hp-text: #f1e8db;
   --hp-muted: #b7adbb;
   --hp-line: #4a4056;
+  --palette-swatch-width: 6.25rem;
+  --palette-gap: clamp(12px, 2.5cqi, 20px);
+  --palette-columns: var(--palette-swatch-width) minmax(0, 17rem) minmax(12rem, 1fr);
   background: var(--hp-bg);
   color: var(--hp-text);
   font: 14px/1.5 var(--font-body);
@@ -72,11 +78,11 @@ main {
 #hex-smooth-riverlands button,
 #hex-smooth-riverlands input,
 #hex-smooth-riverlands select {
-  font: inherit;
+  font: var(--control-font);
   color: inherit;
 }
 #hex-smooth-riverlands .hp-top {
-  padding: 16px 18px 8px;
+  padding: 10px 12px 6px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -85,7 +91,7 @@ main {
 }
 #hex-smooth-riverlands .hp-title {
   margin: 0;
-  font: 400 20px/1.25 var(--font-pixel);
+  font: 400 24px/1.25 var(--font-pixel);
   letter-spacing: 0.02em;
 }
 #hex-smooth-riverlands .hp-tools {
@@ -103,13 +109,19 @@ main {
   border: 1px solid var(--hp-line);
   background: var(--hp-bg);
   border-radius: var(--radius-md);
-  padding: 6px 9px;
-  min-height: 34px;
+  padding: 0 12px;
+  height: var(--control-size);
+  min-height: var(--control-size);
+}
+#hex-smooth-riverlands button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 #hex-smooth-riverlands .hp-zoom {
-  width: 34px;
-  font-size: 18px;
-  padding: 2px;
+  width: var(--control-size);
+  padding: 0;
 }
 #hex-smooth-riverlands .hp-scene {
   width: 100%;
@@ -125,8 +137,7 @@ main {
   flex: 1;
   min-height: 160px;
 }
-#hex-smooth-riverlands .hp-mobile-only,
-#hex-smooth-riverlands .hp-map-options > summary {
+#hex-smooth-riverlands .hp-mobile-only {
   display: none;
 }
 #hex-smooth-riverlands .hp-map-options {
@@ -154,30 +165,28 @@ main {
   display: none;
 }
 #hex-smooth-riverlands .hp-status {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: var(--palette-columns);
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 12px 18px 15px;
+  gap: var(--palette-gap);
+  padding: 14px 12px 8px;
   color: var(--hp-muted);
   font-size: 12px;
 }
 #hex-smooth-riverlands .hp-status select {
   color: var(--hp-text);
-  width: 32rem;
+  grid-column: 1 / 3;
+  width: 100%;
   min-width: 0;
-  max-width: 100%;
-  font-size: 12px;
 }
 #hex-smooth-riverlands .hp-palette {
   display: grid;
-  grid-template-columns: max-content minmax(12rem, 17rem) minmax(0, 1fr);
+  grid-template-columns: var(--palette-columns);
   justify-content: start;
   align-items: center;
   border-top: 1px solid var(--hp-line);
-  gap: clamp(20px, 4cqi, 32px);
-  padding: 16px 18px 18px;
+  gap: var(--palette-gap);
+  padding: 10px 12px 12px;
 }
 #hex-smooth-riverlands .hp-color {
   display: flex;
@@ -189,16 +198,9 @@ main {
   position: relative;
   width: 32px;
   height: 36px;
-  background: var(--hp-muted);
+  background: var(--swatch-color);
   flex-shrink: 0;
   clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
-}
-#hex-smooth-riverlands .hp-swatch::before {
-  content: '';
-  position: absolute;
-  inset: 1px;
-  background: var(--swatch-color);
-  clip-path: inherit;
 }
 #hex-smooth-riverlands .hp-swatch input {
   position: absolute;
@@ -215,6 +217,7 @@ main {
 }
 #hex-smooth-riverlands .hp-hex-code {
   font-size: 11px;
+  font-family: var(--font-pixel);
   color: var(--hp-muted);
   font-variant-numeric: tabular-nums;
   text-transform: uppercase;
@@ -224,7 +227,7 @@ main {
     min-height: 120px;
   }
   #hex-smooth-riverlands .hp-title {
-    font-size: 18px;
+    font-size: 20px;
   }
   #hex-smooth-riverlands .hp-color {
     gap: 8px;
@@ -237,13 +240,6 @@ main {
   }
 }
 @media (pointer: coarse) {
-  #hex-smooth-riverlands button,
-  #hex-smooth-riverlands select {
-    min-height: 44px;
-  }
-  #hex-smooth-riverlands .hp-zoom {
-    width: 44px;
-  }
   #hex-smooth-riverlands .hp-color {
     min-height: 44px;
   }
@@ -265,9 +261,10 @@ main {
   border: 1px solid var(--hp-line);
   background: var(--hp-bg);
   border-radius: var(--radius-md);
-  padding: 7px 10px;
+  padding: 0 12px;
   min-width: 0;
-  min-height: 36px;
+  height: var(--control-size);
+  min-height: var(--control-size);
 }
 #hex-smooth-riverlands button:hover {
   border-color: var(--hp-muted);
@@ -293,22 +290,25 @@ main {
 #hex-smooth-riverlands .hp-seed-action {
   display: inline-grid;
   place-items: center;
-  width: 28px;
-  min-height: 28px;
-  padding: 5px;
+  flex-shrink: 0;
+  width: var(--control-compact-size);
+  height: var(--control-compact-size);
+  min-height: var(--control-compact-size);
+  padding: 0;
   border-color: transparent;
   color: var(--hp-muted);
 }
-@media (pointer: coarse) {
-  #hex-smooth-riverlands .hp-seed-action {
-    width: 44px;
-    min-height: 44px;
-  }
-}
 #hex-smooth-riverlands .hp-status output {
-  flex-basis: 100%;
+  grid-column: 3;
+  justify-self: end;
   font-family: var(--font-pixel);
   min-height: 1.4em;
+  min-width: 0;
+  max-width: 20rem;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 #hex-smooth-riverlands .hp-colors {
   display: grid;
@@ -330,43 +330,45 @@ main {
   max-width: 100%;
 }
 #hex-smooth-riverlands .hp-motion {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 7px;
-  align-self: end;
-  justify-self: end;
-  min-height: 36px;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--control-size);
   color: var(--hp-muted);
   font-size: 12px;
   cursor: pointer;
+  white-space: nowrap;
+}
+#hex-smooth-riverlands .hp-motion-light {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+}
+#hex-smooth-riverlands .hp-motion[aria-checked='true'] {
+  color: var(--hp-text);
+}
+#hex-smooth-riverlands .hp-motion[aria-checked='true'] .hp-motion-light {
+  background: currentColor;
+  box-shadow: 0 0 6px color-mix(in srgb, currentColor 45%, transparent);
+}
+#hp-motion-state {
+  display: inline-block;
+  min-width: 3ch;
 }
 #hex-smooth-riverlands .hp-map-navigation {
   display: grid;
-  gap: 5px;
+  gap: 8px;
+  width: 12rem;
+  max-width: 100%;
   align-self: end;
   justify-self: end;
 }
 #hex-smooth-riverlands #hp-return-menu {
   font-size: 12px;
   white-space: nowrap;
-}
-#hex-smooth-riverlands .hp-motion input {
-  margin: 0;
-  accent-color: var(--hp-text);
-  cursor: pointer;
-}
-@media (pointer: coarse) {
-  #hex-smooth-riverlands .hp-motion {
-    min-height: 44px;
-  }
-}
-@container (max-width: 600px) {
-  #hex-smooth-riverlands .hp-palette {
-    grid-template-columns: max-content minmax(0, 17rem);
-  }
-  #hex-smooth-riverlands .hp-map-navigation {
-    grid-column: 1 / -1;
-  }
 }
 #hex-smooth-riverlands .hp-new-map-actions {
   display: inline-flex;
@@ -377,7 +379,8 @@ main {
 #hex-smooth-riverlands #hp-map-settings {
   display: grid;
   place-items: center;
-  padding: 6px 9px;
+  width: var(--control-size);
+  padding: 0;
   border-left: 0;
   border-radius: 0 var(--radius-md) var(--radius-md) 0;
 }
@@ -387,14 +390,14 @@ main {
   border: 1px solid var(--hp-line);
   border-radius: var(--radius-lg);
   width: min(420px, calc(100% - 32px));
-  padding: 24px;
+  padding: 18px;
 }
 #hex-smooth-riverlands dialog::backdrop {
   background: #100c1bcc;
 }
 #hex-smooth-riverlands .hp-new-map-form {
   display: grid;
-  gap: 14px;
+  gap: 10px;
 }
 #hex-smooth-riverlands .hp-new-map-form h2 {
   margin: 0 0 4px;
@@ -444,9 +447,9 @@ main {
   }
   #hex-smooth-riverlands .hp-top {
     flex-shrink: 0;
-    gap: 6px 10px;
-    padding: max(6px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 6px
-      max(12px, env(safe-area-inset-left));
+    gap: 6px 8px;
+    padding: max(4px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) 4px
+      max(8px, env(safe-area-inset-left));
   }
   #hex-smooth-riverlands .hp-mobile-menu {
     display: grid;
@@ -465,17 +468,17 @@ main {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: 18px;
+    font-size: 20px;
   }
   #hex-smooth-riverlands .hp-seed {
     display: none;
   }
-  #hex-smooth-riverlands:has(.hp-map-options[open]) .hp-seed {
+  #hex-smooth-riverlands:has(.hp-map-options:not(.is-collapsed)) .hp-seed {
     display: flex;
   }
   #hex-smooth-riverlands .hp-top > .hp-tools {
     flex-basis: 100%;
-    padding-left: 54px;
+    padding-left: 52px;
   }
   #hex-smooth-riverlands .hp-top .hp-zooms {
     display: none;
@@ -515,57 +518,32 @@ main {
   }
   #hex-smooth-riverlands .hp-status {
     flex-shrink: 0;
-    padding: 6px max(12px, env(safe-area-inset-right)) 6px max(12px, env(safe-area-inset-left));
-    gap: 0;
+    grid-template-columns: minmax(0, 1fr) minmax(0, max-content);
+    padding: 12px max(8px, env(safe-area-inset-right)) 8px max(8px, env(safe-area-inset-left));
+    gap: 8px;
   }
   #hex-smooth-riverlands .hp-status select {
+    grid-column: 1;
     width: 100%;
-    min-height: 40px;
-  }
-  #hex-smooth-riverlands .hp-status > span {
-    display: none;
   }
   #hex-smooth-riverlands .hp-status output {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
+    grid-column: 2;
+    max-width: 45vw;
+    font-size: 10px;
   }
-  #hex-smooth-riverlands .hp-map-options > summary {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    min-height: 46px;
-    padding: 10px max(16px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom))
-      max(16px, env(safe-area-inset-left));
-    border-top: 1px solid var(--hp-line);
-    color: var(--hp-muted);
-    cursor: pointer;
-    font-size: 12px;
-    list-style: none;
-  }
-  #hex-smooth-riverlands .hp-map-options > summary::-webkit-details-marker {
-    display: none;
-  }
-  #hex-smooth-riverlands .hp-map-options > summary:focus-visible {
-    outline: 2px solid var(--hp-text);
-    outline-offset: -3px;
-  }
-  #hex-smooth-riverlands .hp-map-options[open] {
+  #hex-smooth-riverlands .hp-map-options:not(.is-collapsed) {
     max-height: 46dvh;
     overflow-y: auto;
     overscroll-behavior: contain;
   }
-  #hex-smooth-riverlands .hp-map-options[open] > summary span {
-    transform: rotate(180deg);
-  }
   #hex-smooth-riverlands .hp-palette {
-    padding: 12px max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom))
-      max(12px, env(safe-area-inset-left));
-    gap: 12px 20px;
+    grid-template-columns: var(--palette-swatch-width) minmax(0, 1fr);
+    padding: 8px max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom))
+      max(8px, env(safe-area-inset-left));
+    gap: 8px 12px;
+  }
+  #hex-smooth-riverlands .hp-map-navigation {
+    grid-column: 1 / -1;
   }
 }
 
@@ -666,7 +644,7 @@ body.hp-map-expanded {
 .campaign-menu button,
 .campaign-menu input {
   color: inherit;
-  font: inherit;
+  font: var(--control-font);
 }
 .campaign-menu button {
   cursor: pointer;
@@ -687,9 +665,9 @@ body.hp-map-expanded {
   border: 1px solid var(--menu-line);
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--menu-bg) 92%, var(--menu-text));
-  padding: 9px 13px;
-  font-size: 12px !important;
-  min-height: 38px;
+  padding: 0 12px;
+  height: var(--control-size);
+  min-height: var(--control-size);
 }
 .campaign-menu button:hover {
   border-color: var(--menu-muted);
@@ -697,10 +675,6 @@ body.hp-map-expanded {
 }
 .campaign-menu svg {
   flex-shrink: 0;
-}
-.menu-button svg {
-  width: 16px;
-  height: 16px;
 }
 .campaign-list {
   display: grid;
@@ -713,8 +687,8 @@ body.hp-map-expanded {
   display: grid;
   grid-template-columns: 148px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 24px;
-  padding: 20px;
+  gap: 16px;
+  padding: 12px;
   border: 1px solid var(--menu-line);
   border-radius: var(--radius-lg);
   background: color-mix(in srgb, var(--menu-bg) 96%, var(--menu-text));
@@ -755,15 +729,11 @@ body.hp-map-expanded {
   position: absolute;
   top: 6px;
   right: 6px;
-  width: 30px;
-  height: 30px;
+  width: var(--control-compact-size);
+  height: var(--control-compact-size);
   background: var(--menu-bg);
   opacity: 0;
   pointer-events: none;
-}
-.campaign-icon .campaign-icon-refresh svg {
-  width: 16px;
-  height: 16px;
 }
 .campaign-icon.is-revealed .campaign-icon-refresh,
 .campaign-icon:has(:focus-visible) .campaign-icon-refresh {
@@ -858,30 +828,22 @@ body.hp-map-expanded {
   display: inline-grid;
   place-items: center;
   flex-shrink: 0;
-  width: 38px;
-  height: 38px;
+  width: var(--control-size);
+  height: var(--control-size);
   padding: 0;
   border: 1px solid var(--menu-line);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   background: transparent;
 }
-.menu-icon-button svg {
-  width: 18px;
-  height: 18px;
-}
 .campaign-seed-row .menu-icon-button {
-  width: 28px;
-  height: 28px;
+  width: var(--control-compact-size);
+  height: var(--control-compact-size);
   border-color: transparent;
-}
-.campaign-seed-row svg {
-  width: 14px;
-  height: 14px;
 }
 .campaign-actions {
   display: grid;
-  grid-template-columns: repeat(2, 40px);
-  grid-template-rows: repeat(3, 40px);
+  grid-template-columns: repeat(2, var(--control-size));
+  grid-template-rows: repeat(3, var(--control-size));
   gap: 6px;
 }
 .campaign-actions .menu-icon-button {
@@ -896,10 +858,6 @@ body.hp-map-expanded {
   background: color-mix(in srgb, var(--menu-accent) 8%, var(--menu-bg));
   border-color: color-mix(in srgb, var(--menu-accent) 40%, var(--menu-line));
 }
-.campaign-enter svg {
-  width: 25px;
-  height: 25px;
-}
 .campaign-actions .campaign-delete:hover {
   color: #efb6ac;
   border-color: #a66e69;
@@ -911,7 +869,7 @@ body.hp-map-expanded {
   text-align: left;
   width: 100%;
   min-height: 100px;
-  padding: 20px;
+  padding: 12px;
   border: 1px dashed var(--menu-line);
   border-radius: var(--radius-lg);
   background: transparent;
@@ -919,8 +877,8 @@ body.hp-map-expanded {
 .new-campaign-symbol {
   display: grid;
   place-items: center;
-  width: 42px;
-  height: 42px;
+  width: var(--control-size);
+  height: var(--control-size);
   border: 1px solid var(--menu-line);
   border-radius: var(--radius-sm);
   color: var(--menu-accent);
@@ -987,7 +945,7 @@ body.hp-map-expanded {
 }
 #delete-campaign-dialog h2 {
   margin: 14px 0 12px;
-  font: 400 26px/1.2 var(--font-pixel);
+  font: 400 24px/1.25 var(--font-pixel);
   letter-spacing: -0.03em;
 }
 #delete-campaign-dialog p {
@@ -1041,8 +999,8 @@ body.hp-map-expanded {
     grid-template-columns: minmax(88px, 28%) minmax(0, 1fr);
     grid-template-areas: 'icon name' 'icon meta' 'icon seed' 'icon actions';
     align-items: start;
-    gap: 12px 16px;
-    padding: 12px;
+    gap: 10px 12px;
+    padding: 8px;
   }
   .campaign-details {
     display: contents;
@@ -1096,39 +1054,19 @@ body.hp-map-expanded {
     width: 100%;
   }
   .campaign-actions .menu-icon-button {
-    width: 40px;
-    height: 40px;
-    min-height: 40px;
+    width: var(--control-size);
+    height: var(--control-size);
+    min-height: var(--control-size);
   }
   .campaign-actions .campaign-enter {
     flex: 1;
   }
-  .campaign-enter svg {
-    width: 20px;
-    height: 20px;
-  }
   .new-campaign {
-    padding: 16px;
+    padding: 12px;
     gap: 14px;
   }
   #delete-campaign-dialog {
     padding: 24px;
-  }
-}
-@media (pointer: coarse) {
-  .campaign-actions {
-    grid-template-columns: repeat(2, 44px);
-    grid-template-rows: repeat(3, 44px);
-  }
-  .campaign-menu .menu-button,
-  .campaign-actions .menu-icon-button,
-  .campaign-seed-row .menu-icon-button {
-    min-height: 44px;
-    min-width: 44px;
-  }
-  .campaign-menu .campaign-icon-refresh {
-    width: 34px;
-    height: 34px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -1163,4 +1101,97 @@ body.hp-map-expanded {
   align-items: center;
   justify-content: center;
   gap: 6px;
+}
+#hex-smooth-riverlands #hp-map-settings .ui-icon {
+  width: 18px;
+  height: 18px;
+}
+.campaign-menu .campaign-seed-row .ui-icon,
+#hex-smooth-riverlands .hp-seed-action .ui-icon {
+  width: 16px;
+  height: 16px;
+}
+
+@media (max-width: 760px), (max-width: 1024px) and (max-height: 500px), (pointer: coarse) {
+  :root {
+    --control-size: 44px;
+    --control-compact-size: 44px;
+  }
+}
+
+/* One palette form serves both expanded settings and the compact toolbar. */
+#hex-smooth-riverlands .hp-palette-create {
+  display: grid;
+  gap: 8px;
+}
+#hex-smooth-riverlands .hp-panel-actions {
+  display: grid;
+  grid-template-columns: var(--control-size) minmax(0, 1fr);
+  gap: 8px;
+}
+#hex-smooth-riverlands #hp-toggle-settings {
+  padding: 0;
+  width: var(--control-size);
+}
+#hex-smooth-riverlands .is-collapsed #hp-toggle-settings .ui-icon {
+  transform: rotate(180deg);
+}
+#hex-smooth-riverlands .hp-map-options.is-collapsed .hp-colors {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+#hex-smooth-riverlands .hp-map-options.is-collapsed .hp-color {
+  justify-content: center;
+  width: 30px;
+  min-height: var(--control-size);
+  flex-shrink: 0;
+}
+#hex-smooth-riverlands .hp-map-options.is-collapsed .hp-color > span:not(.hp-swatch) {
+  display: none;
+}
+#hex-smooth-riverlands .hp-map-options.is-collapsed .hp-swatch {
+  width: 24px;
+  height: 28px;
+}
+#hex-smooth-riverlands .hp-map-options.is-collapsed .hp-palette {
+  padding-block: 8px;
+}
+@media (max-width: 760px), (max-width: 1024px) and (max-height: 500px) {
+  #hex-smooth-riverlands .hp-status {
+    grid-template-columns: minmax(0, 1fr) 7rem;
+  }
+  #hex-smooth-riverlands .hp-status output {
+    max-width: 7rem;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  #hex-smooth-riverlands .hp-map-options.is-collapsed .hp-palette {
+    grid-template-columns: 70px minmax(0, 1fr) 7rem;
+    gap: 8px;
+  }
+  #hex-smooth-riverlands .hp-map-options.is-collapsed .hp-colors {
+    gap: 2px;
+  }
+  #hex-smooth-riverlands .hp-map-options.is-collapsed .hp-color {
+    width: 22px;
+  }
+  #hex-smooth-riverlands .hp-map-options.is-collapsed .hp-swatch {
+    width: 18px;
+    height: 22px;
+  }
+  #hex-smooth-riverlands .hp-map-options.is-collapsed .hp-map-navigation {
+    grid-column: 3;
+    width: 7rem;
+  }
+  #hex-smooth-riverlands .hp-map-options.is-collapsed .hp-panel-actions {
+    grid-template-columns: repeat(2, var(--control-size));
+    justify-content: end;
+  }
+  #hex-smooth-riverlands .hp-map-options.is-collapsed .hp-return-label {
+    display: none;
+  }
+  #hex-smooth-riverlands .hp-map-options.is-collapsed #hp-return-menu {
+    padding: 0;
+  }
 }

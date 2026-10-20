@@ -44,6 +44,10 @@ export async function copyText(text) {
   }
 }
 
+export function shortCoordinates(cell) {
+  return cell ? `${cell.regionId}/${cell.x},${cell.y}` : '';
+}
+
 export function describeHex(cell) {
   const label =
     cell.pointOfLight?.type ??

@@ -345,8 +345,14 @@ test('palette preferences round-trip; malformed/blocked browser storage is harml
   assert.deepEqual(readPreferences(storage), saved);
   assert.equal(savePreferences(storage, { ...saved, motion: false }), true);
   assert.equal(readPreferences(storage).motion, false);
+  assert.equal(savePreferences(storage, { ...saved, settingsOpen: false }), true);
+  assert.equal(readPreferences(storage).settingsOpen, false);
+  assert.equal(savePreferences(storage, { ...saved, settingsOpen: true }), true);
+  assert.equal(readPreferences(storage).settingsOpen, true);
   stored = JSON.stringify({ version: 1, motion: 'false' });
   assert.equal(readPreferences(storage).motion, undefined);
+  stored = JSON.stringify({ version: 1, settingsOpen: 'false' });
+  assert.equal(readPreferences(storage).settingsOpen, undefined);
   stored = '{broken';
   assert.deepEqual(readPreferences(storage), {});
   stored = JSON.stringify({ version: 1, colors: ['red'], palettes: [{ name: 'bad', colors: [] }] });

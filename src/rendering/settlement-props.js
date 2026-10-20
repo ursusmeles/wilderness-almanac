@@ -1,5 +1,9 @@
 import * as THREE from 'three';
 
+// Reuse cosmetic detail seeds without consuming any placement randomness.
+export const settlementRoofTone = (prop) =>
+  prop.detailSeed === undefined ? 0 : (prop.detailSeed % 5) - 2;
+
 // Settlement models share the original building components and palette roles.
 export function createSettlementBuilder({ addMesh, propMaterial, roofGeometry }) {
   function makeHouse(parent, prop) {
@@ -22,7 +26,11 @@ export function createSettlementBuilder({ addMesh, propMaterial, roofGeometry })
     const roof = addMesh(
       g,
       roofGeometry(0.46, 0.55, roofHeight),
-      propMaterial(straw ? 'straw' : prop.variant === 1 ? 'roofLight' : 'roof', prop.temperature),
+      propMaterial(
+        straw ? 'straw' : prop.variant === 1 ? 'roofLight' : 'roof',
+        prop.temperature,
+        settlementRoofTone(prop),
+      ),
       0,
       height,
       0,
@@ -32,7 +40,7 @@ export function createSettlementBuilder({ addMesh, propMaterial, roofGeometry })
       addMesh(
         g,
         new THREE.BoxGeometry(0.46, 0.025, 0.55),
-        propMaterial('strawDark', prop.temperature),
+        propMaterial('strawDark', prop.temperature, settlementRoofTone(prop)),
         0,
         height,
         0,
@@ -42,7 +50,7 @@ export function createSettlementBuilder({ addMesh, propMaterial, roofGeometry })
           const bundle = addMesh(
             g,
             new THREE.BoxGeometry(Math.hypot(0.23, roofHeight) * 0.98, 0.008, 0.013),
-            propMaterial('strawDark', prop.temperature),
+            propMaterial('strawDark', prop.temperature, settlementRoofTone(prop)),
             side * 0.115,
             height + roofHeight / 2 + 0.005,
             k * 0.105,
@@ -97,7 +105,11 @@ export function createSettlementBuilder({ addMesh, propMaterial, roofGeometry })
     addMesh(
       g,
       new THREE.ConeGeometry(0.33, 0.39, 6),
-      propMaterial(prop.roof === 'straw' ? 'straw' : 'roof', prop.temperature),
+      propMaterial(
+        prop.roof === 'straw' ? 'straw' : 'roof',
+        prop.temperature,
+        settlementRoofTone(prop),
+      ),
       0,
       0.865,
       0,

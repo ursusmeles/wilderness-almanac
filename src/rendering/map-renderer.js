@@ -3,7 +3,8 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { installTreeSway, installWaveDrift, windWeight } from './ambient-motion.js';
 import { createPoiBuilder } from './poi-props.js';
 import { createSettlementBuilder, roofGeometry } from './settlement-props.js';
-import { createColorScale, palettes } from '../palette.js';
+import { palettes } from '../palette.js';
+import { createMapPalette, materialRoles } from '../map-palette.js';
 import { randomStream, surfaceHeight, TOP_RADIUS } from '../generation/math.js';
 import {
   riverBankValue,
@@ -13,7 +14,10 @@ import {
   riverTopHeight,
 } from '../generation/river-surfaces.js';
 
-export function createMapRenderer(host, { onSelect = () => {}, motion = true } = {}) {
+export function createMapRenderer(
+  host,
+  { onSelect = () => {}, onHover = () => {}, motion = true } = {},
+) {
   const loading = host.querySelector('#hp-loading');
   const listeners = new AbortController();
   const listen = (target, event, handler, options = {}) =>
@@ -70,56 +74,19 @@ export function createMapRenderer(host, { onSelect = () => {}, motion = true } =
   shadowFloor.position.y = -0.12;
   shadowFloor.receiveShadow = true;
   scene.add(shadowFloor);
-  let color = createColorScale(palettes.dusk);
+  let color = createMapPalette(palettes.dusk);
   const materials = {};
-  const roles = {
-    ground: [0, 0.39, 1.1],
-    groundLight: [0, 0.42, 0.95],
-    side: [0, 0.26, 1],
-    bevel: [0, 0.46, 0.9],
-    water: [1, 0.48, 1.1],
-    waterEdge: [1, 0.58, 0.85],
-    waterDeep: [1, 0.33, 1],
-    leaf: [2, 0.68, 1],
-    leafLight: [2, 0.77, 0.85],
-    leafDark: [2, 0.51, 0.9],
-    trunk: [2, 0.32, 0.65],
-    rock: [2, 0.65, 0.35],
-    rockLight: [2, 0.82, 0.25],
-    rockMid: [2, 0.55, 0.45],
-    grass: [2, 0.63, 0.8],
-    reeds: [2, 0.63, 0.8],
-    reedHead: [2, 0.55, 0.45],
-    soil: [0, 0.32, 0.65],
-    crop: [2, 0.7, 0.8],
-    ridge: [0, 0.43, 0.8],
-    ridgeLight: [0, 0.5, 0.55],
-    ridgeDark: [0, 0.35, 0.85],
-    ridgeMeadow: [0, 0.39, 1.1],
-    wall: [2, 0.79, 0.4],
-    roof: [2, 0.49, 1.1],
-    roofLight: [2, 0.62, 1],
-    straw: [2, 0.76, 0.8],
-    strawDark: [2, 0.64, 0.75],
-    door: [2, 0.26, 0.6],
-    riverShore: [0, 0.35, 0.85],
-    riverGround: [0, 0.39, 1.1],
-    riverCliff: [0, 0.32, 0.9],
-    bridgeWood: [2, 0.61, 0.7],
-    bridgeLight: [2, 0.74, 0.65],
-    bridgeDark: [2, 0.35, 0.65],
-    rope: [2, 0.76, 0.4],
-    active: [2, 0.94, 0.55],
-  };
-  Object.entries(roles).forEach(
-    ([key, args]) =>
-      (materials[key] = new THREE.MeshStandardMaterial({
-        color: color(...args),
-        roughness: 1,
-        metalness: 0,
-        flatShading: true,
-      })),
-  );
+  Object.keys(materialRoles)
+    .filter((key) => key !== 'hover' && key !== 'wave')
+    .forEach(
+      (key) =>
+        (materials[key] = new THREE.MeshStandardMaterial({
+          color: color.role(key),
+          roughness: 1,
+          metalness: 0,
+          flatShading: true,
+        })),
+    );
   materials.riverGround.flatShading = false;
   materials.riverCliff.flatShading = false;
   materials.grass.side = THREE.DoubleSide;
@@ -128,11 +95,11 @@ export function createMapRenderer(host, { onSelect = () => {}, motion = true } =
   materials.rockMid.side = THREE.DoubleSide;
   materials.rockLight.side = THREE.DoubleSide;
   materials.line = new THREE.MeshBasicMaterial({
-    color: color(2, 0.94, 0.55),
+    color: color.role('active'),
     side: THREE.DoubleSide,
   });
   materials.hover = new THREE.MeshBasicMaterial({
-    color: color(2, 0.83, 0.4),
+    color: color.role('hover'),
     transparent: true,
     opacity: 0.5,
     side: THREE.DoubleSide,
@@ -145,25 +112,21 @@ export function createMapRenderer(host, { onSelect = () => {}, motion = true } =
   const treeDepth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
   installTreeSway(treeDepth, ambientTime);
   materials.wave = new THREE.MeshBasicMaterial({
-    color: color(1, 0.64, 0.75),
+    color: color.role('wave'),
     transparent: true,
     opacity: 0.45,
     depthWrite: false,
     side: THREE.DoubleSide,
   });
   installWaveDrift(materials.wave, ambientTime, waveDirection);
-  function roleColor(role, temperature = 0, foliageTone = 0) {
-    const [index, lightness, chroma] = roles[role];
-    return color(index, lightness + foliageTone * 0.014, chroma, temperature, foliageTone * 2);
-  }
-  function propMaterial(role, temperature = 0, foliageTone = 0) {
-    if (!temperature && !foliageTone) return materials[role];
-    const key = `${role}:${temperature}:${foliageTone}`;
+  function propMaterial(role, temperature = 0, colorTone = 0) {
+    if (!temperature && !colorTone) return materials[role];
+    const key = `${role}:${temperature}:${colorTone}`;
     if (!tintedMaterials.has(key)) {
       const material = materials[role].clone();
       if (materials[role].userData.treeSway) installTreeSway(material, ambientTime);
-      material.color.set(roleColor(role, temperature, foliageTone));
-      tintedMaterials.set(key, { material, role, temperature, foliageTone });
+      material.color.set(color.role(role, temperature, colorTone));
+      tintedMaterials.set(key, { material, role, temperature, colorTone });
     }
     return tintedMaterials.get(key).material;
   }
@@ -1066,15 +1029,16 @@ export function createMapRenderer(host, { onSelect = () => {}, motion = true } =
   activeRing.visible = false;
   function applyPalette() {
     scene.background = new THREE.Color(color.background());
-    Object.entries(roles).forEach(([key, args]) => materials[key].color.set(color(...args)));
-    for (const { material, role, temperature, foliageTone } of tintedMaterials.values())
-      material.color.set(roleColor(role, temperature, foliageTone));
-    materials.line.color.set(color(2, 0.94, 0.55));
-    materials.hover.color.set(color(2, 0.83, 0.4));
-    materials.wave.color.set(color(1, 0.64, 0.75));
+    Object.keys(materialRoles).forEach((key) => materials[key].color.set(color.role(key)));
+    for (const { material, role, temperature, colorTone } of tintedMaterials.values())
+      material.color.set(color.role(role, temperature, colorTone));
+    materials.line.color.set(color.role('active'));
+    materials.hover.color.set(color.role('hover'));
+    materials.wave.color.set(color.role('wave'));
     draw();
   }
   function draw() {
+    renderer.domElement.dataset.zoom = String(camera.zoom);
     renderer.render(scene, camera);
   }
   function resize() {
@@ -1147,6 +1111,8 @@ export function createMapRenderer(host, { onSelect = () => {}, motion = true } =
       pinchDistance = Math.hypot(a.x - b.x, a.y - b.y);
     }
     hoverRing.visible = false;
+    hovered = null;
+    onHover(null);
   });
   listen(host, 'pointermove', (e) => {
     if (pointers.has(e.pointerId)) {
@@ -1174,6 +1140,7 @@ export function createMapRenderer(host, { onSelect = () => {}, motion = true } =
       const key = hit(e.clientX, e.clientY);
       if (key !== hovered) {
         hovered = key;
+        onHover(key);
         hoverRing.visible = !!key && key !== selected;
         if (hoverRing.visible) {
           const c = cells.find((c) => c.key === key);
@@ -1201,6 +1168,8 @@ export function createMapRenderer(host, { onSelect = () => {}, motion = true } =
     start = null;
   });
   listen(host, 'pointerleave', () => {
+    hovered = null;
+    onHover(null);
     hoverRing.visible = false;
     draw();
   });
@@ -1248,6 +1217,7 @@ export function createMapRenderer(host, { onSelect = () => {}, motion = true } =
     setMap(layout, { resetView = false } = {}) {
       buildMap(layout);
       hovered = null;
+      onHover(null);
       hoverRing.visible = false;
       if (resetView) {
         zoom = 1;
@@ -1264,7 +1234,7 @@ export function createMapRenderer(host, { onSelect = () => {}, motion = true } =
       return renderer.domElement.toDataURL('image/png');
     },
     setPalette(seeds) {
-      color = createColorScale(seeds);
+      color = createMapPalette(seeds);
       applyPalette();
     },
     dispose() {

@@ -3,7 +3,8 @@ import { prepareMap } from './generation/presentation.js';
 import { createMapRenderer } from './rendering/map-renderer.js';
 import { palettes, paletteTheme } from './palette.js';
 import { readPreferences, savePreferences } from './ui/storage.js';
-import { readMapLink, mapLink, copyText, describeHex } from './ui/map-link.js';
+import { readMapLink, mapLink, copyText, describeHex, shortCoordinates } from './ui/map-link.js';
+import { createMapConsole } from './ui/map-console.js';
 import { createCampaign, replaceCampaignMap } from './ui/campaigns.js';
 import { createCampaignMenu } from './ui/campaign-menu.js';
 
@@ -24,6 +25,7 @@ const freshSeed = () =>
 let colors = linked.colors ?? saved.colors ?? palettes.dusk.slice();
 const savedPalettes = saved.palettes ?? [];
 let world;
+let cellsByKey = new Map();
 let dressing;
 let activeCampaign;
 let renderer;
@@ -39,12 +41,45 @@ const dialog = element('new-map-dialog');
 const listeners = new AbortController();
 const listen = (target, type, handler) =>
   target.addEventListener(type, handler, { signal: listeners.signal });
+const mapConsole = createMapConsole({
+  write(text, kind) {
+    message.textContent = text;
+    message.title = text;
+    message.dataset.kind = kind;
+  },
+  announce(text) {
+    element('announcement').textContent = text;
+  },
+});
 const mobileLayout = window.matchMedia(
   '(max-width: 760px), (max-width: 1024px) and (max-height: 500px)',
 );
 const mapOptions = element('map-options');
 const expandMap = element('expand-map');
+let settingsOpen = saved.settingsOpen ?? !mobileLayout.matches;
 let expanded = false;
+
+function setSettingsOpen(enabled) {
+  settingsOpen = enabled;
+  mapOptions.classList.toggle('is-collapsed', !enabled);
+  const button = element('toggle-settings');
+  const label = `${enabled ? 'Collapse' : 'Open'} palette and settings`;
+  button.setAttribute('aria-expanded', String(enabled));
+  button.setAttribute('aria-label', label);
+  button.title = label;
+  element('palette-create').hidden = !enabled;
+  element('palette-create')
+    .querySelectorAll('input, button')
+    .forEach((control) => {
+      control.disabled = !enabled;
+    });
+  element('motion').hidden = !enabled;
+}
+setSettingsOpen(settingsOpen);
+listen(element('toggle-settings'), 'click', () => {
+  setSettingsOpen(!settingsOpen);
+  if (world) persist();
+});
 
 function setExpanded(enabled) {
   expanded = enabled;
@@ -62,9 +97,25 @@ listen(document, 'keydown', (event) => {
     event.preventDefault();
     setExpanded(false);
   }
+  if (
+    root.hidden ||
+    event.defaultPrevented ||
+    event.ctrlKey ||
+    event.metaKey ||
+    event.altKey ||
+    document.querySelector('dialog[open]') ||
+    event.target.closest(
+      'input, textarea, select, [contenteditable]:not([contenteditable="false"])',
+    )
+  )
+    return;
+  const factor = event.key === '+' || event.key === '=' ? 1.2 : event.key === '-' ? 1 / 1.2 : 0;
+  if (factor) {
+    event.preventDefault();
+    renderer?.zoom(factor);
+  }
 });
 function syncMobileLayout() {
-  mapOptions.open = !mobileLayout.matches;
   if (!mobileLayout.matches) setExpanded(false);
 }
 listen(mobileLayout, 'change', syncMobileLayout);
@@ -104,18 +155,20 @@ function persist() {
     colors,
     palettes: savedPalettes,
     motion: movement,
+    settingsOpen,
     campaignId: activeCampaign?.id,
   });
   const campaignSaved = activeCampaign ? campaignMenu.update(activeCampaign) : true;
-  if (!campaignSaved)
-    message.textContent =
-      'Browser storage is unavailable. Download your campaign from the menu to keep it.';
+  if (!campaignSaved || !preferencesSaved)
+    mapConsole.notify('Browser storage is unavailable. Download your campaign to keep it.', 0);
   return preferencesSaved && campaignSaved;
 }
 
 function openCampaign(campaign) {
+  const keepView = Boolean(renderer && activeCampaign?.id === campaign.id);
   activeCampaign = campaign;
   world = generateWorld(campaign.seed);
+  cellsByKey = new Map(world.cells.map((cell) => [cell.key, cell]));
   campaign.nameEdited ??= campaign.name !== world.name;
   colors = campaign.colors.slice();
   variant = campaign.variant;
@@ -128,11 +181,15 @@ function openCampaign(campaign) {
         selected = key;
         selection.value = key;
         root.dataset.selected = key;
+        mapConsole.hover(shortCoordinates(cellsByKey.get(key)));
+      },
+      onHover(key) {
+        mapConsole.hover(shortCoordinates(cellsByKey.get(key)));
       },
     });
   renderer?.setMotion(movement);
   dressing = generateDressing(world, variant);
-  applyPalette();
+  applyPalette({ save: false });
   const dressedCells = new Map(dressing.cells.map((cell) => [cell.key, cell]));
   selection.replaceChildren(
     ...world.cells.map((cell) => {
@@ -147,8 +204,8 @@ function openCampaign(campaign) {
       return option;
     }),
   );
-  renderer?.setMap(prepareMap(world, dressing), { resetView: true });
-  if (mobileLayout.matches) renderer?.zoom(1.6);
+  renderer?.setMap(prepareMap(world, dressing), { resetView: !keepView });
+  if (!keepView) renderer?.zoom(mobileLayout.matches ? 1.6 : 1.4 * 1.2);
   renderer?.select(selected);
   element('current-seed').textContent = world.seed;
   element('current-seed').title = world.seed;
@@ -158,13 +215,14 @@ function openCampaign(campaign) {
   root.dataset.seed = world.seed;
   root.dataset.variant = String(variant);
   root.dataset.hexCount = String(world.cells.length);
-  message.textContent = `${world.cells.length} hexes · ${world.regions.length} regions`;
+  mapConsole.reset(`${world.cells.length} hexes · ${world.regions.length} regions`);
   persist();
 }
 
 function newMap(seed) {
   const nextWorld = generateWorld(seed);
   campaignMenu.enter(replaceCampaignMap(activeCampaign, nextWorld, world.name));
+  mapConsole.notify('New map created');
 }
 
 function updatePaletteOptions() {
@@ -178,7 +236,7 @@ function updatePaletteOptions() {
   });
 }
 
-function applyPalette() {
+function applyPalette({ save = true } = {}) {
   renderer?.setPalette(colors);
   Object.entries(paletteTheme(colors)).forEach(([role, value]) =>
     root.style.setProperty(`--hp-${role}`, value),
@@ -194,7 +252,7 @@ function applyPalette() {
   const custom = savedPalettes.findIndex((palette) => same(palette.colors));
   preset.value = builtin ?? (custom >= 0 ? `saved:${custom}` : 'custom');
   if (!currentPaletteName) currentPaletteName = preset.selectedOptions[0].textContent;
-  if (world) persist();
+  return world && save ? persist() : true;
 }
 
 function paletteLabel(candidate) {
@@ -214,25 +272,30 @@ listen(element('mobile-out'), 'click', () => renderer?.zoom(1 / 1.2));
 listen(element('copy-seed'), 'click', async () => {
   try {
     await copyText(world.seed);
-    message.textContent = 'Seed copied';
+    mapConsole.notify('Seed copied');
   } catch {
-    message.textContent = 'Could not copy the seed. Select the seed text to copy it.';
+    mapConsole.notify('Could not copy the seed. Select the seed text to copy it.');
   }
 });
 listen(element('share-map'), 'click', async () => {
   const url = mapLink(window.location.href, { seed: world.seed, variant, colors });
   try {
     await copyText(url);
-    message.textContent = 'Map link copied';
+    mapConsole.notify('Seed link copied');
   } catch {
-    message.textContent = 'Could not share. Copy the URL from the address bar.';
+    mapConsole.notify('Could not share. Copy the URL from the address bar.');
   }
 });
-element('motion').checked = movement;
-listen(element('motion'), 'change', (event) => {
-  movement = event.target.checked;
+function updateMovementToggle() {
+  element('motion').setAttribute('aria-checked', String(movement));
+  element('motion-state').textContent = movement ? 'ON' : 'OFF';
+}
+updateMovementToggle();
+listen(element('motion'), 'click', () => {
+  movement = !movement;
+  updateMovementToggle();
   renderer?.setMotion(movement);
-  persist();
+  if (persist()) mapConsole.notify(movement ? 'Wind turned on' : 'Wind turned off');
 });
 function returnToMenu() {
   setExpanded(false);
@@ -279,7 +342,7 @@ listen(element('regenerate'), 'click', () => {
   if (world.stages.props) renderer?.setMap(prepareMap(world, dressing));
   root.dataset.variant = String(variant);
   persist();
-  message.textContent = 'Dressing regenerated';
+  mapConsole.notify('Dressing regenerated');
 });
 listen(preset, 'change', () => {
   const savedIndex = Number(preset.value.split(':')[1]);
@@ -287,14 +350,14 @@ listen(preset, 'change', () => {
   if (palette) {
     colors = palette.slice();
     currentPaletteName = preset.selectedOptions[0].textContent;
-    applyPalette();
+    if (applyPalette()) mapConsole.notify('Palette changed');
   }
 });
 ['ground', 'water', 'elements'].forEach((name, index) =>
   listen(element(name), 'input', (event) => {
     colors[index] = event.target.value;
     currentPaletteName = 'Custom';
-    applyPalette();
+    if (applyPalette()) mapConsole.notify('Palette changed');
   }),
 );
 listen(element('palette-form'), 'submit', (event) => {
@@ -314,10 +377,7 @@ listen(element('palette-form'), 'submit', (event) => {
   else savedPalettes[index] = palette;
   updatePaletteOptions();
   currentPaletteName = name;
-  applyPalette();
-  message.textContent = persist()
-    ? `Palette “${name}” saved`
-    : 'Browser storage is unavailable; this palette is available for this session';
+  if (applyPalette()) mapConsole.notify(index < 0 ? 'Palette created' : 'Palette updated');
   input.value = '';
 });
 listen(element('palette-name'), 'input', () => element('palette-name').setCustomValidity(''));
@@ -339,6 +399,7 @@ if (import.meta.hot)
   import.meta.hot.dispose(() => {
     setExpanded(false);
     listeners.abort();
+    mapConsole.dispose();
     renderer?.dispose();
     campaignMenu.dispose();
   });

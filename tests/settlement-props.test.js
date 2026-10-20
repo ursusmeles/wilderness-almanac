@@ -8,7 +8,11 @@ import { distance, DIRECTIONS } from '../src/generation/hex.js';
 import { barrierDistance, barrierEnds, isBarrier } from '../src/generation/settlement-props.js';
 import { fitsHex } from '../src/generation/legacy.js';
 import { POI_ANCHOR } from '../src/generation/points-of-interest.js';
-import { createSettlementBuilder, roofGeometry } from '../src/rendering/settlement-props.js';
+import {
+  createSettlementBuilder,
+  roofGeometry,
+  settlementRoofTone,
+} from '../src/rendering/settlement-props.js';
 import { windWeight, installTreeSway } from '../src/rendering/ambient-motion.js';
 
 function fixture(type, size = 1, poi = false) {
@@ -30,6 +34,53 @@ function fixture(type, size = 1, poi = false) {
   }
   return world;
 }
+
+test('building roofs reuse deterministic cosmetic seeds and share the finish across their parts', () => {
+  const calls = [];
+  const material = new THREE.MeshBasicMaterial();
+  const builder = createSettlementBuilder({
+    addMesh(parent, geometry, mat) {
+      const mesh = new THREE.Mesh(geometry, mat);
+      parent.add(mesh);
+      return mesh;
+    },
+    propMaterial(...args) {
+      calls.push(args);
+      return material;
+    },
+    roofGeometry,
+  });
+  const world = generateWorld('7');
+  const dressing = generateDressing(world, 0);
+  const houses = dressing.cells.flatMap((cell) =>
+    cell.props.filter((prop) => prop.kind === 'house'),
+  );
+  assert.equal(new Set(houses.map(settlementRoofTone)).size, 5);
+  assert.deepEqual(
+    houses.map(settlementRoofTone),
+    generateDressing(world, 0)
+      .cells.flatMap((cell) => cell.props.filter((prop) => prop.kind === 'house'))
+      .map(settlementRoofTone),
+  );
+  for (const prop of houses) {
+    const root = new THREE.Group();
+    calls.length = 0;
+    builder.makeHouse(root, prop);
+    const roofCalls = calls.filter(([role]) =>
+      ['roof', 'roofLight', 'straw', 'strawDark'].includes(role),
+    );
+    assert.ok(roofCalls.length);
+    assert.ok(
+      roofCalls.every(
+        ([, temperature, tone]) =>
+          temperature === prop.temperature && tone === settlementRoofTone(prop),
+      ),
+    );
+    assert.ok(calls.filter(([role]) => role === 'wall').every((args) => args.length === 2));
+    root.traverse((part) => part.geometry?.dispose());
+  }
+  material.dispose();
+});
 
 test('villages have roughly three straw-roof cottages and occasional fences; cities are denser and taller', () => {
   const counts = { village: 0, town: 0, city: 0, fenced: 0, tall: 0 };

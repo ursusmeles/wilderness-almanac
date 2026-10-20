@@ -19,6 +19,7 @@ export function readPreferences(storage) {
         ? { campaignId: saved.campaignId }
         : {}),
       ...(typeof saved.motion === 'boolean' ? { motion: saved.motion } : {}),
+      ...(typeof saved.settingsOpen === 'boolean' ? { settingsOpen: saved.settingsOpen } : {}),
       palettes: Array.isArray(saved.palettes)
         ? saved.palettes.filter(
             (palette) =>

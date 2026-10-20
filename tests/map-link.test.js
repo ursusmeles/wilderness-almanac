@@ -1,6 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readMapLink, mapLink, describeHex, copyText } from '../src/ui/map-link.js';
+import {
+  readMapLink,
+  mapLink,
+  describeHex,
+  copyText,
+  shortCoordinates,
+} from '../src/ui/map-link.js';
+
+test('short hover coordinates retain one-based region IDs, negative and zero local axes', () => {
+  assert.equal(shortCoordinates({ regionId: 1, x: 1, y: 2 }), '1/1,2');
+  assert.equal(shortCoordinates({ regionId: 6, x: -4, y: 0 }), '6/-4,0');
+  assert.equal(shortCoordinates(null), '');
+});
 
 test('clipboard writes receive the exact seed or share URL and report write failures', async () => {
   const original = Object.getOwnPropertyDescriptor(globalThis, 'navigator');

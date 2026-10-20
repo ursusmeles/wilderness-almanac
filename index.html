@@ -496,25 +496,16 @@
         </div>
         <div class="hp-status">
           <select id="hp-selection" aria-label="Selected hex"></select>
-          <span>Drag to pan · Scroll or pinch to zoom</span>
-          <output id="hp-message" aria-live="polite"></output>
+          <output id="hp-message" aria-live="off"></output>
+          <span
+            id="hp-announcement"
+            class="hp-sr-only"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+          ></span>
         </div>
-        <details class="hp-map-options" id="hp-map-options" open>
-          <summary>
-            Palette &amp; settings
-            <span aria-hidden="true"
-              ><svg
-                class="ui-icon"
-                viewBox="0 0 24 24"
-                width="24"
-                height="24"
-                fill="currentColor"
-                aria-hidden="true"
-                focusable="false"
-              >
-                <use href="/icons/pixelarticons.svg#chevron-up"></use></svg
-            ></span>
-          </summary>
+        <section class="hp-map-options" id="hp-map-options" aria-label="Palette and settings">
           <form class="hp-palette" id="hp-palette-form">
             <div class="hp-colors">
               <label class="hp-color">
@@ -559,39 +550,75 @@
                 <option value="alien">Alien orchard</option>
                 <option value="custom" hidden>Custom</option>
               </select>
-              <label class="hp-sr-only" for="hp-palette-name">Palette name</label>
-              <input
-                id="hp-palette-name"
-                type="text"
-                maxlength="60"
-                required
-                placeholder="New palette name"
-                autocomplete="off"
-              />
-              <button type="submit">Save palette</button>
+              <div id="hp-palette-create" class="hp-palette-create">
+                <label class="hp-sr-only" for="hp-palette-name">Palette name</label>
+                <input
+                  id="hp-palette-name"
+                  type="text"
+                  maxlength="60"
+                  required
+                  placeholder="New palette name"
+                  autocomplete="off"
+                />
+                <button type="submit">Save palette</button>
+              </div>
             </div>
             <div class="hp-map-navigation">
-              <label class="hp-motion">
-                <input type="checkbox" id="hp-motion" checked />
-                <span>Movement</span>
-              </label>
-              <button type="button" id="hp-return-menu">
-                <svg
-                  class="ui-icon"
-                  viewBox="0 0 24 24"
-                  width="24"
-                  height="24"
-                  fill="currentColor"
-                  aria-hidden="true"
-                  focusable="false"
-                >
-                  <use href="/icons/pixelarticons.svg#arrow-left"></use>
-                </svg>
-                Return to menu
+              <button
+                type="button"
+                id="hp-motion"
+                class="hp-motion"
+                role="switch"
+                aria-checked="true"
+                aria-label="Wind"
+              >
+                <span class="hp-motion-light" aria-hidden="true"></span>
+                <span>Wind is <span id="hp-motion-state" aria-hidden="true">ON</span></span>
               </button>
+              <div class="hp-panel-actions">
+                <button
+                  type="button"
+                  id="hp-toggle-settings"
+                  aria-label="Collapse palette and settings"
+                  title="Collapse palette and settings"
+                  aria-expanded="true"
+                  aria-controls="hp-palette-form"
+                >
+                  <svg
+                    class="ui-icon"
+                    viewBox="0 0 24 24"
+                    width="24"
+                    height="24"
+                    fill="currentColor"
+                    aria-hidden="true"
+                    focusable="false"
+                  >
+                    <use href="/icons/pixelarticons.svg#chevron-up"></use>
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  id="hp-return-menu"
+                  aria-label="Return to menu"
+                  title="Return to menu"
+                >
+                  <svg
+                    class="ui-icon"
+                    viewBox="0 0 24 24"
+                    width="24"
+                    height="24"
+                    fill="currentColor"
+                    aria-hidden="true"
+                    focusable="false"
+                  >
+                    <use href="/icons/pixelarticons.svg#arrow-left"></use>
+                  </svg>
+                  <span class="hp-return-label">Return to menu</span>
+                </button>
+              </div>
             </div>
           </form>
-        </details>
+        </section>
         <dialog id="hp-new-map-dialog" aria-labelledby="hp-dialog-title">
           <form id="hp-new-map-form" class="hp-new-map-form">
             <h2 id="hp-dialog-title">New Map</h2>
