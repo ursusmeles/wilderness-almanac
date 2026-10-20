@@ -33,15 +33,15 @@ export function prepareRiverGeometry(world) {
       allBarriers.push([c[k], c[(k + 1) % 6]].map(([x, z]) => [x + cell.wx, z + cell.wz]));
     }
     const outlet = byKey.get(cell.downstream);
-    const exit = directionTo(cell, outlet);
+    const exit = outlet ? directionTo(cell, outlet) : -1;
     const port = (side, length = APOTHEM) => [
       cell.wx + Math.cos((side * Math.PI) / 3) * length,
       cell.wz + Math.sin((side * Math.PI) / 3) * length,
     ];
-    const end = port(exit);
+    const end = outlet ? port(exit) : [cell.wx + (cell.upstream.length ? 0 : 0.42), cell.wz];
     const widthAtEnd =
-      outlet.water === 'river' ? (cell.riverWidth + outlet.riverWidth) / 2 : cell.riverWidth;
-    if (outlet.water !== 'river') {
+      outlet?.water === 'river' ? (cell.riverWidth + outlet.riverWidth) / 2 : cell.riverWidth;
+    if (outlet && outlet.water !== 'river') {
       if (!mouths.has(outlet.key)) mouths.set(outlet.key, []);
       mouths.get(outlet.key).push({
         x: end[0],
@@ -53,7 +53,9 @@ export function prepareRiverGeometry(world) {
     }
     const entries = cell.upstream.length ? cell.upstream.map((key) => byKey.get(key)) : [null];
     for (const upstream of entries) {
-      const start = upstream ? port(directionTo(cell, upstream)) : [cell.wx, cell.wz];
+      const start = upstream
+        ? port(directionTo(cell, upstream))
+        : [cell.wx - (outlet ? 0 : 0.42), cell.wz];
       const startWidth = upstream
         ? (upstream.riverWidth + cell.riverWidth) / 2
         : cell.riverWidth * 0.85;

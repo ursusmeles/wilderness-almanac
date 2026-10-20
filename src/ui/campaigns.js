@@ -1,7 +1,9 @@
 import { GENERATOR_VERSION } from '../generation/world.js';
+import { validateHexEdits } from '../generation/hex-edits.js';
+import { campaignWorld, campaignDressing } from '../generation/campaign-world.js';
 
 const KEY = 'wilderness-almanac:campaigns-v1';
-export const MAX_CAMPAIGN_BYTES = 1024 * 1024;
+export const MAX_CAMPAIGN_BYTES = 4 * 1024 * 1024;
 const text = (value, max) =>
   typeof value === 'string' && value.trim().length > 0 && value.length <= max;
 const validDate = (value) =>
@@ -39,6 +41,7 @@ export function validateCampaign(value) {
     paletteName: value.paletteName.trim(),
     ...(value.nameEdited !== undefined ? { nameEdited: value.nameEdited } : {}),
     ...(value.iconKey !== undefined ? { iconKey: value.iconKey } : {}),
+    ...(value.hexEdits !== undefined ? { hexEdits: validateHexEdits(value.hexEdits) } : {}),
   };
 }
 
@@ -86,8 +89,9 @@ export function chooseCampaignIcon(world, previousKey, random = Math.random) {
 
 export function replaceCampaignMap(campaign, world, previousWorldName) {
   const nameEdited = campaign.nameEdited ?? campaign.name !== previousWorldName;
+  const { hexEdits: _previousEdits, ...record } = campaign;
   return validateCampaign({
-    ...campaign,
+    ...record,
     name: nameEdited ? campaign.name : world.name,
     nameEdited,
     seed: world.seed,
@@ -137,7 +141,7 @@ export function exportCampaign(campaign, date = new Date()) {
   return JSON.stringify(
     {
       format: 'wilderness-almanac-campaign',
-      version: 1,
+      version: 2,
       exportedAt: date.toISOString(),
       campaign: validateCampaign(campaign),
     },
@@ -148,16 +152,18 @@ export function exportCampaign(campaign, date = new Date()) {
 
 export function importCampaign(source) {
   if (new TextEncoder().encode(source).length > MAX_CAMPAIGN_BYTES)
-    throw new Error('Choose a campaign JSON file smaller than 1 MB.');
+    throw new Error('Choose a campaign JSON file smaller than 4 MB.');
   let data;
   try {
     data = JSON.parse(source);
   } catch {
     throw new Error('This file is not valid JSON. Choose a Wilderness Almanac campaign export.');
   }
-  if (data?.format !== 'wilderness-almanac-campaign' || data.version !== 1)
+  if (data?.format !== 'wilderness-almanac-campaign' || ![1, 2].includes(data.version))
     throw new Error('Choose a supported Wilderness Almanac campaign export.');
-  return validateCampaign(data.campaign);
+  const campaign = validateCampaign(data.campaign);
+  if (campaign.hexEdits) campaignDressing(campaign, campaignWorld(campaign));
+  return campaign;
 }
 
 export function campaignFilename(campaign, date = new Date()) {

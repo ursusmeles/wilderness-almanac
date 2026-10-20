@@ -1,6 +1,7 @@
-import { generateWorld, generateDressing } from '../generation/world.js';
+import { generateWorld } from '../generation/world.js';
+import { campaignWorld, campaignDressing } from '../generation/campaign-world.js';
 import { prepareMap } from '../generation/presentation.js';
-import { createMapRenderer } from '../rendering/map-renderer.js';
+import { tilePreview } from './tile-preview.js';
 import { copyText, mapLink } from './map-link.js';
 import {
   readCampaigns,
@@ -31,8 +32,6 @@ export function createCampaignMenu({ storage, previous, defaultPalette, onEnter 
   const cached = new Map();
   let campaigns = readCampaigns(storage);
   let deletedCampaign = readDeletedCampaign(storage);
-  let thumbnailRenderer;
-  let thumbnailHost;
   let storageAvailable = true;
   let pendingDeleteId;
 
@@ -71,32 +70,19 @@ export function createCampaignMenu({ storage, previous, defaultPalette, onEnter 
   }
 
   function preview(tile, campaign) {
-    if (!thumbnailHost) {
-      thumbnailHost = document.createElement('div');
-      thumbnailHost.className = 'campaign-preview';
-      thumbnailHost.setAttribute('aria-hidden', 'true');
-      document.body.append(thumbnailHost);
-      thumbnailRenderer = createMapRenderer(thumbnailHost, { motion: false });
-    }
-    if (!thumbnailRenderer || !tile) return '';
-    // Keep world-space surface fields for river normals and the original mountain mesh.
-    // Only the rendered hex position moves to the centre of the thumbnail.
-    thumbnailRenderer.setMap([{ ...tile, q: 0, r: 0 }], { resetView: true });
-    thumbnailRenderer.setPalette(campaign.colors);
-    thumbnailRenderer.zoom(4.1);
-    return thumbnailRenderer.snapshot();
+    return tilePreview(tile, campaign.colors);
   }
 
   function campaignData(campaign) {
-    const signature = JSON.stringify([campaign.seed, campaign.variant]);
+    const signature = JSON.stringify([campaign.seed, campaign.variant, campaign.hexEdits]);
     let data = cached.get(campaign.id);
     if (data?.signature !== signature) {
-      const world = generateWorld(campaign.seed);
+      const world = campaignWorld(campaign);
       data = {
         signature,
         world,
         stats: campaignStats(world),
-        dressing: generateDressing(world, campaign.variant),
+        dressing: campaignDressing(campaign, world),
       };
       cached.set(campaign.id, data);
     }
@@ -122,6 +108,8 @@ export function createCampaignMenu({ storage, previous, defaultPalette, onEnter 
   }
 
   function labelActions(card, campaign) {
+    card.querySelector('[data-action="share"]').title =
+      'Copy seed link. Transfer hex edits with campaign JSON.';
     for (const [action, label] of [
       ['enter', 'Enter'],
       ['download', 'Download JSON for'],
@@ -316,7 +304,7 @@ export function createCampaignMenu({ storage, previous, defaultPalette, onEnter 
     if (!file) return;
     try {
       if (file.size > MAX_CAMPAIGN_BYTES)
-        throw new Error('Choose a campaign JSON file smaller than 1 MB.');
+        throw new Error('Choose a campaign JSON file smaller than 4 MB.');
       const campaign = importCampaign(await file.text());
       // Import as a separate local save; an existing campaign is never overwritten.
       campaign.id = crypto.randomUUID();
@@ -350,8 +338,6 @@ export function createCampaignMenu({ storage, previous, defaultPalette, onEnter 
     },
     dispose() {
       listeners.abort();
-      thumbnailRenderer?.dispose();
-      thumbnailHost?.remove();
     },
   };
 }

@@ -87,13 +87,25 @@ function plantCanopy(group, byKey, seed, variant) {
   // One spatial index enforces trunk spacing across hex boundaries as well.
   const buckets = new Map();
   const bucketSize = 0.25;
+  for (const cell of byKey.values()) {
+    if (!cell.fixed) continue;
+    for (const prop of cell.props.filter((prop) => prop.kind === 'tree')) {
+      const wx = cell.wx + prop.x,
+        wz = cell.wz + prop.z;
+      const key = `${Math.floor(wx / bucketSize)},${Math.floor(wz / bucketSize)}`;
+      if (!buckets.has(key)) buckets.set(key, []);
+      buckets.get(key).push({ ...prop, wx, wz });
+    }
+  }
   const budget = group.reduce(
-    (total, cell) => total + (cell.sparse ? 4 : cell.terrain === 'dense forest' ? 18 : 9),
+    (total, cell) =>
+      total + (cell.fixed ? 0 : cell.sparse ? 4 : cell.terrain === 'dense forest' ? 18 : 9),
     0,
   );
   let planted = 0;
   for (let attempt = 0; attempt < group.length * 650 && planted < budget; attempt++) {
     const { cell, x: wx, z: wz } = point();
+    if (cell.fixed) continue;
     const density = cell.sparse ? 0.12 : cell.terrain === 'dense forest' ? 1 : 0.38;
     if (random() > density) continue;
     const canopy = nearbyLobes.get(cell.key).some((lobe) => {

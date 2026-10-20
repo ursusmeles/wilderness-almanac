@@ -43,7 +43,11 @@ export function generateWorld(seed) {
 
 // Cosmetic state is deliberately outside the world. Replaying a variant is also
 // deterministic; creating/regenerating a map advances only this dressing stream.
-export function generateDressing(world, variant = 0) {
+export function generateDressing(
+  world,
+  variant = 0,
+  { fixedCells = {}, revisions = {}, mountainLocks = {}, canopySalt = '' } = {},
+) {
   const dressing = {
     seed: world.seed,
     variant,
@@ -57,13 +61,19 @@ export function generateDressing(world, variant = 0) {
               phase: ridgeRandom() * Math.PI * 2,
               angle: ridgeRandom() * Math.PI,
               heightScale: 0.6,
+              ...mountainLocks[range.id],
             };
           })
         : [],
     cells: [],
+    ...(Object.keys(revisions).length ? { revisions } : {}),
   };
   dressing.cells = world.stages.props
-    ? generatePropDressing(world, variant, prepareMountainRanges(world, dressing))
+    ? generatePropDressing(world, variant, prepareMountainRanges(world, dressing), {
+        fixedCells,
+        revisions,
+        canopySalt,
+      })
     : world.cells.map((cell) => ({ key: cell.key, placementSeed: 0, props: [] }));
   return dressing;
 }

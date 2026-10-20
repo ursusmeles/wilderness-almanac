@@ -20,6 +20,32 @@ export function readPreferences(storage) {
         : {}),
       ...(typeof saved.motion === 'boolean' ? { motion: saved.motion } : {}),
       ...(typeof saved.settingsOpen === 'boolean' ? { settingsOpen: saved.settingsOpen } : {}),
+      ...(Array.isArray(saved.panelOrder) &&
+      saved.panelOrder.length === 2 &&
+      new Set(saved.panelOrder).size === 2 &&
+      saved.panelOrder.every((id) => ['tracker', 'inspector'].includes(id))
+        ? { panelOrder: saved.panelOrder }
+        : {}),
+      ...(saved.panelsCollapsed &&
+      typeof saved.panelsCollapsed.tracker === 'boolean' &&
+      typeof saved.panelsCollapsed.inspector === 'boolean'
+        ? {
+            panelsCollapsed: {
+              tracker: saved.panelsCollapsed.tracker,
+              inspector: saved.panelsCollapsed.inspector,
+            },
+          }
+        : {}),
+      ...(saved.panelsHorizontal &&
+      typeof saved.panelsHorizontal.tracker === 'boolean' &&
+      typeof saved.panelsHorizontal.inspector === 'boolean'
+        ? {
+            panelsHorizontal: {
+              tracker: saved.panelsHorizontal.tracker,
+              inspector: saved.panelsHorizontal.inspector,
+            },
+          }
+        : {}),
       palettes: Array.isArray(saved.palettes)
         ? saved.palettes.filter(
             (palette) =>

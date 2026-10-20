@@ -1,4 +1,5 @@
-import { generateWorld, generateDressing } from './generation/world.js';
+import { generateWorld } from './generation/world.js';
+import { validateHexEdits } from './generation/hex-edits.js';
 import { prepareMap } from './generation/presentation.js';
 import { createMapRenderer } from './rendering/map-renderer.js';
 import { palettes, paletteTheme, DEFAULT_PALETTE } from './palette.js';
@@ -7,6 +8,15 @@ import { readMapLink, mapLink, copyText, describeHex, shortCoordinates } from '.
 import { createMapConsole } from './ui/map-console.js';
 import { createCampaign, replaceCampaignMap } from './ui/campaigns.js';
 import { createCampaignMenu } from './ui/campaign-menu.js';
+import {
+  campaignWorld,
+  campaignDressing,
+  updateHex,
+  lockHex,
+} from './generation/campaign-world.js';
+import { createPanels } from './ui/panels.js';
+import { createHexInspector } from './ui/hex-inspector.js';
+import { disposeTilePreview } from './ui/tile-preview.js';
 
 const root = document.getElementById('hex-smooth-riverlands');
 const element = (id) => root.querySelector(`#hp-${id}`);
@@ -25,6 +35,10 @@ const freshSeed = () =>
 let colors = linked.colors ?? saved.colors ?? palettes[DEFAULT_PALETTE].slice();
 const savedPalettes = saved.palettes ?? [];
 let world;
+let baseWorld;
+let layout;
+let inspector;
+let undo = [];
 let cellsByKey = new Map();
 let dressing;
 let activeCampaign;
@@ -41,6 +55,10 @@ const dialog = element('new-map-dialog');
 const listeners = new AbortController();
 const listen = (target, type, handler) =>
   target.addEventListener(type, handler, { signal: listeners.signal });
+const panels = createPanels(root, saved, () => {
+  if (world) persist();
+  inspector?.refreshPreview();
+});
 const mapConsole = createMapConsole({
   write(text, kind) {
     message.textContent = text;
@@ -89,6 +107,7 @@ function setExpanded(enabled) {
   expandMap.setAttribute('aria-label', label);
   expandMap.setAttribute('aria-pressed', String(enabled));
   expandMap.title = label;
+  if (!enabled) inspector?.refreshPreview();
 }
 
 listen(expandMap, 'click', () => setExpanded(!expanded));
@@ -155,6 +174,7 @@ function persist() {
     motion: movement,
     settingsOpen,
     campaignId: activeCampaign?.id,
+    ...panels.preferences(),
   });
   const campaignSaved = activeCampaign ? campaignMenu.update(activeCampaign) : true;
   if (!campaignSaved || !preferencesSaved)
@@ -165,29 +185,55 @@ function persist() {
 function openCampaign(campaign) {
   const keepView = Boolean(renderer && activeCampaign?.id === campaign.id);
   activeCampaign = campaign;
-  world = generateWorld(campaign.seed);
+  baseWorld = generateWorld(campaign.seed);
+  world = campaignWorld(campaign, baseWorld);
   cellsByKey = new Map(world.cells.map((cell) => [cell.key, cell]));
   campaign.nameEdited ??= campaign.name !== world.name;
   colors = campaign.colors.slice();
   variant = campaign.variant;
   currentPaletteName = campaign.paletteName;
+  undo = [];
+  inspector?.reset();
   root.hidden = false;
   if (!renderer)
     renderer = createMapRenderer(element('scene'), {
       motion: movement,
       onSelect(key) {
+        if (!key) return;
+        if (inspector && !inspector.beforeSelection(key, () => renderer.select(key))) {
+          renderer?.select(selected);
+          selection.value = selected;
+          return;
+        }
         selected = key;
         selection.value = key;
         root.dataset.selected = key;
         mapConsole.hover(shortCoordinates(cellsByKey.get(key)));
+        updateInspector();
       },
       onHover(key) {
         mapConsole.hover(shortCoordinates(cellsByKey.get(key)));
       },
     });
   renderer?.setMotion(movement);
-  dressing = generateDressing(world, variant);
+  dressing = campaignDressing(campaign, world);
   applyPalette({ save: false });
+  renderWorld({ resetView: !keepView });
+  if (!keepView) renderer?.zoom(mobileLayout.matches ? 1.6 : 1.4 * 1.2);
+  element('current-seed').textContent = world.seed;
+  element('current-seed').title = world.seed;
+  root.querySelector('.hp-title').textContent = campaign.name;
+  document.title = `${campaign.name} · Wilderness Almanac`;
+  root.dataset.mapName = world.name;
+  root.dataset.seed = world.seed;
+  root.dataset.variant = String(variant);
+  root.dataset.hexCount = String(world.cells.length);
+  mapConsole.reset(`${world.cells.length} hexes · ${world.regions.length} regions`);
+  persist();
+}
+
+function renderWorld({ resetView = false } = {}) {
+  cellsByKey = new Map(world.cells.map((cell) => [cell.key, cell]));
   const dressedCells = new Map(dressing.cells.map((cell) => [cell.key, cell]));
   selection.replaceChildren(
     ...world.cells.map((cell) => {
@@ -202,22 +248,19 @@ function openCampaign(campaign) {
       return option;
     }),
   );
-  renderer?.setMap(prepareMap(world, dressing), { resetView: !keepView });
-  if (!keepView) renderer?.zoom(mobileLayout.matches ? 1.6 : 1.4 * 1.2);
+  layout = prepareMap(world, dressing);
+  renderer?.setMap(layout, { resetView });
   renderer?.select(selected);
-  element('current-seed').textContent = world.seed;
-  element('current-seed').title = world.seed;
-  root.querySelector('.hp-title').textContent = campaign.name;
-  document.title = `${campaign.name} · Wilderness Almanac`;
-  root.dataset.mapName = world.name;
-  root.dataset.seed = world.seed;
   root.dataset.variant = String(variant);
-  root.dataset.hexCount = String(world.cells.length);
-  mapConsole.reset(`${world.cells.length} hexes · ${world.regions.length} regions`);
-  persist();
+  updateInspector();
 }
 
 function newMap(seed) {
+  if (Object.keys(activeCampaign.hexEdits?.cells ?? {}).length && !replaceDialog.open) {
+    pendingMapSeed = seed;
+    replaceDialog.showModal();
+    return;
+  }
   const nextWorld = generateWorld(seed);
   campaignMenu.enter(replaceCampaignMap(activeCampaign, nextWorld, world.name));
   mapConsole.notify('New map created');
@@ -250,6 +293,7 @@ function applyPalette({ save = true } = {}) {
   const custom = savedPalettes.findIndex((palette) => same(palette.colors));
   preset.value = builtin ?? (custom >= 0 ? `saved:${custom}` : 'custom');
   if (!currentPaletteName) currentPaletteName = preset.selectedOptions[0].textContent;
+  if (world && layout) updateInspector();
   return world && save ? persist() : true;
 }
 
@@ -334,13 +378,7 @@ listen(element('new-map-form'), 'submit', (event) => {
 });
 listen(element('seed'), 'input', () => element('seed').setCustomValidity(''));
 listen(element('regenerate'), 'click', () => {
-  // Only cosmetic dressing advances; names, terrain and settlements stay fixed.
-  variant++;
-  dressing = generateDressing(world, variant);
-  if (world.stages.props) renderer?.setMap(prepareMap(world, dressing));
-  root.dataset.variant = String(variant);
-  persist();
-  mapConsole.notify('Dressing regenerated');
+  commit({ ...activeCampaign, variant: variant + 1 }, 'Dressing regenerated');
 });
 listen(preset, 'change', () => {
   const savedIndex = Number(preset.value.split(':')[1]);
@@ -380,6 +418,152 @@ listen(element('palette-form'), 'submit', (event) => {
 });
 listen(element('palette-name'), 'input', () => element('palette-name').setCustomValidity(''));
 
+function updateInspector() {
+  const cell = cellsByKey.get(selected);
+  if (!cell || !dressing || !layout) return;
+  const edit = activeCampaign.hexEdits?.cells[selected];
+  inspector?.update({
+    world,
+    cell,
+    dressed: dressing.cells.find((entry) => entry.key === selected),
+    tile: layout.find((entry) => entry.key === selected),
+    colors,
+    visited: edit?.visited ?? false,
+    locked: Boolean(edit?.lock),
+    canUndo: undo.length > 0,
+  });
+}
+
+function commit(next, notification, { fixedCells, relock = false, rerollKey } = {}) {
+  try {
+    const nextWorld = campaignWorld(next, baseWorld);
+    const request = next.hexEdits?.cells[selected]?.crossing;
+    if (
+      request &&
+      nextWorld.cells.find((cell) => cell.key === selected)?.crossing?.kind !== request
+    )
+      throw new Error(
+        'This river hex has no two usable banks for a crossing. Try a neighbouring river hex.',
+      );
+    const nextDressing = campaignDressing(next, nextWorld, {
+      fixedCells,
+      rerollKey,
+      mountainBase: rerollKey ? dressing.mountains : [],
+    });
+    if (rerollKey) {
+      const edit = next.hexEdits.cells[rerollKey];
+      edit.dressing = structuredClone(nextDressing.cells.find((cell) => cell.key === rerollKey));
+      const range = nextWorld.cells.find((cell) => cell.key === rerollKey)?.mountainRangeId;
+      if (range)
+        edit.dressing.mountain = nextDressing.mountains.find((shape) => shape.rangeId === range);
+      edit.dressingVariant = next.variant;
+      next.hexEdits.cells[rerollKey] = validateHexEdits({
+        version: 1,
+        cells: { [rerollKey]: edit },
+      }).cells[rerollKey];
+    }
+    if (relock) next = lockHex(next, selected, nextWorld, nextDressing);
+    undo.push({ variant, hexEdits: activeCampaign.hexEdits });
+    if (undo.length > 20) undo.shift();
+    activeCampaign = next;
+    world = nextWorld;
+    dressing = nextDressing;
+    variant = next.variant;
+    renderWorld();
+    persist();
+    mapConsole.notify(notification);
+    return true;
+  } catch (error) {
+    inspector.error(error.message);
+    return false;
+  }
+}
+
+inspector = createHexInspector(panels.inspector, {
+  visible: panels.inspectorVisible,
+  onApply(patch) {
+    const wasLocked = Boolean(activeCampaign.hexEdits?.cells[selected]?.lock);
+    return commit(
+      updateHex(activeCampaign, selected, patch),
+      wasLocked ? 'Hex updated and dressing relocked' : 'Hex updated',
+      { relock: wasLocked },
+    );
+  },
+  onVisit() {
+    const visited = !activeCampaign.hexEdits?.cells[selected]?.visited;
+    // Tracking changes never regenerate terrain or dressing.
+    undo.push({ variant, hexEdits: activeCampaign.hexEdits });
+    if (undo.length > 20) undo.shift();
+    activeCampaign = updateHex(activeCampaign, selected, { visited });
+    updateInspector();
+    persist();
+    mapConsole.notify(visited ? 'Hex marked visited' : 'Hex marked not visited');
+  },
+  onLock() {
+    const locked = Boolean(activeCampaign.hexEdits?.cells[selected]?.lock);
+    const next = locked
+      ? updateHex(activeCampaign, selected, {})
+      : lockHex(activeCampaign, selected, world, dressing);
+    if (locked) {
+      const edit = next.hexEdits.cells[selected];
+      edit.dressing = structuredClone(edit.lock);
+      edit.dressingVariant = variant;
+      delete edit.lock;
+    }
+    undo.push({ variant, hexEdits: activeCampaign.hexEdits });
+    if (undo.length > 20) undo.shift();
+    activeCampaign = next;
+    updateInspector();
+    persist();
+    mapConsole.notify(locked ? 'Dressing unlocked' : 'Dressing locked');
+  },
+  onRegenerate() {
+    const revision = (activeCampaign.hexEdits?.cells[selected]?.revision ?? 0) + 1;
+    const fixedCells = Object.fromEntries(
+      dressing.cells.filter((cell) => cell.key !== selected).map((cell) => [cell.key, cell]),
+    );
+    commit(updateHex(activeCampaign, selected, { revision }), 'Hex dressing regenerated', {
+      fixedCells,
+      rerollKey: selected,
+    });
+  },
+  onReset() {
+    const next = updateHex(activeCampaign, selected, {});
+    const visited = next.hexEdits.cells[selected].visited;
+    if (visited !== undefined) next.hexEdits.cells[selected] = { visited };
+    else delete next.hexEdits.cells[selected];
+    commit(next, 'Hex reset to generated');
+  },
+  onUndo() {
+    const previous = undo.pop();
+    if (!previous) return;
+    activeCampaign = { ...activeCampaign, ...previous };
+    variant = previous.variant;
+    world = campaignWorld(activeCampaign, baseWorld);
+    dressing = campaignDressing(activeCampaign, world);
+    renderWorld();
+    persist();
+    mapConsole.notify('Hex action undone');
+  },
+});
+
+let pendingMapSeed;
+const replaceDialog = document.createElement('dialog');
+replaceDialog.setAttribute('aria-labelledby', 'hp-replace-title');
+replaceDialog.innerHTML =
+  '<h2 id="hp-replace-title">Replace this world?</h2><p>A new map clears hex edits, visited statuses and dressing locks in this campaign. Export the campaign first to keep a copy.</p><div class="hp-tools"><button type="button" data-replace="cancel">Keep world</button><button type="button" data-replace="confirm">Create new map</button></div>';
+root.append(replaceDialog);
+listen(replaceDialog, 'click', (event) => {
+  const action = event.target.closest('[data-replace]')?.dataset.replace;
+  if (!action) return;
+  if (action === 'confirm') {
+    const nextWorld = generateWorld(pendingMapSeed);
+    campaignMenu.enter(replaceCampaignMap(activeCampaign, nextWorld, world.name));
+    mapConsole.notify('New map created');
+  }
+  replaceDialog.close();
+});
+
 updatePaletteOptions();
 applyPalette();
 previousMap.paletteName = paletteLabel(previousMap.colors);
@@ -408,4 +592,8 @@ if (import.meta.hot)
     mapConsole.dispose();
     renderer?.dispose();
     campaignMenu.dispose();
+    inspector.dispose();
+    panels.dispose();
+    replaceDialog.remove();
+    disposeTilePreview();
   });

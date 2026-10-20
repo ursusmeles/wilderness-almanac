@@ -8,13 +8,20 @@ import { settlementBarriers, isBarrier, barrierDistance } from './settlement-pro
 
 export { TOKEN_ANCHOR } from './forest-props.js';
 
-export function generatePropDressing(world, variant, mountainSurfaces) {
+export function generatePropDressing(
+  world,
+  variant,
+  mountainSurfaces,
+  { fixedCells = {}, revisions = {}, canopySalt = '' } = {},
+) {
   const states = world.cells.map((cell) => {
-    const random = randomFor(world.seed, `props:${variant}:${cell.key}`);
+    const localVariant = revisions[cell.key] ? `${variant}:${revisions[cell.key]}` : variant;
+    const random = randomFor(world.seed, `props:${localVariant}:${cell.key}`);
     return {
       ...cell,
       random,
-      props: [],
+      props: structuredClone(fixedCells[cell.key]?.props ?? []),
+      fixed: Boolean(fixedCells[cell.key]),
       links: Array(6).fill(null),
       sparse: random() < (cell.terrain === 'dense forest' ? 0.1 : 0.32),
     };
@@ -25,9 +32,14 @@ export function generatePropDressing(world, variant, mountainSurfaces) {
   const mouths = new Set(
     world.cells.filter((cell) => cell.water === 'river').map((cell) => cell.downstream),
   );
-  populateForests(states, world.seed, variant);
+  populateForests(states, world.seed, canopySalt ? `${variant}:${canopySalt}` : variant);
   const barriers = settlementBarriers(world, variant);
   return states.map((cell) => {
+    if (cell.fixed)
+      return {
+        ...structuredClone(fixedCells[cell.key]),
+        ...(cell.forest ? { forest: cell.forest } : {}),
+      };
     const random = cell.random;
     const integer = (lo, hi) => lo + Math.floor(random() * (hi - lo + 1));
     const props = cell.props;
@@ -163,13 +175,15 @@ export function generatePropDressing(world, variant, mountainSurfaces) {
     }
     if (cell.pointOfLight) {
       const { type, id, centre } = cell.pointOfLight;
+      const localVariant = revisions[cell.key] ? `${variant}:${revisions[cell.key]}` : variant;
       const orientation =
-        (Math.floor(randomFor(world.seed, `settlement-angle:${id}:${variant}`)() * 6) * Math.PI) /
+        (Math.floor(randomFor(world.seed, `settlement-angle:${id}:${localVariant}`)() * 6) *
+          Math.PI) /
         3;
       if (type === 'city' && centre) place('hall', 0.25, { scale: 0.75 });
       else if (type === 'town' || (type === 'village' && random() < 0.35))
         place('tower', 0.16, { scale: 0.55, ...(type === 'village' ? { roof: 'straw' } : {}) });
-      const style = randomFor(world.seed, `settlement-buildings:${cell.key}:${variant}`);
+      const style = randomFor(world.seed, `settlement-buildings:${cell.key}:${localVariant}`);
       const count =
         type === 'city' ? (centre ? 14 : 12) : type === 'town' ? 8 : 2 + Math.floor(style() * 3);
       for (let n = 0; n < count; n++) {

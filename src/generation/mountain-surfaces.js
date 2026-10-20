@@ -1,6 +1,7 @@
 import { DIRECTIONS } from './hex.js';
 import { TOP_RADIUS } from './math.js';
 import { ridgeSurface } from './legacy.js';
+import { randomFor } from './seed.js';
 
 // Reuse the original broad, faceted ranges. A single height field per range
 // keeps neighbouring mountain tiles joined instead of placing isolated cones.
@@ -42,6 +43,23 @@ export function prepareMountainRanges(world, dressing) {
       data.surface = ridgeSurface({ ...cell, corners: data.corners }, field);
       // Keep the existing low-poly facets but limit their added silhouette.
       for (const vertex of data.surface.vertices) vertex[1] *= shape.heightScale;
+      const revision = dressing.revisions?.[cell.key];
+      if (revision) {
+        const random = randomFor(world.seed, `ridge-detail:${cell.key}:${revision}`);
+        const phase = random() * Math.PI * 2;
+        for (const vertex of data.surface.vertices) {
+          // Local relief fades to zero at every edge, retaining shared seams.
+          const radius = Math.max(
+            ...DIRECTIONS.map(
+              (_, side) =>
+                vertex[0] * Math.cos((side * Math.PI) / 3) +
+                vertex[2] * Math.sin((side * Math.PI) / 3),
+            ),
+          );
+          const weight = Math.max(0, 1 - radius / ((Math.sqrt(3) / 2) * TOP_RADIUS));
+          vertex[1] *= 1 + Math.sin(vertex[0] * 4 + vertex[2] * 3 + phase) * 0.3 * weight;
+        }
+      }
     }
   }
   return result;
