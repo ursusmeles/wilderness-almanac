@@ -4,7 +4,7 @@ import { createTopology } from '../src/map-data.js';
 import { distance, DIRECTIONS, neighbours } from '../src/generation/hex.js';
 import { generatePropDressing, TOKEN_ANCHOR } from '../src/generation/props.js';
 import { fitsTree, minimumSpacing } from '../src/generation/legacy.js';
-import { POI_ANCHOR } from '../src/generation/points-of-interest.js';
+import { poiAnchor } from '../src/generation/points-of-interest.js';
 import { forestProfiles, FOREST_TYPES } from '../src/generation/forest-types.js';
 import { describeHex } from '../src/ui/map-link.js';
 import { createColorScale, palettes } from '../src/palette.js';
@@ -119,12 +119,13 @@ test('canopies stop at water, settlements and cliffs and yield POI and token foo
         );
         for (const next of [cell, ...neighbours(cell, byKey)]) {
           if (!next.pointsOfInterest.length) continue;
+          const anchor = poiAnchor(next.pointsOfInterest[0]);
           assert.ok(
             Math.hypot(
-              cell.wx + tree.x - next.wx - POI_ANCHOR.x,
-              cell.wz + tree.z - next.wz - POI_ANCHOR.z,
+              cell.wx + tree.x - next.wx - anchor.x,
+              cell.wz + tree.z - next.wz - anchor.z,
             ) >=
-              tree.footprint + POI_ANCHOR.r + 0.14,
+              tree.footprint + anchor.r + 0.14,
           );
         }
       }

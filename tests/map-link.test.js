@@ -87,3 +87,26 @@ test('hex labels retain hierarchical coordinates and describe POIs and crossings
     /River with a stone bridge$/,
   );
 });
+
+test('POI labels identify lair, dungeon and mystic subtypes', () => {
+  const expected = [
+    ['lair', 'nest', 'a nest'],
+    ['lair', 'cave', 'a cave lair'],
+    ['dungeon', 'mine', 'a mine'],
+    ['dungeon', 'dungeon', 'a dungeon entrance'],
+    ['mystic', 'portal', 'a portal'],
+    ['mystic', 'altar', 'an altar'],
+    ['mystic', 'standing stone', 'standing stones'],
+  ];
+  for (const [kind, variant, name] of expected) {
+    const label = describeHex({
+      regionId: 1,
+      x: 0,
+      y: 0,
+      terrain: 'dense forest',
+      forest: { name: 'dense pine forest' },
+      pointsOfInterest: [{ kind, variant }],
+    });
+    assert.equal(label, `Region #1 · 0, 0 · Dense pine forest with ${name}`);
+  }
+});

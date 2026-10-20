@@ -1,4 +1,3 @@
-import './styles.css';
 import { generateWorld, generateDressing } from './generation/world.js';
 import { prepareMap } from './generation/presentation.js';
 import { createMapRenderer } from './rendering/map-renderer.js';

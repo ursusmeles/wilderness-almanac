@@ -1,6 +1,6 @@
 import { DIRECTIONS } from './hex.js';
 import { randomFor } from './seed.js';
-import { POI_ANCHOR } from './points-of-interest.js';
+import { poiAnchor } from './points-of-interest.js';
 import { TOKEN_ANCHOR } from './forest-props.js';
 
 export const isBarrier = (prop) => prop.kind === 'fence' || prop.kind === 'city-wall';
@@ -47,8 +47,10 @@ export function settlementBarriers(world, variant) {
   const clear = (cell, prop) =>
     barrierDistance(prop, TOKEN_ANCHOR.x, TOKEN_ANCHOR.z) >=
       TOKEN_ANCHOR.r + prop.footprint + 0.025 &&
-    (!cell.pointsOfInterest.length ||
-      barrierDistance(prop, POI_ANCHOR.x, POI_ANCHOR.z) >= POI_ANCHOR.r + prop.footprint + 0.025);
+    cell.pointsOfInterest.every((poi) => {
+      const anchor = poiAnchor(poi);
+      return barrierDistance(prop, anchor.x, anchor.z) >= anchor.r + prop.footprint + 0.025;
+    });
   const save = (cell, prop) => {
     if (!result.has(cell.key)) result.set(cell.key, []);
     result.get(cell.key).push(prop);

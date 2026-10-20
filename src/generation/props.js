@@ -2,7 +2,7 @@ import { neighbours, distance } from './hex.js';
 import { randomFor } from './seed.js';
 import { fitsHex, fitsTree, minimumSpacing, lowProp } from './legacy.js';
 import { surfaceHeight } from './math.js';
-import { POI_ANCHOR } from './points-of-interest.js';
+import { poiAnchor } from './points-of-interest.js';
 import { TOKEN_ANCHOR, isForest, populateForests } from './forest-props.js';
 import { settlementBarriers, isBarrier, barrierDistance } from './settlement-props.js';
 
@@ -33,27 +33,32 @@ export function generatePropDressing(world, variant, mountainSurfaces) {
     const props = cell.props;
     const surface = mountainSurfaces.get(cell.key)?.surface;
     for (const poi of cell.pointsOfInterest) {
+      const anchor = poiAnchor(poi);
       const heights = Array.from({ length: 12 }, (_, k) =>
         surface
           ? surfaceHeight(
               surface,
-              POI_ANCHOR.x + Math.cos((k * Math.PI) / 6) * POI_ANCHOR.r,
-              POI_ANCHOR.z + Math.sin((k * Math.PI) / 6) * POI_ANCHOR.r,
+              anchor.x + Math.cos((k * Math.PI) / 6) * anchor.r,
+              anchor.z + Math.sin((k * Math.PI) / 6) * anchor.r,
             )
           : 0,
       );
-      heights.push(surface ? surfaceHeight(surface, POI_ANCHOR.x, POI_ANCHOR.z) : 0);
+      heights.push(surface ? surfaceHeight(surface, anchor.x, anchor.z) : 0);
+      const top = Math.max(...heights);
       props.push({
         kind: 'poi',
         poiKind: poi.kind,
         variant: poi.variant,
         detailSeed: poi.detailSeed,
         temperature: poi.temperature,
-        x: POI_ANCHOR.x,
-        z: POI_ANCHOR.z,
-        y: Math.max(...heights),
-        footprint: POI_ANCHOR.r,
-        pedestalDepth: Math.max(...heights) - Math.min(...heights) + 0.035,
+        x: anchor.x,
+        z: anchor.z,
+        y: top,
+        footprint: anchor.r,
+        pedestalDepth: top - Math.min(...heights) + 0.035,
+        ...(surface
+          ? { foundationHeights: heights.slice(0, 12).map((height) => height - top - 0.015) }
+          : {}),
       });
     }
     props.push(...(barriers.get(cell.key) ?? []));

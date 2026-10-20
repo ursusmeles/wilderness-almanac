@@ -24,6 +24,7 @@ export function createCampaignMenu({ storage, previous, onEnter }) {
   const fileInput = document.getElementById('campaign-file');
   const template = document.getElementById('campaign-template');
   const undoDelete = document.getElementById('undo-delete-campaign');
+  const deleteDialog = document.getElementById('delete-campaign-dialog');
   const listeners = new AbortController();
   const listen = (target, type, callback) =>
     target.addEventListener(type, callback, { signal: listeners.signal });
@@ -33,6 +34,15 @@ export function createCampaignMenu({ storage, previous, onEnter }) {
   let thumbnailRenderer;
   let thumbnailHost;
   let storageAvailable = true;
+  let pendingDeleteId;
+
+  function hideIconControls(except) {
+    list.querySelectorAll('.campaign-icon.is-revealed').forEach((icon) => {
+      if (icon === except) return;
+      icon.classList.remove('is-revealed');
+      icon.querySelector('.campaign-icon-toggle').setAttribute('aria-expanded', 'false');
+    });
+  }
 
   function save() {
     storageAvailable = saveCampaigns(storage, campaigns, deletedCampaign);
@@ -40,6 +50,13 @@ export function createCampaignMenu({ storage, previous, onEnter }) {
     if (!storageAvailable)
       status.textContent = 'Browser storage is unavailable. Download your campaigns to keep them.';
     return storageAvailable;
+  }
+
+  function expireUndo() {
+    if (!deletedCampaign) return;
+    deletedCampaign = null;
+    status.textContent = '';
+    save();
   }
 
   if (!campaigns) {
@@ -66,7 +83,7 @@ export function createCampaignMenu({ storage, previous, onEnter }) {
     // Only the rendered hex position moves to the centre of the thumbnail.
     thumbnailRenderer.setMap([{ ...tile, q: 0, r: 0 }], { resetView: true });
     thumbnailRenderer.setPalette(campaign.colors);
-    thumbnailRenderer.zoom(3);
+    thumbnailRenderer.zoom(4.1);
     return thumbnailRenderer.snapshot();
   }
 
@@ -110,6 +127,7 @@ export function createCampaignMenu({ storage, previous, onEnter }) {
       ['download', 'Download JSON for'],
       ['delete', 'Delete'],
       ['shuffle', 'Shuffle icon for'],
+      ['icon-controls', 'Show icon controls for'],
     ])
       card
         .querySelector(`[data-action="${action}"]`)
@@ -147,11 +165,13 @@ export function createCampaignMenu({ storage, previous, onEnter }) {
   }
 
   function add(campaign) {
+    expireUndo();
     campaigns.push(campaign);
     save();
   }
 
   function enter(campaign) {
+    expireUndo();
     menu.hidden = true;
     onEnter(campaign);
   }
@@ -171,6 +191,7 @@ export function createCampaignMenu({ storage, previous, onEnter }) {
   }
 
   function rename(input) {
+    expireUndo();
     const campaign = campaigns.find(
       (item) => item.id === input.closest('.campaign-card').dataset.id,
     );
@@ -200,6 +221,7 @@ export function createCampaignMenu({ storage, previous, onEnter }) {
     input.blur();
   });
   listen(list, 'keydown', (event) => {
+    if (event.key === 'Escape') hideIconControls();
     if (event.key === 'Escape' && event.target.matches('.campaign-name')) {
       const campaign = campaigns.find(
         (item) => item.id === event.target.closest('.campaign-card').dataset.id,
@@ -215,6 +237,14 @@ export function createCampaignMenu({ storage, previous, onEnter }) {
       (item) => item.id === button.closest('.campaign-card').dataset.id,
     );
     const action = button.dataset.action;
+    expireUndo();
+    if (action === 'icon-controls') {
+      const icon = button.closest('.campaign-icon');
+      hideIconControls(icon);
+      const revealed = icon.classList.toggle('is-revealed');
+      button.setAttribute('aria-expanded', String(revealed));
+      return;
+    }
     if (action === 'enter') return enter(campaign);
     if (action === 'download') return download(campaign);
     if (action === 'shuffle') {
@@ -226,14 +256,10 @@ export function createCampaignMenu({ storage, previous, onEnter }) {
       return;
     }
     if (action === 'delete') {
-      const index = campaigns.findIndex((item) => item.id === campaign.id);
-      deletedCampaign = { campaign, index };
-      campaigns.splice(index, 1);
-      cached.delete(campaign.id);
-      const saved = save();
-      render();
-      if (saved) status.textContent = `Deleted “${campaign.name}”`;
-      undoDelete.focus({ preventScroll: true });
+      pendingDeleteId = campaign.id;
+      document.getElementById('delete-campaign-name').textContent = campaign.name;
+      deleteDialog.returnValue = 'cancel';
+      deleteDialog.showModal();
       return;
     }
     try {
@@ -245,6 +271,21 @@ export function createCampaignMenu({ storage, previous, onEnter }) {
           ? 'Could not copy. Select the seed text to copy it.'
           : 'Could not copy a link. Enter the campaign and copy the URL from the address bar.';
     }
+  });
+  listen(document, 'click', (event) => {
+    if (!event.target.closest('.campaign-icon')) hideIconControls();
+  });
+  listen(deleteDialog, 'close', () => {
+    const index = campaigns.findIndex((item) => item.id === pendingDeleteId);
+    pendingDeleteId = null;
+    if (deleteDialog.returnValue !== 'delete' || index < 0) return;
+    const [campaign] = campaigns.splice(index, 1);
+    deletedCampaign = { campaign, index };
+    cached.delete(campaign.id);
+    const saved = save();
+    render();
+    if (saved) status.textContent = `Deleted “${campaign.name}”`;
+    undoDelete.focus({ preventScroll: true });
   });
   listen(undoDelete, 'click', () => {
     if (!deletedCampaign) return;
@@ -265,7 +306,10 @@ export function createCampaignMenu({ storage, previous, onEnter }) {
     add(campaign);
     enter(campaign);
   });
-  listen(document.getElementById('import-campaign'), 'click', () => fileInput.click());
+  listen(document.getElementById('import-campaign'), 'click', () => {
+    expireUndo();
+    fileInput.click();
+  });
   listen(fileInput, 'change', async () => {
     const file = fileInput.files[0];
     if (!file) return;

@@ -7,6 +7,10 @@ import { prepareRiverGeometry, riverFieldFor } from './presentation.js';
 
 export const POI_RULES = rules.pointsOfInterest;
 export const POI_ANCHOR = { x: 0.5, z: 0.16, r: 0.245 };
+const LARGE_POI_ANCHOR = { x: 0.43, z: 0.14, r: 0.32 };
+const enlarged = new Set(['encampment', 'ruins', 'lair', 'dungeon', 'mystic', 'battlefield']);
+export const poiAnchor = (poi) =>
+  enlarged.has(poi.poiKind ?? poi.kind) ? LARGE_POI_ANCHOR : POI_ANCHOR;
 const ordinary = POI_RULES.filter((rule) => !['bridge', 'ferry'].includes(rule.kind));
 const rarity = { mystic: 0.25, battlefield: 0.25 };
 

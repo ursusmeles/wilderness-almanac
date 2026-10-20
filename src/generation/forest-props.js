@@ -1,7 +1,7 @@
 import { DIRECTIONS, neighbours } from './hex.js';
 import { randomFor } from './seed.js';
 import { fitsHex, fitsTree, minimumSpacing } from './legacy.js';
-import { POI_ANCHOR } from './points-of-interest.js';
+import { poiAnchor } from './points-of-interest.js';
 import { isForest, forestProfiles } from './forest-types.js';
 
 export const TOKEN_ANCHOR = { x: 0.5, z: 0.16, r: 0.1 };
@@ -119,11 +119,13 @@ function plantCanopy(group, byKey, seed, variant) {
           TOKEN_ANCHOR.r + prop.footprint * 0.48
         )
           return true;
-        return (
-          next.pointsOfInterest.length &&
-          Math.hypot(wx - next.wx - POI_ANCHOR.x, wz - next.wz - POI_ANCHOR.z) <
-            prop.footprint + POI_ANCHOR.r + 0.14
-        );
+        return next.pointsOfInterest.some((poi) => {
+          const anchor = poiAnchor(poi);
+          return (
+            Math.hypot(wx - next.wx - anchor.x, wz - next.wz - anchor.z) <
+            prop.footprint + anchor.r + 0.14
+          );
+        });
       })
     )
       continue;

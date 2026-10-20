@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { generateWorld, generateDressing } from '../src/generation/world.js';
 import {
   POI_RULES,
-  POI_ANCHOR,
+  poiAnchor,
   generatePointsOfInterest,
   poiSuitability,
   interiorCrossingCandidate,
@@ -13,6 +13,35 @@ import { riverLandValue, riverIslandValue } from '../src/generation/river-surfac
 import { distance, neighbours } from '../src/generation/hex.js';
 import { fitsHex } from '../src/generation/legacy.js';
 import { isBarrier, barrierDistance } from '../src/generation/settlement-props.js';
+import { prepareMountainRanges } from '../src/generation/mountain-surfaces.js';
+import { surfaceHeight } from '../src/generation/math.js';
+
+test('POI footings sample the surrounding mountain surface instead of a uniform column', () => {
+  const world = generateWorld('5');
+  const dressing = generateDressing(world, 0);
+  const mountains = prepareMountainRanges(world, dressing);
+  let checked = 0;
+  for (const cell of dressing.cells) {
+    const surface = mountains.get(cell.key)?.surface;
+    for (const prop of cell.props.filter((p) => p.kind === 'poi')) {
+      if (!surface) {
+        assert.equal(prop.foundationHeights, undefined);
+        continue;
+      }
+      checked++;
+      assert.equal(prop.foundationHeights.length, 12);
+      for (let k = 0; k < 12; k++) {
+        const ground = surfaceHeight(
+          surface,
+          prop.x + Math.cos((k * Math.PI) / 6) * prop.footprint,
+          prop.z + Math.sin((k * Math.PI) / 6) * prop.footprint,
+        );
+        assert.ok(Math.abs(prop.y + prop.foundationHeights[k] + 0.015 - ground) < 1e-9);
+      }
+    }
+  }
+  assert.ok(checked > 0);
+});
 
 test('POIs replay without changing earlier generation or moving on Regenerate', () => {
   const world = generateWorld('7');
@@ -38,8 +67,9 @@ test('POIs replay without changing earlier generation or moving on Regenerate', 
         .map((p) => [p.poiKind, p.variant, p.x, p.z, p.detailSeed]),
     );
     for (const poi of pois) {
-      assert.equal(poi.x, POI_ANCHOR.x);
-      assert.equal(poi.z, POI_ANCHOR.z);
+      const anchor = poiAnchor(poi);
+      assert.equal(poi.x, anchor.x);
+      assert.equal(poi.z, anchor.z);
       assert.ok(fitsHex(poi.x, poi.z, poi.footprint));
       assert.ok(Number.isFinite(poi.y) && poi.pedestalDepth >= 0.035 - 1e-9);
       for (const prop of cell.props.filter((p) => p !== poi))

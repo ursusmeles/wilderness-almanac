@@ -5,18 +5,36 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#211c36" />
     <title>Wilderness Almanac</title>
+    <style>
+      html {
+        background: #171321;
+        color: #f1e8db;
+        color-scheme: dark;
+      }
+      body {
+        margin: 0;
+      }
+      [hidden] {
+        display: none !important;
+      }
+    </style>
+    <link rel="preload" href="/fonts/geist-sans.woff2" as="font" type="font/woff2" crossorigin />
+    <link
+      rel="preload"
+      href="/fonts/geist-pixel-square.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link rel="stylesheet" href="/src/styles.css" />
   </head>
   <body>
     <main>
       <section id="campaign-menu" class="campaign-menu" aria-labelledby="almanac-title">
-        <header class="almanac-heading">
-          <svg class="almanac-mark" viewBox="0 0 48 48" fill="none" aria-hidden="true">
-            <path d="m24 3 19 11v22L24 47 5 36V14Z" stroke="currentColor" />
-            <path d="m5 14 19 11 19-11M24 25v22M14 30l10-17 10 17-10-5Z" stroke="currentColor" />
-          </svg>
-          <h1 id="almanac-title">Wilderness Almanac</h1>
-          <p>A place for your worlds.</p>
-        </header>
+        <hgroup class="almanac-heading">
+          <h1 id="almanac-title"><span>Wilderness</span> <span>Almanac</span></h1>
+          <p>DM toolbox for sandbox RPG campaigns</p>
+        </hgroup>
         <div class="campaign-library">
           <div class="campaign-toolbar">
             <h2>Your campaigns <span id="campaign-count">0</span></h2>
@@ -37,7 +55,7 @@
           <ul id="campaign-list" class="campaign-list" aria-label="Saved campaigns"></ul>
           <button type="button" id="new-campaign" class="new-campaign">
             <span class="new-campaign-symbol" aria-hidden="true">+</span>
-            <span><strong>New campaign</strong><span>A new seed. An unexplored world.</span></span>
+            <span><strong>New campaign</strong><span>An unexplored world</span></span>
             <span class="new-campaign-arrow" aria-hidden="true">↗</span>
           </button>
           <p class="campaign-storage-note">
@@ -50,11 +68,37 @@
             </button>
           </div>
         </div>
+        <dialog
+          id="delete-campaign-dialog"
+          aria-labelledby="delete-campaign-title"
+          aria-describedby="delete-campaign-description"
+        >
+          <form method="dialog">
+            <span class="dialog-eyebrow">Campaign management</span>
+            <h2 id="delete-campaign-title">Delete campaign?</h2>
+            <p id="delete-campaign-description">
+              Remove <strong id="delete-campaign-name"></strong> from this device? You can undo this
+              until your next campaign action.
+            </p>
+            <div class="dialog-actions">
+              <button class="menu-button" value="cancel" autofocus>Keep campaign</button>
+              <button class="menu-button menu-danger" value="delete">Delete campaign</button>
+            </div>
+          </form>
+        </dialog>
       </section>
       <template id="campaign-template">
         <li class="campaign-card">
           <div class="campaign-icon">
-            <img width="112" height="112" alt="" />
+            <button
+              type="button"
+              class="campaign-icon-toggle"
+              data-action="icon-controls"
+              aria-label="Show campaign icon controls"
+              aria-expanded="false"
+            >
+              <img width="112" height="112" alt="" />
+            </button>
             <button
               type="button"
               class="menu-icon-button campaign-icon-refresh"

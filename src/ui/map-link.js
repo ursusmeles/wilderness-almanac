@@ -60,10 +60,15 @@ export function describeHex(cell) {
     dungeon: 'a dungeon',
   };
   const poi = cell.pointsOfInterest[0];
+  const subtypes = {
+    lair: { cave: 'a cave lair', nest: 'a nest' },
+    dungeon: { mine: 'a mine', dungeon: 'a dungeon entrance' },
+    mystic: { portal: 'a portal', altar: 'an altar', 'standing stone': 'standing stones' },
+  };
   const feature = poi
     ? poi.variant === 'lighthouse'
       ? 'a lighthouse'
-      : articles[poi.kind]
+      : (subtypes[poi.kind]?.[poi.variant] ?? articles[poi.kind])
     : cell.crossing
       ? cell.crossing.kind === 'ferry'
         ? 'a ferry'
