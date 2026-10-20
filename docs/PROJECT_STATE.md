@@ -170,6 +170,8 @@ Panel UI refinement: nearest-feature distances and the Wind-style visited diode 
 
 Panel-refinement verification: build, formatting and the panel-preference validation test passed. Browser checks at 1280×720 confirmed the complete overview fits with both tools expanded, and that one/two 44px rails widen the map from 768px to 860px/1144px. Reload retains horizontal collapse. Phone layouts at 390×844 and 320×568 retain viewport-height maps, suppress desktop rails/reorder controls, preserve the requested action rows and keep 44px controls without horizontal overflow. Visited uses an outlined diode when false and a filled diode when true. Physical touch remains untested.
 
+Panel spacing follow-up: title bars match the collapsed palette toolbar (57px desktop, 61px mobile). Mobile tools are edge-to-edge with square corners. Inspector preview framing trims empty image margins, reduces the tile/text gap and left inset, and balances wrapped hex titles in CSS. Browser checks confirmed matching bar heights, equal map/panel widths and no mobile horizontal overflow.
+
 ## Deliberately deferred
 
 - Elevated water courses, waterfalls, river lakes with through-flow, rainfall/erosion and geological simulation. Lakes currently act as terminal sinks.
