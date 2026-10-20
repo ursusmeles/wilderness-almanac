@@ -4,7 +4,7 @@
 
 Build a world, find a place worth exploring, and make it your own. Wilderness Almanac creates interactive hex maps with connected forests, mountain ranges, winding rivers, settlements and points of interest—all in a low-poly, isometric style.
 
-**[Open Wilderness Almanac](https://wilderness-almanac.vercel.app)** · [Releases](https://github.com/ursusmeles/hex-sandbox/releases) · [Report a bug or suggest a feature](https://github.com/ursusmeles/hex-sandbox/issues)
+**[Open Wilderness Almanac](https://wilderness-almanac.vercel.app)** · [Releases](https://github.com/ursusmeles/wilderness-almanac/releases) · [Report a bug or suggest a feature](https://github.com/ursusmeles/wilderness-almanac/issues)
 
 ![Wilderness Almanac map with the Hex Inspector open](docs/images/wilderness-almanac.jpg)
 
@@ -38,8 +38,8 @@ Exports are named `wilderness-almanac-[campaignname]-[YYYY-MM-DD].json`. Replay 
 You need [Node.js](https://nodejs.org/) 24 or later. The repository includes an `.nvmrc` for Node 24.
 
 ```sh
-git clone https://github.com/ursusmeles/hex-sandbox.git
-cd hex-sandbox
+git clone https://github.com/ursusmeles/wilderness-almanac.git
+cd wilderness-almanac
 npm ci
 npm run dev
 ```
@@ -48,7 +48,7 @@ Open the address printed in your terminal. No backend, API keys or environment v
 
 ## Contributing
 
-Bug reports, map examples and feature ideas are welcome in [GitHub Issues](https://github.com/ursusmeles/hex-sandbox/issues). For map-related reports, include the seed and a screenshot; an exported campaign is helpful when the issue involves edits.
+Bug reports, map examples and feature ideas are welcome in [GitHub Issues](https://github.com/ursusmeles/wilderness-almanac/issues). For map-related reports, include the seed and a screenshot; an exported campaign is helpful when the issue involves edits.
 
 For the code structure, development checks and save format, see the [development guide](docs/DEVELOPMENT.md). [Project state](docs/PROJECT_STATE.md) explains the generation rules, visual constraints and current limits.
 
