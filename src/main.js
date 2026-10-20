@@ -474,7 +474,7 @@ let pendingMapSeed;
 const replaceDialog = document.createElement('dialog');
 replaceDialog.setAttribute('aria-labelledby', 'hp-replace-title');
 replaceDialog.innerHTML =
-  '<h2 id="hp-replace-title">Replace this world?</h2><p>A new map clears hex edits, visited statuses and dressing locks in this campaign. Export the campaign first to keep a copy.</p><div class="hp-tools"><button type="button" data-replace="cancel">Keep world</button><button type="button" data-replace="confirm">Create new map</button></div>';
+  '<h2 id="hp-replace-title">Replace this world?</h2><p>A new map clears hex edits, visited statuses and dressing locks in this campaign. Export the campaign first to keep a copy.</p><div class="hp-tools cluster"><button type="button" data-replace="cancel">Keep world</button><button type="button" data-replace="confirm">Create new map</button></div>';
 root.append(replaceDialog);
 listen(replaceDialog, 'click', (event) => {
   const action = event.target.closest('[data-replace]')?.dataset.replace;
