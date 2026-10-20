@@ -2,7 +2,12 @@ export const palettes = {
   dusk: ['#282039', '#237d89', '#e5b96e'],
   ember: ['#322333', '#2a6775', '#ed8965'],
   moss: ['#1e302c', '#477480', '#dad2a4'],
-  alien: ['#30204c', '#d45b9d', '#bcf249'],
+  classic: ['#66945c', '#397caf', '#6cad48'],
+  thronefall: ['#000000', '#243f4a', '#ffb600'],
+  glacial: ['#c7ffee', '#477480', '#99c1f1'],
+  autumn: ['#633f32', '#315f70', '#e26d32'],
+  sand: ['#e6cb8a', '#3f8d91', '#618253'],
+  forbidden: ['#cdab8f', '#0b365e', '#11b329'],
 };
 
 function linear(v) {

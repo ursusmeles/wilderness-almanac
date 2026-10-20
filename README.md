@@ -21,6 +21,22 @@ The URL contains the seed, dressing variant and palette. A valid URL seed takes 
 
 Three editable seed colours feed the opinionated OKLCH palette system. Ground seed brightness has the strongest influence, water a moderate influence and elements a restrained influence. Near-black tile sides, trunks and recesses retain their original shading; surface lightness and depth stay coordinated. Automatic material contrast checks separate water/shorelines, foliage and selection highlights, including identical or extreme seed colours. Precise RGB gamut fitting retains as much saturation as possible. Interface colours retain their own readable dark-theme scale. The preset terrain colours remain close to their established appearance.
 
+Nine built-in palettes are available. Dusk & gold, Ember coast and Moss & bone retain their original colours; Alien orchard is removed from the preset list. “Default colours” is the natural green/blue preset; initial campaign defaults still follow the existing saved-preference/Dusk behaviour.
+
+| Palette         | Ground    | Water     | Elements  |
+| --------------- | --------- | --------- | --------- |
+| Dusk & gold     | `#282039` | `#237D89` | `#E5B96E` |
+| Ember coast     | `#322333` | `#2A6775` | `#ED8965` |
+| Moss & bone     | `#1E302C` | `#477480` | `#DAD2A4` |
+| Default colours | `#66945C` | `#397CAF` | `#6CAD48` |
+| Thronefall      | `#000000` | `#243F4A` | `#FFB600` |
+| Glacial mint    | `#C7FFEE` | `#477480` | `#99C1F1` |
+| Autumn copper   | `#633F32` | `#315F70` | `#E26D32` |
+| Sand & sage     | `#E6CB8A` | `#3F8D91` | `#618253` |
+| Forbidden Lands | `#CDAB8F` | `#0B365E` | `#11B329` |
+
+Thronefall pairs a pure-black ground seed with saturated warm gold and slate water. Glacial mint uses the supplied reference colours exactly. Swatches show the seed colours; the opinionated material scale still derives readable rendered shades.
+
 Settlement walls use brighter, nearly neutral plaster with a subtle palette tint. Town/city roofs reuse each building’s cosmetic seed to choose a related clay, ochre, slate, timber or original-palette finish. Village roofs retain straw with smaller variations. These are colour changes; map generation, dressing placement, shadows and lighting remain unchanged. Keyboard zoom operates only while the map is open, outside text fields/dropdowns and dialogs, and leaves browser modifier shortcuts alone. Name and save palettes locally; selecting a palette applies it to the map. The last seed, active colours and named palettes survive reloads in this browser. Saving an existing palette name replaces its colours. If browser storage is blocked, controls continue to work for the session.
 
 The desktop map panel occupies roughly the left 60vw, with compact 6–12px margins and tighter header/status/palette padding. Phones and compact landscape screens use the full viewport, with a compact header and floating zoom controls. Maps start at 1.68× zoom on desktop (one button step above 1.4×) and 1.6× on mobile; buttons, wheel and pinch can reach 12×. New Map and seeded replacements preserve the current zoom and pan within the campaign. Opening another campaign applies the default view. The expand icon fills the browser viewport with the map, retaining zoom and exit controls. Browser chrome stays in place; tap Exit or press Escape to restore the normal view.

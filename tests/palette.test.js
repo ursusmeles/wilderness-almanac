@@ -58,9 +58,9 @@ test('presets keep their terrain appearance and dark anchors retain their establ
     dusk: ['#271f38', '#432f05', '#312102'],
     ember: ['#2d1e2e', '#56200b', '#421201'],
     moss: ['#162824', '#38331b', '#28240e'],
-    alien: ['#291944', '#293905', '#1d2902'],
   };
-  for (const [name, seeds] of Object.entries(palettes)) {
+  for (const name of Object.keys(golden)) {
+    const seeds = palettes[name];
     const map = createMapPalette(seeds);
     const fixed = createColorScale(seeds);
     assert.deepEqual(
