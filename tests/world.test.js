@@ -6,7 +6,7 @@ import { prepareMap } from '../src/generation/presentation.js';
 import { chooseCoastEdges, narrowPeninsulaChains } from '../src/generation/geography.js';
 import { components, distance, neighbours, DIRECTIONS } from '../src/generation/hex.js';
 import { riverLandValue } from '../src/generation/river-surfaces.js';
-import { surfaceHeight } from '../src/generation/legacy.js';
+import { surfaceHeight } from '../src/generation/math.js';
 import { readPreferences, savePreferences } from '../src/ui/storage.js';
 import { bendLongRiverRuns } from '../src/generation/river-routing.js';
 import { randomFor } from '../src/generation/seed.js';

@@ -1,4 +1,4 @@
-// Public generation API. The legacy demo remains available for future terrain stages.
+// Public world-generation and campaign-editing API.
 export { generateWorld, generateDressing } from './generation/world.js';
 export {
   campaignWorld,
@@ -7,4 +7,3 @@ export {
   lockHex,
   inspectDistances,
 } from './generation/campaign-world.js';
-export * from './generation/legacy.js';

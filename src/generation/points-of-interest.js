@@ -2,7 +2,7 @@ import rules from '../data/world-rules.json' with { type: 'json' };
 import { DIRECTIONS, components, distance, neighbours } from './hex.js';
 import { hashSeed, randomFor, weightedChoice } from './seed.js';
 import { distanceField } from './spatial.js';
-import { crossingChoice, crossingSite, bridgeMaterialFor } from './legacy.js';
+import { crossingChoice, crossingSite, bridgeMaterialFor } from './crossings.js';
 import { prepareRiverGeometry, riverFieldFor } from './presentation.js';
 
 export const POI_RULES = rules.pointsOfInterest;

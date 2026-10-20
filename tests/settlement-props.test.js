@@ -6,7 +6,7 @@ import { generateWorld, generateDressing } from '../src/generation/world.js';
 import { generatePropDressing, TOKEN_ANCHOR } from '../src/generation/props.js';
 import { distance, DIRECTIONS } from '../src/generation/hex.js';
 import { barrierDistance, barrierEnds, isBarrier } from '../src/generation/settlement-props.js';
-import { fitsHex } from '../src/generation/legacy.js';
+import { fitsHex } from '../src/generation/prop-placement.js';
 import { POI_ANCHOR } from '../src/generation/points-of-interest.js';
 import {
   createSettlementBuilder,

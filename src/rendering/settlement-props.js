@@ -4,7 +4,7 @@ import * as THREE from 'three';
 export const settlementRoofTone = (prop) =>
   prop.detailSeed === undefined ? 0 : (prop.detailSeed % 5) - 2;
 
-// Settlement models share the original building components and palette roles.
+// Settlement models share building components and palette roles.
 export function createSettlementBuilder({ addMesh, propMaterial, roofGeometry }) {
   function makeHouse(parent, prop) {
     const g = new THREE.Group();

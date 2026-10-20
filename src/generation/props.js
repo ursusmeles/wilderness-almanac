@@ -1,6 +1,6 @@
 import { neighbours, distance } from './hex.js';
 import { randomFor } from './seed.js';
-import { fitsHex, fitsTree, minimumSpacing, lowProp } from './legacy.js';
+import { fitsHex, fitsTree, minimumSpacing, lowProp } from './prop-placement.js';
 import { surfaceHeight } from './math.js';
 import { poiAnchor } from './points-of-interest.js';
 import { TOKEN_ANCHOR, isForest, populateForests } from './forest-props.js';

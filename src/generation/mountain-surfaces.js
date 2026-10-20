@@ -1,9 +1,9 @@
 import { DIRECTIONS } from './hex.js';
 import { TOP_RADIUS } from './math.js';
-import { ridgeSurface } from './legacy.js';
+import { ridgeSurface } from './ridge-surface.js';
 import { randomFor } from './seed.js';
 
-// Reuse the original broad, faceted ranges. A single height field per range
+// Build broad, faceted ranges. A single height field per range
 // keeps neighbouring mountain tiles joined instead of placing isolated cones.
 export function prepareMountainRanges(world, dressing) {
   const byKey = new Map(world.cells.map((cell) => [cell.key, cell]));

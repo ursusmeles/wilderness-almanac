@@ -17,7 +17,7 @@ import {
   replaceCampaignMap,
 } from '../src/ui/campaigns.js';
 import { neighbours, distance } from '../src/generation/hex.js';
-import { minimumSpacing } from '../src/generation/legacy.js';
+import { minimumSpacing } from '../src/generation/prop-placement.js';
 import { readPreferences, savePreferences } from '../src/ui/storage.js';
 
 const base = generateWorld('7');

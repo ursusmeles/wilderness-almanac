@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createTopology } from '../src/map-data.js';
 import { distance, DIRECTIONS, neighbours } from '../src/generation/hex.js';
 import { generatePropDressing, TOKEN_ANCHOR } from '../src/generation/props.js';
-import { fitsTree, minimumSpacing } from '../src/generation/legacy.js';
+import { fitsTree, minimumSpacing } from '../src/generation/prop-placement.js';
 import { poiAnchor } from '../src/generation/points-of-interest.js';
 import { forestProfiles, FOREST_TYPES } from '../src/generation/forest-types.js';
 import { describeHex } from '../src/ui/map-link.js';

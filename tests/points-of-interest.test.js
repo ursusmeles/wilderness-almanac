@@ -11,7 +11,7 @@ import {
 import { prepareRiverGeometry, riverFieldFor } from '../src/generation/presentation.js';
 import { riverLandValue, riverIslandValue } from '../src/generation/river-surfaces.js';
 import { distance, neighbours } from '../src/generation/hex.js';
-import { fitsHex } from '../src/generation/legacy.js';
+import { fitsHex } from '../src/generation/prop-placement.js';
 import { isBarrier, barrierDistance } from '../src/generation/settlement-props.js';
 import { prepareMountainRanges } from '../src/generation/mountain-surfaces.js';
 import { surfaceHeight } from '../src/generation/math.js';

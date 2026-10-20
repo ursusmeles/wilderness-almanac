@@ -3,10 +3,10 @@ import { components, distance, neighbours, DIRECTIONS } from './hex.js';
 import { randomFor } from './seed.js';
 import { emptyHexEdits, validateHexEdits } from './hex-edits.js';
 import { prepareRiverGeometry, riverFieldFor } from './presentation.js';
-import { crossingSite } from './legacy.js';
+import { crossingSite } from './crossings.js';
 import { poiAnchor } from './points-of-interest.js';
 import { riverBankValue, riverBankHeight } from './river-surfaces.js';
-import { fitsHex, minimumSpacing, fitsTree } from './legacy.js';
+import { fitsHex, minimumSpacing, fitsTree } from './prop-placement.js';
 import { prepareMountainRanges } from './mountain-surfaces.js';
 import { surfaceHeight } from './math.js';
 

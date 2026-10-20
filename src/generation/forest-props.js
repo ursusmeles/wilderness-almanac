@@ -1,6 +1,6 @@
 import { DIRECTIONS, neighbours } from './hex.js';
 import { randomFor } from './seed.js';
-import { fitsHex, fitsTree, minimumSpacing } from './legacy.js';
+import { fitsHex, fitsTree, minimumSpacing } from './prop-placement.js';
 import { poiAnchor } from './points-of-interest.js';
 import { isForest, forestProfiles } from './forest-types.js';
 

@@ -18,7 +18,7 @@ import { createPanels } from './ui/panels.js';
 import { createHexInspector } from './ui/hex-inspector.js';
 import { disposeTilePreview } from './ui/tile-preview.js';
 
-const root = document.getElementById('hex-smooth-riverlands');
+const root = document.getElementById('campaign-workspace');
 const element = (id) => root.querySelector(`#hp-${id}`);
 let storage;
 try {

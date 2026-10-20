@@ -57,7 +57,7 @@ export function createHexInspector(
   unsaved.className = 'hp-inspector-dialog';
   unsaved.setAttribute('aria-labelledby', 'hp-unsaved-title');
   unsaved.innerHTML = `<h2 id="hp-unsaved-title">Unapplied hex changes</h2><p>Apply or discard your changes before inspecting another hex.</p><div class="hp-tools"><button type="button" data-unsaved="keep">Keep editing</button><button type="button" data-unsaved="discard">Discard</button><button type="button" data-unsaved="apply">Apply changes</button></div>`;
-  host.closest('#hex-smooth-riverlands').append(unsaved);
+  host.closest('#campaign-workspace').append(unsaved);
 
   function constraints() {
     const terrain = el('terrain').value;
