@@ -101,7 +101,7 @@ Maps start at 1.68× zoom on desktop and 1.6× on mobile, with a 0.7–12× clam
 
 Settings can collapse while retaining the palette selector, three swatches and open control. Return to menu remains in the desktop palette section; mobile uses only the back icon beside the campaign title. The mobile settings disclosure shares a row with Regenerate and Wind, and uses the same compact control and icon sizing as the tool panels. Wind pauses tree/reed sway and water waves, remembers its state and respects reduced-motion preferences. Settings disclosure, wind and panel layout preferences survive reloads. Mobile Expand uses a fixed CSS viewport layout, retains zoom/exit controls and keeps browser chrome visible.
 
-The coordinate selector and status console share a row. The console shows counts at rest, short coordinates on hover/selection and temporary action feedback. Action announcements are separate from silent hover updates.
+The coordinate selector and status console share a row. On mobile, the palette selector ends at the same edge as the coordinate selector in both settings states. The console shows counts at rest, short coordinates on hover/selection and temporary action feedback. Action announcements are separate from silent hover updates.
 
 ## Campaign panels and editable hexes
 
@@ -127,4 +127,4 @@ Campaign export envelope version 2 carries edit-state version 1, or version 2 fo
 
 The Node test suite covers deterministic world/dressing replay, geography and drainage invariants, terrain/elevation/settlement constraints, numeric river and mountain seams, POI geometry, cluster-wide forest spacing, crossing probabilities, palette contrast, campaign import/export, edits, locks, history and panel preferences. Run the current suite rather than relying on historical test counts.
 
-Automated Playwright checks cover critical desktop/mobile flows against the production build and run in CI alongside unit tests, formatting and build checks. Additional browser inspection complements these tests for rendered appearance, picking and palette changes. Viewport emulation does not verify physical touch/pinch or every possible seed and colour combination.
+Automated Playwright checks cover critical desktop/mobile flows against the production build. CI currently runs the desktop project alongside unit tests, formatting and build checks; mobile browser tests are temporarily paused until their helpers handle the collapsed Inspector and hidden controls reliably. Additional browser inspection complements these tests for rendered appearance, picking and palette changes. Viewport emulation does not verify physical touch/pinch or every possible seed and colour combination.

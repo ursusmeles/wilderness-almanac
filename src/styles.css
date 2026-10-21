@@ -1774,11 +1774,14 @@
       overscroll-behavior: contain;
     }
     .hp-palette {
-      grid-template-columns: var(--palette-swatch-width) minmax(0, 1fr);
+      grid-template-columns: var(--palette-swatch-width) minmax(0, 1fr) var(--compact-actions-width);
       padding: var(--space-8) max(var(--space-8), env(safe-area-inset-right))
         max(var(--space-8), env(safe-area-inset-bottom))
         max(var(--space-8), env(safe-area-inset-left));
-      gap: var(--space-8) var(--space-12);
+      gap: var(--space-8);
+    }
+    .hp-palette-controls {
+      max-width: none;
     }
     .hp-map-navigation {
       grid-column: 1 / -1;
@@ -1803,7 +1806,7 @@
     }
     .hp-map-options.is-collapsed {
       & .hp-palette {
-        grid-template-columns: 4.375rem minmax(0, 1fr) var(--control-compact-size);
+        grid-template-columns: 4.375rem minmax(0, 1fr) var(--compact-actions-width);
         gap: var(--space-8);
       }
       & .hp-colors {
