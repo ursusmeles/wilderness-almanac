@@ -7,6 +7,7 @@ export const DIRECTIONS = [
   [1, -1],
 ];
 export const keyOf = (q, r) => `${q},${r}`;
+export const hexAddress = (cell) => `Region #${cell.regionId} · ${cell.x}, ${cell.y}`;
 export const distance = (a, b = { q: 0, r: 0 }) =>
   Math.max(Math.abs(a.q - b.q), Math.abs(a.r - b.r), Math.abs(a.q + a.r - b.q - b.r));
 export const worldPosition = ({ q, r }) => ({ wx: Math.sqrt(3) * (q + r / 2), wz: 1.5 * r });

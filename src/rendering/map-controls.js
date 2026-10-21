@@ -58,16 +58,41 @@ export function createMapControls({
     ring.position.set(cell.g.position.x, 0, cell.g.position.z);
   }
   let selected = null,
+    selectionKeys = null,
     hovered = null,
     zoom = 1;
-  function choose(key) {
+  function showSelection() {
+    if (selectionKeys === null) {
+      const cell = cells.find((cell) => cell.key === selected);
+      activeRing.visible = Boolean(cell);
+      if (cell) setRing(activeRing, cell);
+      return;
+    }
+    const points = [];
+    const keys = new Set(selectionKeys);
+    for (const cell of cells.filter((cell) => keys.has(cell.key))) {
+      const geometry = ringGeometry(cell);
+      const positions = geometry.attributes.position;
+      for (let index = 0; index < positions.count; index++)
+        points.push(
+          positions.getX(index) + cell.g.position.x,
+          positions.getY(index),
+          positions.getZ(index) + cell.g.position.z,
+        );
+      geometry.dispose();
+    }
+    activeRing.geometry.dispose();
+    activeRing.geometry = geometryFrom(points);
+    activeRing.position.set(0, 0, 0);
+    activeRing.visible = points.length > 0;
+  }
+  function choose(key, { notify = true } = {}) {
     const cell = cells.find((cell) => cell.key === key);
     if (!cell) return;
     selected = key;
     hoverRing.visible = false;
-    setRing(activeRing, cell);
-    activeRing.visible = true;
-    onSelect(key);
+    if (selectionKeys === null) showSelection();
+    if (notify) onSelect(key);
     draw();
   }
   activeRing.visible = false;
@@ -171,7 +196,7 @@ export function createMapControls({
       if (key !== hovered) {
         hovered = key;
         onHover(key);
-        hoverRing.visible = !!key && key !== selected;
+        hoverRing.visible = !!key && !(selectionKeys ?? [selected]).includes(key);
         if (hoverRing.visible) {
           const c = cells.find((c) => c.key === key);
           setRing(hoverRing, c);
@@ -225,10 +250,17 @@ export function createMapControls({
         camera.position.set(24, 30, 37);
         camera.lookAt(0, 0.3, 0);
       }
-      if (selected && cells.some((cell) => cell.key === selected)) choose(selected);
+      if (selected && cells.some((cell) => cell.key === selected))
+        choose(selected, { notify: false });
+      if (selectionKeys !== null) showSelection();
       resize();
     },
     select: choose,
+    setSelection(keys) {
+      selectionKeys = keys === null ? null : [...keys];
+      showSelection();
+      draw();
+    },
     zoom: changeZoom,
     dispose() {
       listeners.abort();

@@ -12,6 +12,18 @@ export const palettes = {
 
 export const DEFAULT_PALETTE = 'forbidden';
 
+export const paletteNames = {
+  forbidden: 'Forbidden Lands',
+  dusk: 'Dusk & gold',
+  ember: 'Ember coast',
+  moss: 'Moss & bone',
+  classic: 'Verdant Kingdoms',
+  thronefall: 'Thronefall',
+  glacial: 'Glacial mint',
+  autumn: 'Autumn copper',
+  sand: 'Sand & sage',
+};
+
 function linear(v) {
   return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
 }

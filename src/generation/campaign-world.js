@@ -1,5 +1,5 @@
 import { generateWorld, generateDressing } from './world.js';
-import { components, distance, neighbours, DIRECTIONS } from './hex.js';
+import { components, distance, neighbours, DIRECTIONS, hexAddress } from './hex.js';
 import { randomFor } from './seed.js';
 import { emptyHexEdits, validateHexEdits } from './hex-edits.js';
 import { prepareRiverGeometry, riverFieldFor } from './presentation.js';
@@ -11,7 +11,7 @@ import { prepareMountainRanges } from './mountain-surfaces.js';
 import { surfaceHeight } from './math.js';
 
 const own = (value, key) => Object.hasOwn(value, key);
-const structural = ['terrain', 'elevation', 'settlement', 'poi', 'crossing'];
+const structural = ['terrain', 'elevation', 'settlement', 'settlementGroup', 'poi', 'crossing'];
 const openWater = (cell) => ['ocean', 'lake'].includes(cell.water);
 
 export function campaignWorld(campaign, base = generateWorld(campaign.seed)) {
@@ -51,6 +51,13 @@ export function campaignWorld(campaign, base = generateWorld(campaign.seed)) {
           size: 1,
         };
     }
+    if (cell.pointOfLight && edit.settlementGroup) {
+      cell.pointOfLight = {
+        ...cell.pointOfLight,
+        id: `joined-settlement:${edit.settlementGroup}`,
+        centre: cell.key === edit.settlementGroup.split('/')[0],
+      };
+    }
     if (own(edit, 'poi')) {
       const random = randomFor(
         world.seed,
@@ -71,13 +78,17 @@ export function campaignWorld(campaign, base = generateWorld(campaign.seed)) {
     }
     if (openWater(cell)) {
       if (edit.poi || edit.settlement)
-        throw new Error('Open water cannot contain settlements or POIs.');
+        throw new Error(
+          `${hexAddress(cell)}: Open water cannot contain settlements or points of interest. Choose land terrain first.`,
+        );
       delete cell.pointOfLight;
       cell.pointsOfInterest = [];
     }
     if (cell.water === 'river') delete cell.pointOfLight;
     if (edit.crossing && cell.water !== 'river')
-      throw new Error('Crossings can only be placed on rivers.');
+      throw new Error(
+        `${hexAddress(cell)}: Crossings can only be placed on rivers. Select a river hex.`,
+      );
     if (cell.water !== 'river' || edit.crossing === null) delete cell.crossing;
   }
   // Repair only broken/new drainage links. Existing river routes remain in place.
@@ -118,10 +129,11 @@ export function campaignWorld(campaign, base = generateWorld(campaign.seed)) {
     ...new Set(world.cells.filter((cell) => cell.pointOfLight).map((cell) => cell.pointOfLight.id)),
   ];
   for (const id of settlementIds) {
-    const groups = components(
-      world.cells.filter((cell) => cell.pointOfLight?.id === id),
-      byKey,
-    );
+    const members = world.cells.filter((cell) => cell.pointOfLight?.id === id);
+    const groups =
+      members[0].pointOfLight.type === 'village'
+        ? members.map((cell) => [cell])
+        : components(members, byKey);
     groups.forEach((group, index) => {
       const groupId = index ? `${id}:${group[0].key}` : id;
       const anchor = group.find((cell) => cell.pointOfLight.centre) ?? group[0];
@@ -242,7 +254,9 @@ export function campaignDressing(
     if (fixed[cell.key]) {
       const origin = worldByKey.get(cell.key);
       if (openWater(origin) && fixed[cell.key].props.some((prop) => prop.kind !== 'wave'))
-        throw new Error('Open water cannot contain frozen land props or POIs.');
+        throw new Error(
+          `${hexAddress(origin)}: Open water cannot contain frozen land props or POIs.`,
+        );
       if (
         fixed[cell.key].props.some(
           (prop) =>
@@ -252,7 +266,9 @@ export function campaignDressing(
             ),
         )
       )
-        throw new Error('Frozen POI dressing does not match this hex’s features.');
+        throw new Error(
+          `${hexAddress(origin)}: Frozen POI dressing does not match this hex’s features.`,
+        );
       const forest = cell.forest;
       const links = cell.links;
       Object.assign(cell, structuredClone(fixed[cell.key]));
@@ -349,7 +365,7 @@ export function campaignDressing(
           }
         if (!best)
           throw new Error(
-            'This river has no dry bank large enough for that POI. Try a neighbouring river hex.',
+            `${hexAddress(cell)}: This point of interest needs a larger dry bank. Try another river hex.`,
           );
         Object.assign(prop, { x: best.x, z: best.z, y: best.y, pedestalDepth: 0.04 });
       }
@@ -367,29 +383,55 @@ function distanceToCrossing(x, z, crossing) {
 }
 
 export function updateHex(campaign, key, patch) {
+  return updateHexes(campaign, { [key]: patch });
+}
+
+// Merge the entire operation before reconciling shared forest/ridge snapshots.
+export function updateHexes(campaign, patches, baseWorld) {
   const previous = campaign.hexEdits ?? emptyHexEdits();
-  const hexEdits = { version: 1, cells: { ...previous.cells } };
-  const edit = { ...hexEdits.cells[key], ...patch };
-  if (structural.some((field) => own(patch, field))) delete edit.lock;
-  if (structural.some((field) => own(patch, field))) {
-    delete edit.dressing;
-    delete edit.dressingVariant;
+  const version =
+    previous.version === 2 ||
+    Object.values(patches).some((patch) => patch && own(patch, 'settlementGroup'))
+      ? 2
+      : 1;
+  const hexEdits = { version, cells: { ...previous.cells } };
+  const changed = [];
+  for (const [key, patch] of Object.entries(patches)) {
+    if (patch === null) {
+      // Reset selected records together, then repair their shared surroundings once.
+      if (structural.some((field) => own(previous.cells[key] ?? {}, field))) changed.push(key);
+      delete hexEdits.cells[key];
+      continue;
+    }
+    const edit = { ...hexEdits.cells[key], ...patch };
+    if (
+      own(patch, 'settlement') &&
+      !own(patch, 'settlementGroup') &&
+      (patch.settlement !== previous.cells[key]?.settlement ||
+        !['town', 'city'].includes(patch.settlement))
+    )
+      delete edit.settlementGroup;
+    if (structural.some((field) => own(patch, field))) {
+      changed.push(key);
+      delete edit.lock;
+      delete edit.dressing;
+      delete edit.dressingVariant;
+    }
+    hexEdits.cells[key] = validateHexEdits({ version, cells: { [key]: edit } }).cells[key];
   }
-  hexEdits.cells[key] = validateHexEdits({ version: 1, cells: { [key]: edit } }).cells[key];
   let next = { ...campaign, hexEdits };
-  if (
-    structural.some((field) => own(patch, field)) &&
-    Object.values(hexEdits.cells).some((value) => value.dressing)
-  ) {
+  if (changed.length && Object.values(hexEdits.cells).some((value) => value.dressing)) {
     // Cosmetic snapshots remain local until a structural edit changes their
     // shared forest/ridge context. Clear snapshots only in affected components.
-    const affected = new Set([key]);
-    const base = generateWorld(campaign.seed);
+    const affected = new Set(changed);
+    const base = baseWorld ?? generateWorld(campaign.seed);
     for (const world of [campaignWorld(campaign, base), campaignWorld(next, base)]) {
       const byKey = new Map(world.cells.map((cell) => [cell.key, cell]));
-      const target = byKey.get(key);
-      const nearby = [target, ...neighbours(target, byKey)];
-      nearby.forEach((cell) => affected.add(cell.key));
+      for (const key of changed) {
+        const target = byKey.get(key);
+        const nearby = [target, ...neighbours(target, byKey)];
+        nearby.forEach((cell) => affected.add(cell.key));
+      }
       for (const predicate of [
         (cell) => cell.terrain.includes('forest'),
         (cell) => cell.terrain === 'mountains',
@@ -429,7 +471,7 @@ export function lockHex(campaign, key, world, dressing) {
   if (range) lock.mountain = dressing.mountains.find((shape) => shape.rangeId === range);
   next.hexEdits.cells[key].lock = lock;
   next.hexEdits.cells[key] = validateHexEdits({
-    version: 1,
+    version: next.hexEdits.version,
     cells: { [key]: next.hexEdits.cells[key] },
   }).cells[key];
   return next;

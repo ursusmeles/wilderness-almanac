@@ -2,7 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createCampaignSession } from '../src/application/campaign-session.js';
 import { generateWorld } from '../src/generation/world.js';
-import { createCampaign } from '../src/application/campaigns.js';
+import { createCampaign, exportCampaign, importCampaign } from '../src/application/campaigns.js';
+import { campaignWorld, campaignDressing } from '../src/generation/campaign-world.js';
+import { prepareMap } from '../src/generation/presentation.js';
+import { components, neighbours } from '../src/generation/hex.js';
 
 const campaign = createCampaign(
   generateWorld('7'),
@@ -27,6 +30,197 @@ function fixture() {
     },
   };
 }
+
+test('multi selection toggles, selects all and clears without persisting or adding history', () => {
+  const { session, writes } = fixture();
+  session.setMultiEdit(true);
+  assert.deepEqual(session.snapshot().selectedKeys, ['0,0']);
+  session.select('1,0');
+  session.select('0,0');
+  assert.deepEqual(session.snapshot().selectedKeys, ['1,0']);
+  assert.equal(session.select('99,99'), false);
+  session.selectAll();
+  assert.equal(session.snapshot().selectedKeys.length, 469);
+  session.clearSelection();
+  assert.deepEqual(session.snapshot().selectedKeys, []);
+  assert.equal(session.applyBatch({ terrain: 'meadow' }).ok, false);
+  assert.equal(session.snapshot().canUndo, false);
+  assert.equal(writes.length, 1);
+  session.open(campaign);
+  assert.equal(session.snapshot().multiEdit, false);
+});
+
+test('a batch preserves omitted fields, exports/replays and undoes with one history entry and save', () => {
+  const { session, writes } = fixture();
+  session.visit();
+  const before = session.snapshot();
+  session.setMultiEdit(true);
+  session.select('1,0');
+  const writeCount = writes.length;
+  assert.equal(session.applyBatch({ terrain: 'meadow', elevation: 1 }).ok, true);
+  const after = session.snapshot();
+  for (const key of ['0,0', '1,0']) {
+    const cell = after.world.cells.find((cell) => cell.key === key);
+    assert.equal(cell.terrain, 'meadow');
+    assert.equal(cell.elevation, 1);
+    assert.deepEqual(
+      cell.pointOfLight,
+      before.world.cells.find((cell) => cell.key === key).pointOfLight,
+    );
+  }
+  assert.equal(after.campaign.hexEdits.cells['0,0'].visited, true);
+  assert.equal(writes.length, writeCount + 1);
+  const imported = importCampaign(exportCampaign(after.campaign));
+  assert.deepEqual(campaignWorld(imported), after.world);
+  assert.deepEqual(campaignDressing(imported, campaignWorld(imported)), after.dressing);
+  assert.equal(session.undo().ok, true);
+  assert.deepEqual(session.snapshot().campaign.hexEdits, before.campaign.hexEdits);
+  assert.equal(session.undo().ok, true);
+  assert.equal(session.snapshot().canUndo, false);
+});
+
+test('one incompatible target rejects the whole batch without a save or Undo entry', () => {
+  const { session, writes } = fixture();
+  const initial = session.snapshot();
+  const land = initial.world.cells.find((cell) => !cell.water);
+  const ocean = initial.world.cells.find((cell) => cell.water === 'ocean');
+  session.select(land.key);
+  session.setMultiEdit(true);
+  session.select(ocean.key);
+  assert.match(session.applyBatch({ settlement: 'village' }).error, /Water cannot/);
+  assert.match(session.applyBatch({ elevation: 2 }).error, /fixed elevation/);
+  assert.equal(session.snapshot().campaign, initial.campaign);
+  assert.equal(session.snapshot().world, initial.world);
+  assert.equal(session.snapshot().canUndo, false);
+  assert.equal(writes.length, 1);
+});
+
+test('crossing requests reject any non-river target even when the last clicked hex is valid', () => {
+  const { session, writes } = fixture();
+  const world = session.snapshot().world;
+  const invalid = world.cells.find((cell) => !cell.water);
+  const valid = world.cells.find((cell) => cell.crossing);
+  session.select(invalid.key);
+  const initial = session.snapshot();
+  const writeCount = writes.length;
+  session.setMultiEdit(true);
+  session.select(valid.key);
+  assert.match(session.applyBatch({ crossing: 'bridge' }).error, /only be placed on rivers/);
+  assert.equal(session.snapshot().campaign, initial.campaign);
+  assert.equal(writes.length, writeCount);
+});
+
+test('batch water conversion removes incompatible overrides and relocks edited dressing', () => {
+  const { session } = fixture();
+  for (const key of ['0,0', '1,0']) {
+    session.select(key);
+    assert.equal(
+      session.apply({ terrain: 'meadow', settlement: 'village', poi: null, crossing: null }).ok,
+      true,
+    );
+    session.visit();
+    session.lock();
+  }
+  const before = session.snapshot();
+  session.setMultiEdit(true);
+  session.select('0,0');
+  assert.equal(session.applyBatch({ terrain: 'open water' }).ok, true);
+  for (const key of ['0,0', '1,0']) {
+    const state = session.snapshot();
+    const cell = state.world.cells.find((cell) => cell.key === key);
+    assert.equal(cell.elevation, 0);
+    assert.equal(cell.pointOfLight, undefined);
+    assert.deepEqual(cell.pointsOfInterest, []);
+    assert.equal(state.campaign.hexEdits.cells[key].visited, true);
+    assert.ok(state.campaign.hexEdits.cells[key].lock.props.every((prop) => prop.kind === 'wave'));
+  }
+  session.undo();
+  assert.deepEqual(session.snapshot().campaign.hexEdits, before.campaign.hexEdits);
+});
+
+test('batch tracking shares geometry and failed saving retains the complete batch', () => {
+  const { session, fail } = fixture();
+  const before = session.snapshot();
+  session.setMultiEdit(true);
+  session.select('1,0');
+  fail({ campaignSaved: false, preferencesSaved: true });
+  assert.equal(session.applyBatch({ visited: true }).ok, true);
+  const after = session.snapshot();
+  assert.equal(after.world, before.world);
+  assert.equal(after.dressing, before.dressing);
+  assert.equal(after.campaign.hexEdits.cells['0,0'].visited, true);
+  assert.equal(after.campaign.hexEdits.cells['1,0'].visited, true);
+  assert.equal(after.persistence.saved, false);
+  session.undo();
+  assert.equal(session.snapshot().campaign.hexEdits, undefined);
+});
+
+test('whole-map terrain conversion uses existing replay format and has finite geometry', () => {
+  const { session } = fixture();
+  session.setMultiEdit(true);
+  session.selectAll();
+  assert.equal(
+    session.applyBatch({ terrain: 'meadow', elevation: 0, settlement: null, poi: null }).ok,
+    true,
+  );
+  const after = session.snapshot();
+  assert.equal(after.world.terrain.counts.meadow, 469);
+  assert.equal(after.world.settlements.length, 0);
+  const layout = prepareMap(after.world, after.dressing);
+  assert.equal(layout.length, 469);
+  assert.ok(layout.every((cell) => Number.isFinite(cell.top)));
+  assert.deepEqual(campaignWorld(importCampaign(exportCampaign(after.campaign))), after.world);
+  assert.equal(session.undo().ok, true);
+  assert.equal(session.snapshot().campaign.hexEdits, undefined);
+});
+
+test('batch result is independent of selection order, including repaired river links', () => {
+  const left = fixture().session;
+  const right = fixture().session;
+  const keys = ['0,0', '1,0', '0,1'];
+  for (const [session, order] of [
+    [left, keys],
+    [right, keys.toReversed()],
+  ]) {
+    session.setMultiEdit(true);
+    session.clearSelection();
+    for (const key of order) session.select(key);
+    assert.equal(session.applyBatch({ terrain: 'river', poi: null, crossing: null }).ok, true);
+  }
+  assert.deepEqual(left.snapshot().world, right.snapshot().world);
+  assert.deepEqual(left.snapshot().dressing, right.snapshot().dressing);
+});
+
+test('batch snapshot invalidation includes every affected forest component', () => {
+  const { session } = fixture();
+  const world = session.snapshot().world;
+  const byKey = new Map(world.cells.map((cell) => [cell.key, cell]));
+  const groups = components(
+    world.cells.filter((cell) => cell.terrain.includes('forest')),
+    byKey,
+  )
+    .filter((group) => group.length > 1)
+    .slice(0, 2);
+  assert.equal(groups.length, 2);
+  for (const group of groups) {
+    session.select(group[0].key);
+    assert.equal(session.regenerateHex().ok, true);
+  }
+  const before = session.snapshot().campaign;
+  session.setMultiEdit(true);
+  session.clearSelection();
+  for (const group of groups) {
+    const target = neighbours(group[0], byKey).find((cell) => group.includes(cell));
+    session.select(target.key);
+  }
+  assert.equal(session.applyBatch({ terrain: 'meadow' }).ok, true);
+  for (const group of groups) {
+    assert.ok(before.hexEdits.cells[group[0].key].dressing);
+    assert.equal(session.snapshot().campaign.hexEdits.cells[group[0].key].dressing, undefined);
+  }
+  session.undo();
+  assert.deepEqual(session.snapshot().campaign.hexEdits, before.hexEdits);
+});
 
 test('tracking and lock actions share world/dressing, retain immutable undo state and persist results', () => {
   const { session, writes } = fixture();

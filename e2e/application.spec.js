@@ -163,7 +163,7 @@ test('unapplied edits can be kept or applied before changing selection; Undo res
   await page.getByRole('button', { name: 'Edit hex', exact: true }).click();
   await page.getByRole('combobox', { name: 'Terrain', exact: true }).selectOption('meadow');
   await page.getByRole('combobox', { name: 'Selected hex', exact: true }).selectOption('1,0');
-  const dialog = page.getByRole('dialog', { name: 'Unapplied hex changes', exact: true });
+  const dialog = page.getByRole('dialog', { name: 'Unsaved edits', exact: true });
   await expect(dialog).toBeVisible();
   await dialog.getByRole('button', { name: 'Keep editing', exact: true }).click();
   await expect(page.locator('#hp-selection')).toHaveValue('0,0');
@@ -183,9 +183,9 @@ test('leaving the map protects a draft and map replacement confirms clearing sav
   await page.getByRole('button', { name: 'Edit hex', exact: true }).click();
   await page.getByRole('combobox', { name: 'Terrain', exact: true }).selectOption('meadow');
   await page.locator('#hp-return-menu').click();
-  const dialog = page.getByRole('dialog', { name: 'Unapplied hex changes', exact: true });
+  const dialog = page.getByRole('dialog', { name: 'Unsaved edits', exact: true });
   await expect(dialog).toBeVisible();
-  await dialog.getByRole('button', { name: 'Discard', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Discard changes', exact: true }).click();
   await expect(page.locator('#campaign-menu')).toBeVisible();
   await page.getByRole('button', { name: 'Enter Test campaign', exact: true }).click();
   await page.getByRole('switch', { name: 'Visited', exact: true }).click();

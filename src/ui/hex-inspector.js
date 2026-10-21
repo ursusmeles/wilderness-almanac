@@ -3,6 +3,7 @@ import { POI_TYPES, SETTLEMENT_TYPES, variantsFor } from '../generation/hex-edit
 import { inspectDistances } from '../generation/campaign-world.js';
 import { describeHex } from './map-link.js';
 import { cloneTemplate } from './templates.js';
+import { hexAddress } from '../generation/hex.js';
 
 const title = (text) => (text ? text[0].toUpperCase() + text.slice(1) : 'None');
 export function createHexInspector(
@@ -51,12 +52,13 @@ export function createHexInspector(
     el('crossing').disabled = terrain !== 'river';
     el('constraint').textContent =
       terrain === 'open water'
-        ? 'Open water uses elevation 0 and cannot contain settlements or POIs. Applying removes existing features.'
+        ? 'This removes settlements, points of interest and crossings.'
         : terrain === 'river'
-          ? 'River elevation is fixed at 0. POIs need a dry bank; crossings need two usable banks.'
+          ? 'This removes settlements. Points of interest and crossings need usable banks.'
           : mountain
-            ? 'Mountain elevation is fixed at 4. Connected slopes and ridges update together.'
-            : 'Land elevation can be 0–3. Changes may update connected forests and neighbouring surfaces.';
+            ? 'Mountain elevation is fixed at 4.'
+            : '';
+    el('constraint').hidden = !editing || !el('constraint').textContent;
   }
   function subtype(value) {
     options(el('subtype'), el('poi').value ? variantsFor(el('poi').value) : []);
@@ -106,8 +108,8 @@ export function createHexInspector(
       crossing: terrain === 'river' ? el('crossing').value || null : null,
     };
   }
-  function apply() {
-    if (onApply(patch()) === false) return false;
+  async function apply(button = el('apply')) {
+    if ((await onApply(patch(), button)) === false) return false;
     setEditing(false);
     return true;
   }
@@ -132,10 +134,10 @@ export function createHexInspector(
   listen(el('reset'), 'click', onReset);
   listen(el('undo'), 'click', onUndo);
   listen(el('icon'), 'click', onSetIcon);
-  listen(unsaved, 'click', (event) => {
+  listen(unsaved, 'click', async (event) => {
     const action = event.target.closest('[data-unsaved]')?.dataset.unsaved;
     if (!action) return;
-    if (action === 'apply' && !apply()) {
+    if (action === 'apply' && !(await apply(event.target.closest('button')))) {
       unsaved.close();
       pending = null;
       el('apply').focus({ preventScroll: true });
@@ -180,14 +182,14 @@ export function createHexInspector(
         .split(' · ')
         .slice(2)
         .join(' · ');
-      el('address').textContent = `Region ${next.cell.regionId} · ${next.cell.x}, ${next.cell.y}`;
+      el('address').textContent = hexAddress(next.cell);
       host.dataset.hexKey = next.cell.key;
       const distances = inspectDistances(next.world, next.cell);
       for (const [name, value] of Object.entries(distances))
         el(`distance-${name}`).textContent =
           value === null ? 'None on map' : `${value} ${value === 1 ? 'hex' : 'hexes'}`;
-      el('visited-state').textContent = next.visited ? 'Already visited' : 'Not yet visited';
       el('visited').setAttribute('aria-checked', String(next.visited));
+      el('visited').title = next.visited ? 'Mark as not visited' : 'Mark as visited';
       el('lock-state').textContent = next.locked ? 'Unlock hex' : 'Lock hex';
       el('lock').setAttribute('aria-checked', String(next.locked));
       el('lock').title = next.locked

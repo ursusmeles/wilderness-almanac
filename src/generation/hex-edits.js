@@ -165,7 +165,7 @@ function validateLock(value, key) {
 export function validateHexEdits(value) {
   if (
     !record(value) ||
-    value.version !== 1 ||
+    ![1, 2].includes(value.version) ||
     !record(value.cells) ||
     Object.keys(value.cells).length > 469
   )
@@ -186,6 +186,19 @@ export function validateHexEdits(value) {
     if (source.settlement !== undefined) {
       if (source.settlement !== null && !SETTLEMENT_TYPES.includes(source.settlement)) fail();
       edit.settlement = source.settlement;
+    }
+    if (source.settlementGroup !== undefined) {
+      const parts =
+        typeof source.settlementGroup === 'string' ? source.settlementGroup.split('/') : [];
+      if (
+        value.version !== 2 ||
+        !['town', 'city'].includes(edit.settlement) ||
+        parts.length !== 2 ||
+        !validKey(parts[0]) ||
+        !/^[1-9]\d{0,5}$/.test(parts[1])
+      )
+        fail();
+      edit.settlementGroup = source.settlementGroup;
     }
     if (source.poi !== undefined) {
       if (source.poi === null) edit.poi = null;
@@ -219,7 +232,14 @@ export function validateHexEdits(value) {
     }
     cells[key] = edit;
   }
-  return { version: 1, cells };
+  const groups = new Map();
+  for (const edit of Object.values(cells))
+    if (edit.settlementGroup) {
+      if (groups.has(edit.settlementGroup) && groups.get(edit.settlementGroup) !== edit.settlement)
+        fail();
+      groups.set(edit.settlementGroup, edit.settlement);
+    }
+  return { version: value.version, cells };
 }
 
 export const emptyHexEdits = () => ({ version: 1, cells: {} });

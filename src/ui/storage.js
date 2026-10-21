@@ -15,6 +15,9 @@ export function readPreferences(storage) {
           : undefined,
       variant: Number.isSafeInteger(saved.variant) && saved.variant >= 0 ? saved.variant : 0,
       colors: validColors(saved.colors) ? saved.colors : undefined,
+      ...(typeof saved.defaultPalette === 'string' && saved.defaultPalette.length <= 128
+        ? { defaultPalette: saved.defaultPalette }
+        : {}),
       ...(typeof saved.campaignId === 'string' && saved.campaignId.length <= 128
         ? { campaignId: saved.campaignId }
         : {}),
@@ -49,6 +52,7 @@ export function readPreferences(storage) {
       palettes: Array.isArray(saved.palettes)
         ? saved.palettes.filter(
             (palette) =>
+              palette &&
               typeof palette.name === 'string' &&
               palette.name.trim() &&
               palette.name.length <= 60 &&

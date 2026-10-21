@@ -1,3 +1,5 @@
+import { hexAddress } from '../generation/hex.js';
+
 const validColors = (colors) =>
   colors?.length === 3 && colors.every((c) => /^#[0-9a-f]{6}$/i.test(c));
 
@@ -78,5 +80,5 @@ export function describeHex(cell) {
         ? 'a ferry'
         : `a ${cell.crossing.material === 'stone' ? 'stone' : 'wooden'} bridge`
       : '';
-  return `Region #${cell.regionId} · ${cell.x}, ${cell.y} · ${label[0].toUpperCase() + label.slice(1)}${feature ? ` with ${feature}` : ''}`;
+  return `${hexAddress(cell)} · ${label[0].toUpperCase() + label.slice(1)}${feature ? ` with ${feature}` : ''}`;
 }

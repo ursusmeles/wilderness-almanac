@@ -1,6 +1,6 @@
 import { generateWorld } from './generation/world.js';
 import { prepareMap } from './generation/presentation.js';
-import { palettes, paletteTheme, DEFAULT_PALETTE } from './palette.js';
+import { palettes, paletteNames, paletteTheme, DEFAULT_PALETTE } from './palette.js';
 import { readPreferences, savePreferences } from './ui/storage.js';
 import { readMapLink, mapLink, copyText, describeHex, shortCoordinates } from './ui/map-link.js';
 import { createMapConsole } from './ui/map-console.js';
@@ -8,8 +8,12 @@ import { createSaveStatus } from './ui/save-status.js';
 import { createCampaign, campaignIconCandidates } from './application/campaigns.js';
 import { createCampaignSession } from './application/campaign-session.js';
 import { createCampaignMenu } from './ui/campaign-menu.js';
+import { createPaletteLibrary } from './ui/palette-library.js';
+import { createPaletteManager } from './ui/palette-manager.js';
 import { createPanels } from './ui/panels.js';
 import { createHexInspector } from './ui/hex-inspector.js';
+import { createBatchInspector } from './ui/batch-inspector.js';
+import { createMapAction } from './ui/map-action.js';
 import { loadThumbnails, saveThumbnails } from './ui/thumbnail-cache.js';
 import { createViewNavigation } from './ui/view-navigation.js';
 import { cloneTemplate } from './ui/templates.js';
@@ -17,6 +21,9 @@ import { cloneTemplate } from './ui/templates.js';
 const root = document.getElementById('campaign-workspace');
 const navigation = createViewNavigation(document.getElementById('campaign-menu'), root);
 const element = (id) => root.querySelector(`#hp-${id}`);
+const mapAction = createMapAction(root, (text) => {
+  element('announcement').textContent = text;
+});
 let storage;
 try {
   storage = window.localStorage;
@@ -30,9 +37,12 @@ const freshSeed = () =>
     part.toString(16).padStart(8, '0'),
   ).join('-');
 const initialColors = linked.colors ?? saved.colors ?? palettes[DEFAULT_PALETTE].slice();
-const savedPalettes = saved.palettes ?? [];
+const paletteLibrary = createPaletteLibrary(saved);
+const savedPalettes = paletteLibrary.custom;
 let layout;
 let inspector;
+let batchInspector;
+const activeInspector = () => (session.snapshot()?.multiEdit ? batchInspector : inspector);
 let cellsByKey = new Map();
 let renderer;
 let mapView;
@@ -95,6 +105,7 @@ function setSettingsOpen(enabled) {
       control.disabled = !enabled;
     });
   element('motion').hidden = !enabled;
+  element('multi-edit').hidden = !enabled;
 }
 setSettingsOpen(settingsOpen);
 listen(element('toggle-settings'), 'click', () => {
@@ -151,24 +162,34 @@ const previousMap = {
 };
 let campaignMenu;
 
+function persistPreferences(campaign = session.snapshot()?.campaign) {
+  const preferencesSaved = savePreferences(storage, {
+    ...saved,
+    ...(campaign
+      ? {
+          seed: campaign.seed,
+          variant: campaign.variant,
+          colors: campaign.colors,
+          campaignId: campaign.id,
+        }
+      : {}),
+    ...paletteLibrary.preferences(),
+    motion: movement,
+    settingsOpen,
+    ...panels.preferences(),
+  });
+  saveStatus.update('preferences', preferencesSaved);
+  return preferencesSaved;
+}
+
 function persistCampaign(campaign) {
   try {
     history.replaceState(history.state, '', mapLink(window.location.href, campaign));
   } catch {
     /* Sandboxed embeddings can restrict history updates. */
   }
-  const preferencesSaved = savePreferences(storage, {
-    seed: campaign.seed,
-    variant: campaign.variant,
-    colors: campaign.colors,
-    palettes: savedPalettes,
-    motion: movement,
-    settingsOpen,
-    campaignId: campaign.id,
-    ...panels.preferences(),
-  });
+  const preferencesSaved = persistPreferences(campaign);
   const campaignSaved = campaignMenu.update(campaign);
-  saveStatus.update('preferences', preferencesSaved);
   return { campaignSaved, preferencesSaved };
 }
 
@@ -196,16 +217,27 @@ async function openCampaign(campaign) {
 function presentCampaign({ resetView = false } = {}) {
   const { campaign, world } = session.snapshot();
   inspector.reset();
+  batchInspector.reset();
   root.hidden = false;
   if (!renderer)
     renderer = mapView.createMapRenderer(element('scene'), {
       motion: movement,
       onSelect(key) {
         if (!key) return;
-        const { selected } = session.snapshot();
-        if (!inspector.beforeSelection(key, () => renderer.select(key))) {
-          renderer.select(selected);
+        if (mapAction.isBusy()) {
+          renderer.select(session.snapshot().selected, { notify: false });
+          syncSelection();
+          return;
+        }
+        const { selected, multiEdit } = session.snapshot();
+        const proceed = () => renderer.select(key);
+        const ready = multiEdit
+          ? batchInspector.beforeLeave(proceed)
+          : inspector.beforeSelection(key, proceed);
+        if (!ready) {
+          renderer.select(selected, { notify: false });
           selection.value = selected;
+          syncSelection();
           return;
         }
         session.select(key);
@@ -213,6 +245,7 @@ function presentCampaign({ resetView = false } = {}) {
         root.dataset.selected = key;
         mapConsole.hover(shortCoordinates(cellsByKey.get(key)));
         updateInspector();
+        syncSelection();
       },
       onHover(key) {
         mapConsole.hover(shortCoordinates(cellsByKey.get(key)));
@@ -287,7 +320,7 @@ async function cacheCampaignIcons(revision) {
 
 function handleAction(result) {
   if (!result.ok) {
-    if (result.error) inspector.error(result.error);
+    if (result.error) activeInspector().error(result.error);
     return false;
   }
   if (result.scope === 'world') renderWorld();
@@ -319,13 +352,16 @@ function renderWorld({ resetView = false } = {}) {
   );
   layout = prepareMap(world, dressing);
   renderer?.setMap(layout, { resetView });
-  renderer?.select(selected);
+  renderer?.select(selected, { notify: false });
+  selection.value = selected;
+  root.dataset.selected = selected;
+  syncSelection();
   root.dataset.variant = String(campaign.variant);
   updateInspector();
 }
 
 function newMap(seed, confirmed = false) {
-  if (!confirmed && !inspector.beforeLeave(() => newMap(seed))) return;
+  if (!confirmed && !activeInspector().beforeLeave(() => newMap(seed))) return;
   const result = session.replace(seed, { confirmed });
   if (result.requiresConfirmation) {
     pendingMapSeed = seed;
@@ -358,6 +394,10 @@ function applyPalette() {
     element(name).closest('.hp-swatch').style.setProperty('--swatch-color', colors[index]);
     element(`${name}-value`).textContent = colors[index].toUpperCase();
   });
+  selectPalette(colors);
+}
+
+function selectPalette(colors) {
   const same = (candidate) =>
     candidate.every((color, index) => color.toLowerCase() === colors[index].toLowerCase());
   const builtin = Object.keys(palettes).find((key) => same(palettes[key]));
@@ -370,7 +410,7 @@ function paletteLabel(candidate) {
     other.every((color, index) => color.toLowerCase() === candidate[index].toLowerCase());
   const builtin = Object.keys(palettes).find((key) => same(palettes[key]));
   return builtin
-    ? preset.querySelector(`option[value="${builtin}"]`).textContent
+    ? paletteNames[builtin]
     : (savedPalettes.find((palette) => same(palette.colors))?.name ?? 'Custom');
 }
 
@@ -384,7 +424,7 @@ listen(element('copy-seed'), 'click', async () => {
     await copyText(session.snapshot().campaign.seed);
     mapConsole.notify('Seed copied');
   } catch {
-    mapConsole.notify('Could not copy the seed. Select the seed text to copy it.');
+    mapConsole.error('Could not copy the seed. Select the seed text to copy it.');
   }
 });
 listen(element('share-map'), 'click', async () => {
@@ -393,7 +433,7 @@ listen(element('share-map'), 'click', async () => {
     await copyText(url);
     mapConsole.notify('Seed link copied');
   } catch {
-    mapConsole.notify('Could not share. Copy the URL from the address bar.');
+    mapConsole.error('Could not share. Copy the URL from the address bar.');
   }
 });
 function updateMovementToggle() {
@@ -407,8 +447,34 @@ listen(element('motion'), 'click', () => {
   renderer?.setMotion(movement);
   if (session.save().saved) mapConsole.notify(movement ? 'Wind turned on' : 'Wind turned off');
 });
+function syncSelection() {
+  const state = session.snapshot();
+  if (!state) return;
+  renderer?.setSelection(state.multiEdit ? state.selectedKeys : null);
+  element('multi-edit').setAttribute('aria-checked', String(state.multiEdit));
+  element('multi-edit-state').textContent = state.multiEdit ? 'ON' : 'OFF';
+  root.dataset.multiEdit = String(state.multiEdit);
+  root.dataset.selectionCount = String(state.multiEdit ? state.selectedKeys.length : 1);
+  singleInspectorHost.hidden = state.multiEdit;
+  batchInspectorHost.hidden = !state.multiEdit;
+}
+listen(element('multi-edit'), 'click', () => {
+  const change = () => {
+    session.setMultiEdit(!session.snapshot().multiEdit);
+    inspector.reset();
+    batchInspector.reset();
+    syncSelection();
+    updateInspector();
+    mapConsole.notify(
+      session.snapshot().multiEdit
+        ? 'Multi edit on: select hexes to edit together'
+        : 'Multi edit off',
+    );
+  };
+  if (activeInspector().beforeLeave(change)) change();
+});
 function returnToMenu() {
-  if (inspector.beforeLeave(showMenu)) showMenu();
+  if (activeInspector().beforeLeave(showMenu)) showMenu();
 }
 async function showMenu() {
   setExpanded(false);
@@ -451,9 +517,9 @@ listen(element('new-map-form'), 'submit', (event) => {
   dialog.close();
 });
 listen(element('seed'), 'input', () => element('seed').setCustomValidity(''));
-listen(element('regenerate'), 'click', () => {
-  handleAction(session.regenerate());
-});
+listen(element('regenerate'), 'click', (event) =>
+  mapAction.run(event.currentTarget, () => handleAction(session.regenerate()), 'Regenerating…'),
+);
 listen(preset, 'change', () => {
   const savedIndex = Number(preset.value.split(':')[1]);
   const palette = palettes[preset.value] ?? savedPalettes[savedIndex]?.colors;
@@ -481,9 +547,9 @@ listen(element('palette-form'), 'submit', (event) => {
     (palette) => palette.name.toLowerCase() === name.toLowerCase(),
   );
   const colors = session.snapshot().campaign.colors;
-  const palette = { name, colors: colors.slice() };
-  if (index < 0) savedPalettes.push(palette);
-  else savedPalettes[index] = palette;
+  const palette = index < 0 ? paletteLibrary.add(colors) : savedPalettes[index];
+  paletteLibrary.rename(palette.id, name);
+  palette.colors = colors.slice();
   updatePaletteOptions();
   handleAction({
     ...session.palette(colors, name),
@@ -497,6 +563,16 @@ function updateInspector() {
   const state = session.snapshot();
   if (!state) return;
   const { world, dressing, selected, campaign, canUndo } = state;
+  if (state.multiEdit) {
+    const keys = new Set(state.selectedKeys);
+    batchInspector?.update({
+      cells: world.cells.filter((cell) => keys.has(cell.key)),
+      edits: campaign.hexEdits?.cells,
+      join: state.join,
+      canUndo,
+    });
+    return;
+  }
   const colors = campaign.colors;
   const cell = cellsByKey.get(selected);
   if (!cell || !dressing || !layout) return;
@@ -514,16 +590,59 @@ function updateInspector() {
   });
 }
 
-inspector = createHexInspector(panels.inspector, {
+const singleInspectorHost = document.createElement('div');
+const batchInspectorHost = document.createElement('div');
+batchInspectorHost.hidden = true;
+panels.inspector.append(singleInspectorHost, batchInspectorHost);
+inspector = createHexInspector(singleInspectorHost, {
   visible: panels.inspectorVisible,
   preview: (tile, colors) => mapView?.tilePreview(tile, colors) ?? '',
-  onApply: (patch) => handleAction(session.apply(patch)),
+  onApply: (patch, button) => mapAction.run(button, () => handleAction(session.apply(patch))),
   onVisit: () => handleAction(session.visit()),
   onLock: () => handleAction(session.lock()),
-  onRegenerate: () => handleAction(session.regenerateHex()),
-  onReset: () => handleAction(session.reset()),
-  onUndo: () => handleAction(session.undo()),
+  onRegenerate: (event) =>
+    mapAction.run(
+      event.currentTarget,
+      () => handleAction(session.regenerateHex()),
+      'Regenerating…',
+    ),
+  onReset: (event) =>
+    mapAction.run(event.currentTarget, () => handleAction(session.reset()), 'Resetting…'),
+  onUndo: (event) =>
+    mapAction.run(event.currentTarget, () => handleAction(session.undo()), 'Undoing…'),
   onSetIcon: () => handleAction(session.icon()),
+});
+batchInspector = createBatchInspector(batchInspectorHost, {
+  onApply: (patch, button) => mapAction.run(button, () => handleAction(session.applyBatch(patch))),
+  onJoin: (button) =>
+    mapAction.run(button, () => handleAction(session.joinSelection()), 'Joining…'),
+  onResetSelected: (button) =>
+    mapAction.run(
+      button,
+      () => handleAction(session.resetSelected({ confirmed: true })),
+      'Resetting…',
+    ),
+  onUndo: (button) => mapAction.run(button, () => handleAction(session.undo()), 'Undoing…'),
+  onSelectAll: (button) =>
+    mapAction.run(
+      button,
+      () => {
+        session.selectAll();
+        syncSelection();
+        updateInspector();
+      },
+      'Selecting…',
+    ),
+  onClear: (button) =>
+    mapAction.run(
+      button,
+      () => {
+        session.clearSelection();
+        syncSelection();
+        updateInspector();
+      },
+      'Clearing…',
+    ),
 });
 
 let pendingMapSeed;
@@ -544,12 +663,20 @@ previousMap.paletteName = paletteLabel(previousMap.colors);
 campaignMenu = createCampaignMenu({
   storage,
   previous: previousMap,
-  defaultPalette: {
-    colors: palettes[DEFAULT_PALETTE],
-    paletteName: paletteLabel(palettes[DEFAULT_PALETTE]),
+  defaultPalette: () => {
+    const palette = paletteLibrary.default();
+    return { colors: palette.colors, paletteName: palette.name };
   },
   onEnter: openCampaign,
   saveStatus,
+});
+const paletteManager = createPaletteManager({
+  library: paletteLibrary,
+  onChange() {
+    updatePaletteOptions();
+    selectPalette(session.snapshot()?.campaign.colors ?? initialColors);
+    return persistPreferences();
+  },
 });
 if (linked.seed) {
   const state = {
@@ -578,10 +705,13 @@ if (import.meta.hot)
     navigation.dispose();
     setExpanded(false);
     listeners.abort();
+    mapAction.dispose();
     mapConsole.dispose();
     renderer?.dispose();
     campaignMenu.dispose();
+    paletteManager.dispose();
     inspector.dispose();
+    batchInspector.dispose();
     panels.dispose();
     replaceDialog.remove();
     mapView?.disposeTilePreview();

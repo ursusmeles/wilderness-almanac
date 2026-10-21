@@ -1,0 +1,187 @@
+import { test, expect, library, openCampaign } from './fixtures.js';
+
+async function enableMultiEdit(page) {
+  await openCampaign(page);
+  const toggle = page.getByRole('switch', { name: 'Multi edit', exact: true });
+  if (!(await toggle.isVisible()))
+    await page.getByRole('button', { name: 'Open palette and settings', exact: true }).click();
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-checked', 'true');
+  return toggle;
+}
+
+test('multi edit applies only chosen fields, persists, and undoes the entire selection', async ({
+  page,
+}, testInfo) => {
+  const toggle = await enableMultiEdit(page);
+  const initial = (await library(page)).campaigns[0];
+  await expect(page.locator('#hp-batch-count')).toHaveText('1 hex selected');
+  const toggleBounds = await toggle.boundingBox();
+  const windBounds = await page.getByRole('switch', { name: 'Wind', exact: true }).boundingBox();
+  expect(toggleBounds.y + toggleBounds.height).toBeLessThanOrEqual(windBounds.y);
+  await page.locator('#hp-selection').selectOption('1,0');
+  await expect(page.locator('#hp-batch-count')).toHaveText('2 hexes selected');
+  await page.locator('#hp-batch-terrain').selectOption('meadow');
+  await page.locator('#hp-batch-elevation').selectOption('1');
+  await page.locator('#hp-batch-apply').click();
+  const edited = (await library(page)).campaigns[0];
+  for (const key of ['0,0', '1,0'])
+    expect(edited.hexEdits.cells[key]).toEqual({ terrain: 'meadow', elevation: 1, crossing: null });
+  await expect(page.locator('#hp-batch-count')).toHaveText('2 hexes selected');
+  await expect(page.locator('#hp-batch-terrain')).toHaveValue('__keep__');
+  await expect(page.locator('#hp-batch-apply')).toBeDisabled();
+  const screenshot = testInfo.outputPath('multi-edit.png');
+  await page.screenshot({ path: screenshot, fullPage: true });
+  await testInfo.attach('Multi edit workspace', { path: screenshot, contentType: 'image/png' });
+  await page.locator('#hp-batch-undo').click();
+  expect((await library(page)).campaigns[0].hexEdits).toEqual(initial.hexEdits);
+  await expect(page.locator('#hp-batch-undo')).toBeDisabled();
+  await toggle.click();
+  await expect(page.locator('#hp-hex-edit')).toBeVisible();
+  await page.reload();
+  await expect(page.locator('#hp-scene canvas')).toBeVisible();
+  await expect(page.locator('#hp-multi-edit')).toHaveAttribute('aria-checked', 'false');
+});
+
+test('multi edit protects drafts, supports all/clear and rejects incompatible targets atomically', async ({
+  page,
+}) => {
+  const toggle = await enableMultiEdit(page);
+  await page.locator('#hp-batch-terrain').selectOption('meadow');
+  await toggle.click();
+  const dialog = page.getByRole('dialog', { name: 'Unsaved edits', exact: true });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: 'Keep editing', exact: true }).click();
+  await expect(toggle).toHaveAttribute('aria-checked', 'true');
+  await page.locator('#hp-selection').selectOption('1,0');
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: 'Apply changes', exact: true }).click();
+  await expect(page.locator('#hp-batch-count')).toHaveText('2 hexes selected');
+  expect((await library(page)).campaigns[0].hexEdits.cells['0,0'].terrain).toBe('meadow');
+  await page.locator('#hp-batch-all').click();
+  await expect(page.locator('#hp-batch-count')).toHaveText('469 hexes selected');
+  await expect(page.locator('#hp-batch-terrain option').first()).toHaveText('Keep mixed values');
+  const before = (await library(page)).campaigns[0];
+  await page.locator('#hp-batch-settlement').selectOption('village');
+  await page.locator('#hp-batch-apply').click();
+  await expect(page.locator('#hp-batch-feedback')).toContainText(
+    'Water cannot contain settlements',
+  );
+  expect((await library(page)).campaigns[0]).toEqual(before);
+  await page.locator('#hp-batch-cancel').click();
+  await page.locator('#hp-batch-clear').click();
+  await expect(page.locator('#hp-batch-count')).toHaveText('0 hexes selected');
+  await expect(page.locator('#hp-batch-terrain')).toBeDisabled();
+  await expect(page.locator('#hp-batch-apply')).toBeDisabled();
+  // A map click adds a hex; clicking it again removes it. Dragging still pans.
+  await page.locator('#hp-scene canvas').scrollIntoViewIfNeeded();
+  const bounds = await page.locator('#hp-scene canvas').boundingBox();
+  const x = bounds.x + bounds.width / 2,
+    y = bounds.y + bounds.height / 2;
+  await page.mouse.click(x, y);
+  await expect(page.locator('#hp-batch-count')).toHaveText('1 hex selected');
+  await page.mouse.click(x, y);
+  await expect(page.locator('#hp-batch-count')).toHaveText('0 hexes selected');
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x + 30, y + 15, { steps: 3 });
+  await page.mouse.up();
+  await expect(page.locator('#hp-batch-count')).toHaveText('0 hexes selected');
+});
+
+test('whole-map batch edits survive reload and preserve the mobile map footprint', async ({
+  page,
+}, testInfo) => {
+  await enableMultiEdit(page);
+  await page.locator('#hp-batch-all').click();
+  await page.locator('#hp-batch-terrain').selectOption('meadow');
+  await page.locator('#hp-batch-elevation').selectOption('0');
+  await page.locator('#hp-batch-settlement').selectOption('');
+  await page.locator('#hp-batch-poi').selectOption('');
+  await page.locator('#hp-batch-apply').click();
+  expect(Object.keys((await library(page)).campaigns[0].hexEdits.cells)).toHaveLength(469);
+  const dimensions = await page.evaluate(() => ({
+    height: document.querySelector('.hp-map-panel').getBoundingClientRect().height,
+    viewport: innerHeight,
+    overflow: document.documentElement.scrollWidth > innerWidth,
+  }));
+  expect(dimensions.overflow).toBe(false);
+  if (testInfo.project.name === 'mobile') expect(dimensions.height).toBe(dimensions.viewport);
+  await page.reload();
+  await expect(page.locator('#hp-scene canvas')).toBeVisible();
+  const terrains = await page
+    .locator('#hp-selection option')
+    .evaluateAll((options) => options.map((option) => option.dataset.terrain));
+  expect(new Set(terrains)).toEqual(new Set(['meadow']));
+  await expect(page.locator('#hp-hex-edit')).toBeVisible();
+});
+
+test('settlement joining, addressed errors and painted Apply feedback work together', async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(120000);
+  await enableMultiEdit(page);
+  await page.locator('#hp-selection').selectOption('1,0');
+  await expect(page.locator('#hp-batch-join')).toBeHidden();
+  await page.evaluate(() => {
+    window.batchWorking = [];
+    const workspace = document.querySelector('#campaign-workspace');
+    new MutationObserver(() => {
+      const button = workspace.querySelector('button[aria-busy="true"]');
+      if (!button) return;
+      const sample = { label: button.textContent, disabled: button.disabled, painted: false };
+      window.batchWorking.push(sample);
+      requestAnimationFrame(() => {
+        sample.painted = button.getAttribute('aria-busy') === 'true';
+      });
+    }).observe(workspace, { subtree: true, attributes: true, attributeFilter: ['aria-busy'] });
+  });
+  await page.locator('#hp-batch-terrain').selectOption('meadow');
+  await page.locator('#hp-batch-elevation').selectOption('1');
+  await page.locator('#hp-batch-settlement').selectOption('city');
+  await page.locator('#hp-batch-poi').selectOption('');
+  await page.locator('#hp-batch-apply').click();
+  const join = page.getByRole('button', { name: 'Join city', exact: true });
+  await expect(join).toBeEnabled();
+  expect(
+    await page.evaluate(() =>
+      window.batchWorking.some(
+        (sample) => sample.label === 'Applying…' && sample.disabled && sample.painted,
+      ),
+    ),
+  ).toBe(true);
+  const visitedBounds = await page.locator('#hp-batch-visited').boundingBox();
+  const joinBounds = await join.boundingBox();
+  expect(joinBounds.x).toBeGreaterThan(visitedBounds.x);
+  expect(
+    Math.abs(joinBounds.y + joinBounds.height - visitedBounds.y - visitedBounds.height),
+  ).toBeLessThan(2);
+  await join.click();
+  await expect(join).toBeDisabled();
+  const joined = (await library(page)).campaigns[0];
+  expect(joined.hexEdits.version).toBe(2);
+  expect(joined.hexEdits.cells['0,0'].settlementGroup).toBe(
+    joined.hexEdits.cells['1,0'].settlementGroup,
+  );
+  const screenshot = testInfo.outputPath('joined-city.png');
+  await page.screenshot({ path: screenshot, fullPage: true });
+  await testInfo.attach('Joined city', { path: screenshot, contentType: 'image/png' });
+  await page.locator('#hp-batch-undo').click();
+  await expect(join).toBeEnabled();
+  await page.locator('#hp-batch-settlement').selectOption('town');
+  await page.locator('#hp-batch-apply').click();
+  await expect(page.getByRole('button', { name: 'Join town', exact: true })).toBeEnabled();
+  await page.locator('#hp-batch-settlement').selectOption('village');
+  await page.locator('#hp-batch-apply').click();
+  await expect(page.locator('#hp-batch-join')).toBeHidden();
+  const villages = (await library(page)).campaigns[0];
+  expect(villages.hexEdits.cells['0,0'].settlementGroup).toBeUndefined();
+  expect(villages.hexEdits.cells['1,0'].settlementGroup).toBeUndefined();
+  await page.locator('#hp-batch-all').click();
+  await page.locator('#hp-batch-settlement').selectOption('city');
+  await page.locator('#hp-batch-apply').click();
+  const error = page.locator('#hp-batch-feedback');
+  await expect(error).toContainText(/Region #\d+ · -?\d+, -?\d+:/);
+  await expect(error).toHaveCSS('color', 'rgb(240, 162, 154)');
+  expect((await library(page)).campaigns[0]).toEqual(villages);
+});

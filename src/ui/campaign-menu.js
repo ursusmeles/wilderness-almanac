@@ -20,6 +20,10 @@ export function createCampaignMenu({ storage, previous, defaultPalette, onEnter,
   const list = document.getElementById('campaign-list');
   const newButton = document.getElementById('new-campaign');
   const status = document.getElementById('campaign-message');
+  function setMessage(text, error = false) {
+    status.textContent = text;
+    status.dataset.kind = error ? 'error' : 'status';
+  }
   const fileInput = document.getElementById('campaign-file');
   const undoDelete = document.getElementById('undo-delete-campaign');
   const deleteDialog = document.getElementById('delete-campaign-dialog');
@@ -74,7 +78,7 @@ export function createCampaignMenu({ storage, previous, defaultPalette, onEnter,
   function expireUndo() {
     if (!deletedCampaign) return;
     deletedCampaign = null;
-    status.textContent = '';
+    setMessage('');
     save();
   }
 
@@ -227,14 +231,15 @@ export function createCampaignMenu({ storage, previous, defaultPalette, onEnter,
       title.textContent = creating ? 'Creating campaign…' : 'Opening campaign…';
     else button.setAttribute('aria-label', `Opening ${campaign.name}…`);
     expireUndo();
-    status.textContent = creating ? 'Creating your campaign…' : 'Opening campaign…';
+    setMessage(creating ? 'Creating your campaign…' : 'Opening campaign…');
     try {
       // Two frames guarantee feedback paints before synchronous generation/WebGL work.
       await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       if (listeners.signal.aborted) return false;
       if (creating) {
         const world = generateWorld(crypto.randomUUID());
-        campaign = createCampaign(world, defaultPalette.colors, defaultPalette.paletteName);
+        const palette = typeof defaultPalette === 'function' ? defaultPalette() : defaultPalette;
+        campaign = createCampaign(world, palette.colors, palette.paletteName);
         add(campaign);
       }
       return (await onEnter(campaign)) !== false;
@@ -242,7 +247,10 @@ export function createCampaignMenu({ storage, previous, defaultPalette, onEnter,
       if (!listeners.signal.aborted) {
         menu.hidden = false;
         render();
-        status.textContent = `Could not ${creating ? 'create the campaign' : 'open the map'}. ${error.message}`;
+        setMessage(
+          `Could not ${creating ? 'create the campaign' : 'open the map'}. ${error.message}`,
+          true,
+        );
       }
       return false;
     } finally {
@@ -265,14 +273,14 @@ export function createCampaignMenu({ storage, previous, defaultPalette, onEnter,
   function download(campaign) {
     const date = new Date();
     downloadFile(exportCampaign(campaign, date), campaignFilename(campaign, date));
-    status.textContent = `Downloaded “${campaign.name}”`;
+    setMessage(`Downloaded “${campaign.name}”`);
   }
 
   listen(document.getElementById('download-campaign-recovery'), 'click', () => {
     const source = store.recovery();
     if (source == null) return;
     downloadFile(source, campaignFilename({ name: 'recovery' }));
-    status.textContent = 'Recovery file downloaded. Keep it with your campaign backups.';
+    setMessage('Recovery file downloaded. Keep it with your campaign backups.');
   });
 
   function rename(input) {
@@ -293,7 +301,7 @@ export function createCampaignMenu({ storage, previous, defaultPalette, onEnter,
     labelActions(card, campaign);
     card.querySelector('.campaign-icon img').alt =
       `${cached.get(campaign.id)?.tile?.terrain ?? 'Terrain'} hex from ${name}`;
-    if (save()) status.textContent = 'Campaign name saved';
+    if (save()) setMessage('Campaign name saved');
   }
 
   listen(list, 'change', (event) => {
@@ -340,7 +348,7 @@ export function createCampaignMenu({ storage, previous, defaultPalette, onEnter,
       campaign.iconKey = images[(index + 1) % images.length].key;
       const saved = save();
       void paintIcon(card, campaign, images);
-      if (saved) status.textContent = 'Campaign icon updated';
+      if (saved) setMessage('Campaign icon updated');
       return;
     }
     if (action === 'delete') {
@@ -352,12 +360,14 @@ export function createCampaignMenu({ storage, previous, defaultPalette, onEnter,
     }
     try {
       await copyText(action === 'copy' ? campaign.seed : mapLink(window.location.href, campaign));
-      status.textContent = action === 'copy' ? 'Seed copied' : 'Map link copied';
+      setMessage(action === 'copy' ? 'Seed copied' : 'Map link copied');
     } catch {
-      status.textContent =
+      setMessage(
         action === 'copy'
           ? 'Could not copy. Select the seed text to copy it.'
-          : 'Could not copy a link. Enter the campaign and copy the URL from the address bar.';
+          : 'Could not copy a link. Enter the campaign and copy the URL from the address bar.',
+        true,
+      );
     }
   });
   listen(document, 'click', (event) => {
@@ -372,7 +382,7 @@ export function createCampaignMenu({ storage, previous, defaultPalette, onEnter,
     cached.delete(campaign.id);
     const saved = save();
     render();
-    if (saved) status.textContent = `Deleted “${campaign.name}”`;
+    if (saved) setMessage(`Deleted “${campaign.name}”`);
     undoDelete.focus({ preventScroll: true });
   });
   listen(undoDelete, 'click', () => {
@@ -382,7 +392,7 @@ export function createCampaignMenu({ storage, previous, defaultPalette, onEnter,
     deletedCampaign = null;
     const saved = save();
     render();
-    if (saved) status.textContent = `Restored “${campaign.name}”`;
+    if (saved) setMessage(`Restored “${campaign.name}”`);
     list
       .querySelectorAll('[data-action="delete"]')
       [Math.min(index, campaigns.length - 1)]?.focus({ preventScroll: true });
@@ -403,9 +413,9 @@ export function createCampaignMenu({ storage, previous, defaultPalette, onEnter,
       campaign.id = crypto.randomUUID();
       add(campaign);
       render();
-      if (storageAvailable) status.textContent = `Imported “${campaign.name}”`;
+      if (storageAvailable) setMessage(`Imported “${campaign.name}”`);
     } catch (error) {
-      status.textContent = error.message;
+      setMessage(error.message, true);
     } finally {
       fileInput.value = '';
     }
@@ -433,7 +443,7 @@ export function createCampaignMenu({ storage, previous, defaultPalette, onEnter,
       render();
       undoDelete.hidden = !deletedCampaign;
       if (storageAvailable)
-        status.textContent = deletedCampaign ? `Deleted “${deletedCampaign.campaign.name}”` : '';
+        setMessage(deletedCampaign ? `Deleted “${deletedCampaign.campaign.name}”` : '');
     },
     dispose() {
       releaseBusy();

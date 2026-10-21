@@ -38,12 +38,25 @@
         <section class="campaign-library" aria-labelledby="campaign-library-title">
           <header class="campaign-toolbar cluster">
             <h2 id="campaign-library-title">Your campaigns <span id="campaign-count">0</span></h2>
-            <button type="button" id="import-campaign" class="menu-button">
-              <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <use href="/icons/pixelarticons.svg#upload"></use>
-              </svg>
-              Import campaign
-            </button>
+            <div class="campaign-toolbar-actions">
+              <button
+                type="button"
+                id="open-palette-manager"
+                aria-haspopup="dialog"
+                aria-controls="palette-manager-dialog"
+              >
+                <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <use href="/icons/pixelarticons.svg#settings-cog"></use>
+                </svg>
+                Palette manager
+              </button>
+              <button type="button" id="import-campaign">
+                <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <use href="/icons/pixelarticons.svg#upload"></use>
+                </svg>
+                Import campaign
+              </button>
+            </div>
             <input type="file" id="campaign-file" accept=".json,application/json" hidden />
           </header>
           <ul id="campaign-list" class="campaign-list stack" aria-label="Saved campaigns"></ul>
@@ -78,6 +91,44 @@
             </button>
           </div>
         </section>
+        <dialog id="palette-manager-dialog" aria-labelledby="palette-manager-title">
+          <header class="palette-manager-header">
+            <h2 id="palette-manager-title">Palette manager</h2>
+            <button
+              type="button"
+              id="close-palette-manager"
+              class="menu-icon-button"
+              aria-label="Close palette manager"
+              autofocus
+            >
+              <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <use href="/icons/pixelarticons.svg#close"></use>
+              </svg>
+            </button>
+          </header>
+          <ul
+            id="palette-manager-list"
+            role="grid"
+            aria-label="Palettes"
+            aria-multiselectable="false"
+          ></ul>
+          <p id="palette-manager-message" role="status" aria-live="polite" hidden></p>
+          <footer class="palette-manager-actions">
+            <button type="button" id="add-palette">
+              <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <use href="/icons/pixelarticons.svg#plus"></use>
+              </svg>
+              Add palette
+            </button>
+            <button type="button" id="delete-palette" disabled>
+              <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <use href="/icons/pixelarticons.svg#trash"></use>
+              </svg>
+              Delete palette
+            </button>
+            <button type="button" id="default-palette" disabled>Set as default</button>
+          </footer>
+        </dialog>
         <dialog
           id="delete-campaign-dialog"
           aria-labelledby="delete-campaign-title"
@@ -96,6 +147,14 @@
           </form>
         </dialog>
       </section>
+      <template id="palette-row-template">
+        <li class="palette-row" role="row" tabindex="-1" aria-selected="false">
+          <div class="palette-name-wrap" role="gridcell">
+            <span class="palette-default" hidden>(Default palette)</span>
+          </div>
+          <div class="palette-swatches" role="gridcell"></div>
+        </li>
+      </template>
       <template id="campaign-template">
         <li class="campaign-card">
           <div class="campaign-icon">
@@ -412,6 +471,20 @@
             <div class="hp-map-navigation stack">
               <button
                 type="button"
+                id="hp-multi-edit"
+                class="hp-motion"
+                role="switch"
+                aria-checked="false"
+                aria-label="Multi edit"
+                aria-controls="hp-inspector-body"
+              >
+                <span class="hp-motion-light" aria-hidden="true"></span>
+                <span
+                  >Multi edit is <span id="hp-multi-edit-state" aria-hidden="true">OFF</span></span
+                >
+              </button>
+              <button
+                type="button"
                 id="hp-motion"
                 class="hp-motion"
                 role="switch"
@@ -513,22 +586,23 @@
     </template>
     <template id="hex-inspector-template">
       <div class="hp-inspector-overview">
-        <button
-          type="button"
-          id="hp-hex-visited"
-          class="hp-motion hp-hex-visited"
-          role="switch"
-          aria-label="Visited"
-        >
-          <span class="hp-motion-light" aria-hidden="true"></span>
-          <span id="hp-hex-visited-state">Not yet visited</span>
-        </button>
         <div class="hp-hex-preview-frame">
           <img id="hp-hex-preview" width="240" height="240" alt="" />
         </div>
         <div class="hp-inspector-heading">
-          <span class="hp-eyebrow">Selected hex</span>
-          <h3 id="hp-hex-name"></h3>
+          <div class="hp-inspector-title-row">
+            <button
+              type="button"
+              id="hp-hex-visited"
+              class="hp-motion hp-hex-visited"
+              role="switch"
+              aria-label="Visited"
+            >
+              <span class="hp-motion-light" aria-hidden="true"></span>
+              <span id="hp-hex-visited-state">Visited</span>
+            </button>
+            <h3 id="hp-hex-name"></h3>
+          </div>
           <span id="hp-hex-address" class="hp-pixel"></span>
           <dl class="hp-hex-distances" aria-label="Distances in hex steps">
             <div>
@@ -621,13 +695,72 @@
         </div>
       </form>
     </template>
-    <template id="unsaved-hex-dialog-template">
-      <dialog class="hp-inspector-dialog" aria-labelledby="hp-unsaved-title">
-        <h2 id="hp-unsaved-title">Unapplied hex changes</h2>
-        <p>Apply or discard your changes before inspecting another hex.</p>
+    <template id="batch-inspector-template">
+      <div class="hp-batch-overview">
+        <h3 id="hp-batch-count" class="hp-pixel" role="status"></h3>
+        <p class="hp-field-note">Select hexes on the map.</p>
+        <div class="hp-inspector-edit-actions">
+          <button type="button" id="hp-batch-all">Select all</button>
+          <button type="button" id="hp-batch-clear">Clear selection</button>
+        </div>
+      </div>
+      <form id="hp-batch-form" class="hp-inspector-content" aria-labelledby="hp-batch-count">
+        <fieldset id="hp-batch-fields" class="hp-hex-fields grid-pair">
+          <label>Terrain<select id="hp-batch-terrain" aria-label="Terrain"></select></label>
+          <label
+            >Settlement<select id="hp-batch-settlement" aria-label="Settlement"></select
+          ></label>
+          <label
+            >Point of interest<select id="hp-batch-poi" aria-label="Point of interest"></select
+          ></label>
+          <label
+            >POI variant<select id="hp-batch-subtype" aria-label="POI variant" disabled></select
+          ></label>
+          <label>Elevation<select id="hp-batch-elevation" aria-label="Elevation"></select></label>
+          <label>Crossing<select id="hp-batch-crossing" aria-label="Crossing"></select></label>
+          <label>Visited<select id="hp-batch-visited" aria-label="Visited"></select></label>
+          <button type="button" id="hp-batch-join" hidden>Join town</button>
+        </fieldset>
+        <p id="hp-batch-note" class="hp-field-note"></p>
+        <output id="hp-batch-feedback" class="hp-hex-feedback" role="alert"></output>
+        <div class="hp-inspector-action-cluster">
+          <div class="hp-inspector-edit-actions">
+            <button type="submit" id="hp-batch-apply">Apply to selected hexes</button>
+            <button type="button" id="hp-batch-cancel">Discard changes</button>
+            <button type="button" id="hp-batch-undo">Undo</button>
+            <button type="button" id="hp-batch-reset">Reset selected</button>
+          </div>
+        </div>
+      </form>
+    </template>
+    <template id="reset-selected-dialog-template">
+      <dialog class="hp-inspector-dialog" aria-labelledby="hp-reset-selected-title">
+        <h2 id="hp-reset-selected-title">Reset selected hexes?</h2>
+        <p data-reset-count></p>
+        <div class="hp-tools cluster">
+          <button type="button" data-reset-selected="cancel" autofocus>Keep changes</button>
+          <button type="button" data-reset-selected="confirm">Reset selected</button>
+        </div>
+      </dialog>
+    </template>
+    <template id="unsaved-batch-dialog-template">
+      <dialog class="hp-inspector-dialog" aria-labelledby="hp-unsaved-batch-title">
+        <h2 id="hp-unsaved-batch-title">Unsaved edits</h2>
+        <p>Apply these edits before continuing?</p>
         <div class="hp-tools cluster">
           <button type="button" data-unsaved="keep">Keep editing</button>
-          <button type="button" data-unsaved="discard">Discard</button>
+          <button type="button" data-unsaved="discard">Discard changes</button>
+          <button type="button" data-unsaved="apply">Apply changes</button>
+        </div>
+      </dialog>
+    </template>
+    <template id="unsaved-hex-dialog-template">
+      <dialog class="hp-inspector-dialog" aria-labelledby="hp-unsaved-title">
+        <h2 id="hp-unsaved-title">Unsaved edits</h2>
+        <p>Apply these edits before continuing?</p>
+        <div class="hp-tools cluster">
+          <button type="button" data-unsaved="keep">Keep editing</button>
+          <button type="button" data-unsaved="discard">Discard changes</button>
           <button type="button" data-unsaved="apply">Apply changes</button>
         </div>
       </dialog>

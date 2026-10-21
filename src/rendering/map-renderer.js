@@ -90,6 +90,7 @@ export function createMapRenderer(
       controls.refresh(options);
     },
     select: controls.select,
+    setSelection: controls.setSelection,
     zoom: controls.zoom,
     snapshot() {
       draw();
