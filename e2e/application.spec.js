@@ -15,6 +15,10 @@ test('homepage never requests WebGL code, and cached icons survive reload withou
   await page.goto('/');
   await expect(page.locator('.campaign-card')).toHaveCount(1);
   await expect(page.locator('.campaign-icon-placeholder')).toBeVisible();
+  await expect(page.locator('.campaign-icon-placeholder')).toHaveCSS(
+    'background-image',
+    /default-campaign\.png/,
+  );
   expect(scripts.some((url) => url.includes('map-view-'))).toBe(false);
   const initialBytes = (
     await Promise.all(scriptResponses.map(async (response) => (await response.body()).length))
@@ -26,12 +30,18 @@ test('homepage never requests WebGL code, and cached icons survive reload withou
     path: screenshot,
     contentType: 'image/png',
   });
+  const cover = await page.locator('.campaign-icon img').elementHandle();
   await page.getByRole('button', { name: 'Enter Test campaign', exact: true }).click();
   await expect(page.locator('#hp-scene canvas')).toBeVisible();
   expect(scripts.some((url) => url.includes('map-view-'))).toBe(true);
   await page.locator('#hp-return-menu').click();
   await expect(page.locator('.campaign-icon img')).toBeVisible();
   await expect(page.locator('.campaign-icon img')).toHaveAttribute('src', /^data:image\/png/);
+  expect(
+    await cover.evaluate(
+      (image) => image.isConnected && image === document.querySelector('.campaign-icon img'),
+    ),
+  ).toBe(true);
   scripts.length = 0;
   await page.reload();
   await expect(page.locator('.campaign-icon img')).toBeVisible();

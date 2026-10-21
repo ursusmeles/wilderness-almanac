@@ -113,7 +113,7 @@ export function createCampaignMenu({ storage, previous, defaultPalette, onEnter,
     card.iconRequest = request;
     const shuffle = card.querySelector('[data-action="shuffle"]');
     if (!ready) shuffle.disabled = true;
-    const images = ready ?? (await loadThumbnails(campaign));
+    const images = ready ?? (await loadThumbnails(campaign, { allowStale: true }));
     if (!card.isConnected || card.iconRequest !== request) return;
     card.iconEntries = images;
     shuffle.disabled = opening || images.length < 2;
@@ -125,12 +125,21 @@ export function createCampaignMenu({ storage, previous, defaultPalette, onEnter,
           : 'Next cached world icon';
     const img = card.querySelector('.campaign-icon img');
     const placeholder = card.querySelector('.campaign-icon-placeholder');
-    const image = images.find((entry) => entry.key === campaign.iconKey)?.image;
-    for (const [index, role] of ['ground', 'water', 'elements'].entries())
-      placeholder.style.setProperty(`--preview-${role}`, campaign.colors[index]);
+    const previous =
+      card.dataset.iconSeed === campaign.seed && img.dataset.hexKey === campaign.iconKey
+        ? img.getAttribute('src')
+        : '';
+    const image = images.find((entry) => entry.key === campaign.iconKey)?.image || previous;
     img.alt = `Terrain hex from ${campaign.name}`;
-    img.dataset.hexKey = campaign.iconKey ?? '';
-    if (image) img.src = image;
+    if (image) {
+      img.src = image;
+      img.dataset.hexKey = campaign.iconKey ?? '';
+      card.dataset.iconSeed = campaign.seed;
+    } else {
+      img.removeAttribute('src');
+      delete img.dataset.hexKey;
+      delete card.dataset.iconSeed;
+    }
     img.hidden = !image;
     placeholder.hidden = Boolean(image);
   }
@@ -151,11 +160,13 @@ export function createCampaignMenu({ storage, previous, defaultPalette, onEnter,
   }
 
   function render() {
-    list.replaceChildren();
+    const existing = new Map([...list.children].map((card) => [card.dataset.id, card]));
+    const cards = [];
     document.getElementById('campaign-count').textContent = campaigns.length;
     for (const campaign of campaigns) {
       const data = campaignData(campaign);
-      const card = cloneTemplate('campaign-template').firstElementChild;
+      const card =
+        existing.get(campaign.id) ?? cloneTemplate('campaign-template').firstElementChild;
       card.dataset.id = campaign.id;
       const name = card.querySelector('.campaign-name');
       name.value = campaign.name;
@@ -178,9 +189,10 @@ export function createCampaignMenu({ storage, previous, defaultPalette, onEnter,
       card.querySelector('.campaign-seed').textContent = campaign.seed;
       card.querySelector('.campaign-seed').title = campaign.seed;
       labelActions(card, campaign);
-      list.append(card);
+      cards.push(card);
       void paintIcon(card, campaign);
     }
+    list.replaceChildren(...cards);
   }
 
   function add(campaign) {

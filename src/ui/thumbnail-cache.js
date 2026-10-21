@@ -45,15 +45,10 @@ async function signature(campaign) {
 }
 
 // Optional gallery cache. A session fallback keeps refresh usable if IndexedDB fails.
-function remember(key, images) {
-  memory.delete(key);
-  memory.set(key, images);
-  let count = [...memory.values()].reduce((sum, gallery) => sum + gallery.length, 0);
-  for (const [oldest, gallery] of memory) {
-    if (count <= LIMIT) break;
-    memory.delete(oldest);
-    count -= gallery.length;
-  }
+function remember(record) {
+  memory.delete(record.id);
+  memory.set(record.id, record);
+  if (memory.size > LIMIT) memory.delete(memory.keys().next().value);
 }
 const validImages = (images) =>
   Array.isArray(images)
@@ -67,20 +62,47 @@ const validImages = (images) =>
         .slice(0, 9)
     : [];
 
-export async function loadThumbnails(campaign) {
+export async function loadThumbnails(campaign, { allowStale = false } = {}) {
   try {
     const key = await signature(campaign);
-    if (memory.has(key)) return memory.get(key);
-    const db = await open();
-    if (!db) return [];
-    const record = await new Promise((resolve, reject) => {
-      const request = db.transaction('icons').objectStore('icons').get(key);
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-    const images = validImages(record?.images);
-    if (images.length) remember(key, images);
-    return images;
+    let record = memory.get(campaign.id);
+    if (!record) {
+      const db = await open();
+      if (!db) return [];
+      record = await new Promise((resolve, reject) => {
+        const store = db.transaction('icons').objectStore('icons');
+        const request = store.get(campaign.id);
+        request.onsuccess = () => {
+          if (request.result) return resolve(request.result);
+          // Reuse the previous hashed cache until the campaign is rendered again.
+          const legacy = store.get(key);
+          legacy.onsuccess = () =>
+            resolve(
+              legacy.result && {
+                ...legacy.result,
+                id: campaign.id,
+                signature: key,
+                seed: campaign.seed,
+                generatorVersion: campaign.generatorVersion,
+              },
+            );
+          legacy.onerror = () => reject(legacy.error);
+        };
+        request.onerror = () => reject(request.error);
+      });
+      if (record) remember(record);
+    }
+    if (
+      !record ||
+      (record.signature !== key &&
+        !(
+          allowStale &&
+          record.seed === campaign.seed &&
+          record.generatorVersion === campaign.generatorVersion
+        ))
+    )
+      return [];
+    return validImages(record.images);
   } catch {
     return [];
   }
@@ -90,20 +112,26 @@ export async function saveThumbnails(campaign, entries) {
   if (!images.length) return false;
   try {
     const key = await signature(campaign);
-    remember(key, images);
+    const record = {
+      id: campaign.id,
+      signature: key,
+      seed: campaign.seed,
+      generatorVersion: campaign.generatorVersion,
+      images,
+      savedAt: Date.now(),
+    };
+    remember(record);
     const db = await open();
     if (!db) return false;
     await new Promise((resolve, reject) => {
       const transaction = db.transaction('icons', 'readwrite');
       const store = transaction.objectStore('icons');
-      store.put({ id: key, images, savedAt: Date.now() });
+      store.put(record);
+      store.delete(key);
       const all = store.getAll();
       all.onsuccess = () => {
-        let count = 0;
-        for (const record of all.result.sort((a, b) => b.savedAt - a.savedAt)) {
-          count += record.images?.length ?? 1;
-          if (count > LIMIT) store.delete(record.id);
-        }
+        for (const record of all.result.sort((a, b) => b.savedAt - a.savedAt).slice(LIMIT))
+          store.delete(record.id);
       };
       transaction.oncomplete = resolve;
       transaction.onerror = transaction.onabort = () => reject(transaction.error);

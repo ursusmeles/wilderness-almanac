@@ -250,12 +250,13 @@ async function cacheCampaignIcons(revision) {
     const keys = [
       ...new Set([...campaignIconCandidates(world).map((cell) => cell.key), campaign.iconKey]),
     ];
-    const images = [];
-    for (const key of keys) {
+    const images = new Map();
+    const entries = () => keys.map((key) => images.get(key)).filter(Boolean);
+    // Publish the chosen tile first; a cancelled gallery job still leaves a cover.
+    for (const key of new Set([campaign.iconKey, ...keys])) {
       if (!current()) return;
       let entry = cached.get(key);
       if (!entry) {
-        // One tile per task keeps the map interactive while the gallery fills.
         await new Promise((resolve) => setTimeout(resolve, 0));
         if (!current()) return;
         const image = mapView.tilePreview(
@@ -264,14 +265,20 @@ async function cacheCampaignIcons(revision) {
         );
         if (image) entry = { key, image };
       }
-      if (entry) images.push(entry);
+      if (!entry && key === campaign.iconKey) return;
+      if (entry) images.set(key, entry);
+      if (key === campaign.iconKey && !cached.has(key)) {
+        await saveThumbnails(campaign, entries());
+        if (current()) campaignMenu.refreshThumbnail(campaign);
+      }
     }
+    const gallery = entries();
     if (!current()) return;
     if (
-      images.length !== previous.length ||
-      images.some((entry, index) => entry !== previous[index])
+      gallery.length !== previous.length ||
+      gallery.some((entry, index) => entry !== previous[index])
     )
-      await saveThumbnails(campaign, images);
+      await saveThumbnails(campaign, gallery);
     if (current()) campaignMenu.refreshThumbnail(campaign);
   } catch {
     /* Optional thumbnails never interfere with the current campaign. */

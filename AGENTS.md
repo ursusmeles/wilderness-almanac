@@ -8,7 +8,7 @@ Read `README.md`, `docs/DEVELOPMENT.md` and `docs/PROJECT_STATE.md` before makin
 - Keep world/dressing data and numeric geometry independent of Three.js and the DOM. Use `src/generation/campaign-world.js` for campaign edits, `src/rendering/` for meshes and motion, `src/ui/` for tools/persistence, and `src/application/campaign-session.js` for campaign state/actions/history. Keep `src/main.js` focused on UI coordination.
 - Preserve seed replay and current visuals when refactoring. Deliberately version world-generation changes; retain campaign import validation, existing save migrations and dressing locks.
 - Keep mesh builders independent of WebGL/DOM lifecycle. `map-renderer.js` coordinates scene setup; materials, map geometry/batching, controls and ambient scheduling own and dispose their resources. Preserve renderer fixtures on pure refactors.
-- Keep renderer/Three.js imports behind the lazy `src/ui/map-view.js` entry. Menu icons use the optional thumbnail cache and palette fallback.
+- Keep renderer/Three.js imports behind the lazy `src/ui/map-view.js` entry. Menu icons use the optional thumbnail cache and bundled meadow fallback.
 - Keep the checked-in rule snapshot in `src/data/world-rules.json`; there is no runtime spreadsheet dependency.
 - Avoid unrelated features or renderer/framework/dependency migrations during fixes. Three.js is intentionally pinned to the existing version.
 

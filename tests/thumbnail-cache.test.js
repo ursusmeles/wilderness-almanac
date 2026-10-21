@@ -35,10 +35,29 @@ test('thumbnail galleries survive unavailable IndexedDB and do not depend on the
     assert.deepEqual(await loadThumbnails({ ...campaign, ...changed }), []);
 });
 
-test('thumbnail memory stays bounded and retains a custom ninth icon', async () => {
-  for (let i = 0; i < 5; i++) await saveThumbnails({ ...campaign, seed: `gallery-${i}` }, images);
-  assert.deepEqual(await loadThumbnails(campaign), []);
+test('appearance changes retain the last preview until fresh renders replace it', async () => {
+  const changed = { ...campaign, colors: ['#111111', '#222222', '#333333'] };
+  assert.deepEqual(await loadThumbnails(changed), []);
+  assert.deepEqual(await loadThumbnails(changed, { allowStale: true }), images);
+  assert.deepEqual(
+    await loadThumbnails({ ...changed, seed: 'replacement' }, { allowStale: true }),
+    [],
+  );
+  const updated = images.map((entry) => ({ ...entry, image: 'data:image/png;base64,updated' }));
+  await saveThumbnails(changed, updated);
+  assert.deepEqual(await loadThumbnails(changed), updated);
+  assert.deepEqual(await loadThumbnails(campaign, { allowStale: true }), updated);
+});
+
+test('cache budgets whole campaigns rather than evicting after four galleries', async () => {
   const custom = [...images, { key: '0,1', image: 'data:image/png;base64,custom' }];
-  await saveThumbnails(campaign, custom);
-  assert.deepEqual(await loadThumbnails({ ...campaign, iconKey: '0,1' }), custom);
+  for (let i = 0; i < 5; i++) await saveThumbnails({ ...campaign, id: `gallery-${i}` }, custom);
+  assert.deepEqual(await loadThumbnails({ ...campaign, id: 'gallery-0', iconKey: '0,1' }), custom);
+  // Repeated palette/dressing changes occupy one record per campaign.
+  for (let variant = 0; variant < 40; variant++)
+    await saveThumbnails({ ...campaign, variant }, images);
+  assert.deepEqual(await loadThumbnails({ ...campaign, id: 'gallery-0' }), custom);
+  for (let i = 5; i < 37; i++) await saveThumbnails({ ...campaign, id: `gallery-${i}` }, images);
+  assert.deepEqual(await loadThumbnails({ ...campaign, id: 'gallery-0' }), []);
+  assert.deepEqual(await loadThumbnails({ ...campaign, id: 'gallery-36' }), images);
 });
