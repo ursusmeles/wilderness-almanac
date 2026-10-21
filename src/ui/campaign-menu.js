@@ -15,7 +15,14 @@ import {
   MAX_CAMPAIGN_BYTES,
 } from '../application/campaigns.js';
 
-export function createCampaignMenu({ storage, previous, defaultPalette, onEnter, saveStatus }) {
+export function createCampaignMenu({
+  storage,
+  previous,
+  defaultPalette,
+  onEnter,
+  onNewCampaign,
+  saveStatus,
+}) {
   const menu = document.getElementById('campaign-menu');
   const list = document.getElementById('campaign-list');
   const newButton = document.getElementById('new-campaign');
@@ -397,7 +404,7 @@ export function createCampaignMenu({ storage, previous, defaultPalette, onEnter,
       .querySelectorAll('[data-action="delete"]')
       [Math.min(index, campaigns.length - 1)]?.focus({ preventScroll: true });
   });
-  listen(newButton, 'click', () => enter());
+  listen(newButton, 'click', () => (onNewCampaign ? onNewCampaign() : enter()));
   listen(document.getElementById('import-campaign'), 'click', () => {
     expireUndo();
     fileInput.click();

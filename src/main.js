@@ -10,6 +10,7 @@ import { createCampaignSession } from './application/campaign-session.js';
 import { createCampaignMenu } from './ui/campaign-menu.js';
 import { createPaletteLibrary } from './ui/palette-library.js';
 import { createPaletteManager } from './ui/palette-manager.js';
+import { createCampaignCreator } from './ui/campaign-creator.js';
 import { createPanels } from './ui/panels.js';
 import { createHexInspector } from './ui/hex-inspector.js';
 import { createBatchInspector } from './ui/batch-inspector.js';
@@ -193,14 +194,19 @@ function persistCampaign(campaign) {
   return { campaignSaved, preferencesSaved };
 }
 
+async function loadMapView() {
+  mapViewLoading ??= import('./ui/map-view.js').catch((error) => {
+    mapViewLoading = undefined;
+    throw error;
+  });
+  mapView = await mapViewLoading;
+  return mapView;
+}
+
 async function openCampaign(campaign) {
   try {
     const opened = await navigation.show('forward', async () => {
-      mapViewLoading ??= import('./ui/map-view.js').catch((error) => {
-        mapViewLoading = undefined;
-        throw error;
-      });
-      mapView = await mapViewLoading;
+      await loadMapView();
       if (disposed) return false;
       const keepView = Boolean(renderer && session.snapshot()?.campaign.id === campaign.id);
       session.open(campaign);
@@ -668,7 +674,17 @@ campaignMenu = createCampaignMenu({
     return { colors: palette.colors, paletteName: palette.name };
   },
   onEnter: openCampaign,
+  onNewCampaign: () => campaignCreator.open(),
   saveStatus,
+});
+const campaignCreator = createCampaignCreator({
+  library: paletteLibrary,
+  loadMapView,
+  freshSeed,
+  async onCreate(campaign) {
+    campaignMenu.add(campaign);
+    return campaignMenu.enter(campaign);
+  },
 });
 const paletteManager = createPaletteManager({
   library: paletteLibrary,
@@ -709,6 +725,7 @@ if (import.meta.hot)
     mapConsole.dispose();
     renderer?.dispose();
     campaignMenu.dispose();
+    campaignCreator.dispose();
     paletteManager.dispose();
     inspector.dispose();
     batchInspector.dispose();

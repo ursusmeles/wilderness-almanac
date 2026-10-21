@@ -93,6 +93,8 @@ Crossings are separate from POI budgets and stay on the river channel. Each sett
 
 The library uses a fixed dusk-and-gold theme; campaign maps and tile previews use their saved palettes. Fonts, icons, control sizing and persistence contracts are documented in [DEVELOPMENT.md](DEVELOPMENT.md).
 
+New campaign opens a nearly viewport-sized draft dialog with a 70/30 map/settings split on desktop and a scrolling stacked layout on phones. The live 3D preview supports pan, zoom, selection and expansion within the dialog. Name, seed, saved palette and five-step Open water/Elevation/Forests/Settlements sliders show their current descriptive modifier beside the label; world preferences are not connected to generation yet. Seed and slider changes highlight Generate and disable Create until regeneration or Keep current map. Keep current map preserves the name/palette while returning seed/sliders to the current preview. The ember primary action follows the next required step. Changed drafts confirm before dismissal; only Create writes a campaign. Custom names survive regeneration, and palette changes repaint immediately. Default desktop sizes fit without scrolling, with a compact layout for shorter windows.
+
 Desktop places the map on the left and the two tools on the right. Phones and compact landscape screens keep a viewport-height map, with Inspector then Tracker below it. The tool title bars match the collapsed palette toolbar; mobile tools span the viewport width. The Inspector places the compact Visited switch at the right of the hex title, with long titles wrapping around it. The overview keeps 12px padding and a 24px preview-to-text gap; its observed height continues to protect the overview when both tools are expanded.
 
 Maps start at 1.68× zoom on desktop and 1.6× on mobile, with a 0.7–12× clamp. New Map preserves zoom/pan within the active campaign. A different campaign starts at the default view. Buttons, wheel, pinch and keyboard +/= and − share zoom handling; keyboard shortcuts ignore editable fields, dialogs and browser modifiers.
@@ -119,7 +121,7 @@ Campaign export envelope version 2 carries edit-state version 1, or version 2 fo
 
 - Elevated water courses, waterfalls, river lakes with through-flow, rainfall/erosion and geological simulation. Lakes currently act as terminal sinks.
 - Campaign Tracker content, tokens, cloud storage, accounts and expansion beyond the fixed footprint. Campaign editing and replay JSON export/import are implemented; migration across generator versions remains deferred.
-- Large-world instancing/chunking and further renderer bundle optimisation. The renderer/Three.js chunk loads only when entering a campaign; its size can still trigger Vite’s 500 KB advisory without affecting initial homepage JavaScript.
+- Large-world instancing/chunking and further renderer bundle optimisation. The renderer/Three.js chunk loads only when opening a creation preview or entering a campaign; its size can still trigger Vite’s 500 KB advisory without affecting initial homepage JavaScript.
 
 ## Verification scope
 

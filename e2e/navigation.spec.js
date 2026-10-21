@@ -1,6 +1,6 @@
 import { test, expect, library, openCampaign } from './fixtures.js';
 
-test('new campaign paints loading feedback, ignores repeated activation, and slides both ways', async ({
+test('new campaign previews before saving, paints loading feedback, and slides both ways', async ({
   page,
 }, testInfo) => {
   await page.addInitScript(() => {
@@ -21,6 +21,8 @@ test('new campaign paints loading feedback, ignores repeated activation, and sli
   });
   await page.goto('/');
   const button = page.locator('#new-campaign');
+  const generate = page.locator('#cc-generate');
+  const create = page.locator('#cc-create');
   try {
     await button.click();
     await page.evaluate(() => {
@@ -28,12 +30,13 @@ test('new campaign paints loading feedback, ignores repeated activation, and sli
       button.click();
       button.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     });
-    await expect(button).toHaveAttribute('aria-busy', 'true');
-    await expect(button).toBeDisabled();
-    await expect(button).toHaveText(/Creating campaign…/);
-    await expect(page.locator('#import-campaign')).toBeDisabled();
-    await expect.poll(async () => (await library(page)).campaigns.length).toBe(2);
-    const painted = await button.evaluate((element) => ({
+    await expect(page.locator('#create-campaign-dialog')).toBeVisible();
+    await expect(generate).toHaveAttribute('aria-busy', 'true');
+    await expect(generate).toBeDisabled();
+    await expect(generate).toHaveText(/Generating…/);
+    await expect(create).toBeDisabled();
+    expect((await library(page)).campaigns).toHaveLength(1);
+    const painted = await generate.evaluate((element) => ({
       animation: getComputedStyle(element, '::after').animationName,
       width: getComputedStyle(element, '::after').width,
     }));
@@ -48,6 +51,14 @@ test('new campaign paints loading feedback, ignores repeated activation, and sli
   } finally {
     release();
   }
+  await expect(page.locator('#cc-scene canvas')).toBeVisible();
+  await expect(create).toBeEnabled();
+  await create.click();
+  await page.evaluate(() => {
+    const button = document.getElementById('cc-create');
+    button.click();
+    button.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  });
   await expect(page.locator('#campaign-menu')).toBeHidden();
   await expect(page.locator('#hp-scene canvas')).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.transitionDirections)).toEqual(['forward']);

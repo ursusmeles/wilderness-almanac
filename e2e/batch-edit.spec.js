@@ -10,6 +10,11 @@ async function enableMultiEdit(page) {
   return toggle;
 }
 
+async function finishMapAction(page, button) {
+  await button.click();
+  await expect(page.locator('#campaign-workspace')).not.toHaveAttribute('aria-busy', 'true');
+}
+
 test('multi edit applies only chosen fields, persists, and undoes the entire selection', async ({
   page,
 }, testInfo) => {
@@ -23,7 +28,7 @@ test('multi edit applies only chosen fields, persists, and undoes the entire sel
   await expect(page.locator('#hp-batch-count')).toHaveText('2 hexes selected');
   await page.locator('#hp-batch-terrain').selectOption('meadow');
   await page.locator('#hp-batch-elevation').selectOption('1');
-  await page.locator('#hp-batch-apply').click();
+  await finishMapAction(page, page.locator('#hp-batch-apply'));
   const edited = (await library(page)).campaigns[0];
   for (const key of ['0,0', '1,0'])
     expect(edited.hexEdits.cells[key]).toEqual({ terrain: 'meadow', elevation: 1, crossing: null });
@@ -33,7 +38,7 @@ test('multi edit applies only chosen fields, persists, and undoes the entire sel
   const screenshot = testInfo.outputPath('multi-edit.png');
   await page.screenshot({ path: screenshot, fullPage: true });
   await testInfo.attach('Multi edit workspace', { path: screenshot, contentType: 'image/png' });
-  await page.locator('#hp-batch-undo').click();
+  await finishMapAction(page, page.locator('#hp-batch-undo'));
   expect((await library(page)).campaigns[0].hexEdits).toEqual(initial.hexEdits);
   await expect(page.locator('#hp-batch-undo')).toBeDisabled();
   await toggle.click();
@@ -63,7 +68,7 @@ test('multi edit protects drafts, supports all/clear and rejects incompatible ta
   await expect(page.locator('#hp-batch-terrain option').first()).toHaveText('Keep mixed values');
   const before = (await library(page)).campaigns[0];
   await page.locator('#hp-batch-settlement').selectOption('village');
-  await page.locator('#hp-batch-apply').click();
+  await finishMapAction(page, page.locator('#hp-batch-apply'));
   await expect(page.locator('#hp-batch-feedback')).toContainText(
     'Water cannot contain settlements',
   );
@@ -98,7 +103,7 @@ test('whole-map batch edits survive reload and preserve the mobile map footprint
   await page.locator('#hp-batch-elevation').selectOption('0');
   await page.locator('#hp-batch-settlement').selectOption('');
   await page.locator('#hp-batch-poi').selectOption('');
-  await page.locator('#hp-batch-apply').click();
+  await finishMapAction(page, page.locator('#hp-batch-apply'));
   expect(Object.keys((await library(page)).campaigns[0].hexEdits.cells)).toHaveLength(469);
   const dimensions = await page.evaluate(() => ({
     height: document.querySelector('.hp-map-panel').getBoundingClientRect().height,
@@ -140,7 +145,7 @@ test('settlement joining, addressed errors and painted Apply feedback work toget
   await page.locator('#hp-batch-elevation').selectOption('1');
   await page.locator('#hp-batch-settlement').selectOption('city');
   await page.locator('#hp-batch-poi').selectOption('');
-  await page.locator('#hp-batch-apply').click();
+  await finishMapAction(page, page.locator('#hp-batch-apply'));
   const join = page.getByRole('button', { name: 'Join city', exact: true });
   await expect(join).toBeEnabled();
   expect(
@@ -156,7 +161,7 @@ test('settlement joining, addressed errors and painted Apply feedback work toget
   expect(
     Math.abs(joinBounds.y + joinBounds.height - visitedBounds.y - visitedBounds.height),
   ).toBeLessThan(2);
-  await join.click();
+  await finishMapAction(page, join);
   await expect(join).toBeDisabled();
   const joined = (await library(page)).campaigns[0];
   expect(joined.hexEdits.version).toBe(2);
@@ -166,20 +171,20 @@ test('settlement joining, addressed errors and painted Apply feedback work toget
   const screenshot = testInfo.outputPath('joined-city.png');
   await page.screenshot({ path: screenshot, fullPage: true });
   await testInfo.attach('Joined city', { path: screenshot, contentType: 'image/png' });
-  await page.locator('#hp-batch-undo').click();
+  await finishMapAction(page, page.locator('#hp-batch-undo'));
   await expect(join).toBeEnabled();
   await page.locator('#hp-batch-settlement').selectOption('town');
-  await page.locator('#hp-batch-apply').click();
+  await finishMapAction(page, page.locator('#hp-batch-apply'));
   await expect(page.getByRole('button', { name: 'Join town', exact: true })).toBeEnabled();
   await page.locator('#hp-batch-settlement').selectOption('village');
-  await page.locator('#hp-batch-apply').click();
+  await finishMapAction(page, page.locator('#hp-batch-apply'));
   await expect(page.locator('#hp-batch-join')).toBeHidden();
   const villages = (await library(page)).campaigns[0];
   expect(villages.hexEdits.cells['0,0'].settlementGroup).toBeUndefined();
   expect(villages.hexEdits.cells['1,0'].settlementGroup).toBeUndefined();
   await page.locator('#hp-batch-all').click();
   await page.locator('#hp-batch-settlement').selectOption('city');
-  await page.locator('#hp-batch-apply').click();
+  await finishMapAction(page, page.locator('#hp-batch-apply'));
   const error = page.locator('#hp-batch-feedback');
   await expect(error).toContainText(/Region #\d+ · -?\d+, -?\d+:/);
   await expect(error).toHaveCSS('color', 'rgb(240, 162, 154)');

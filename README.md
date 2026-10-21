@@ -22,7 +22,7 @@ Wilderness Almanac is actively developing. The Hex Inspector is functional; the 
 
 ## Getting started
 
-Open the app and choose **New campaign**, or import a previously exported campaign JSON file. Click a hex to inspect and edit it. Drag to pan; use the zoom controls, mouse wheel or **+ / −** keys to look closer.
+Open the app and choose **New campaign** to preview a map, choose a palette and name your campaign, then select **Create campaign**. You can also import a previously exported campaign JSON file. Click a hex to inspect and edit it. Drag to pan; use the zoom controls, mouse wheel or **+ / −** keys to look closer.
 
 Open **Palette manager** in the main menu to add palettes, edit their three colours, rename them or choose a default for new campaigns. Bundled palettes stay read-only. Deleting a custom palette keeps existing campaigns’ colours; deleting the default restores Forbidden Lands as the default. Palettes save in this browser alongside your settings.
 

@@ -60,7 +60,13 @@
             <input type="file" id="campaign-file" accept=".json,application/json" hidden />
           </header>
           <ul id="campaign-list" class="campaign-list stack" aria-label="Saved campaigns"></ul>
-          <button type="button" id="new-campaign" class="new-campaign cluster">
+          <button
+            type="button"
+            id="new-campaign"
+            class="new-campaign cluster"
+            aria-haspopup="dialog"
+            aria-controls="create-campaign-dialog"
+          >
             <svg class="ui-icon new-campaign-symbol" viewBox="0 0 24 24" aria-hidden="true">
               <use href="/icons/pixelarticons.svg#plus"></use>
             </svg>
@@ -128,6 +134,198 @@
             </button>
             <button type="button" id="default-palette" disabled>Set as default</button>
           </footer>
+        </dialog>
+        <dialog id="create-campaign-dialog" aria-labelledby="create-campaign-title">
+          <header class="palette-manager-header cc-header">
+            <h2 id="create-campaign-title">
+              Create new campaign <span aria-hidden="true">·</span>
+              <span id="cc-title-name">New campaign</span>
+            </h2>
+            <button
+              type="button"
+              id="cc-dismiss"
+              class="menu-icon-button"
+              aria-label="Close new campaign settings"
+            >
+              <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <use href="/icons/pixelarticons.svg#close"></use>
+              </svg>
+            </button>
+          </header>
+          <div class="cc-body">
+            <section class="cc-preview" aria-label="Map preview">
+              <div id="cc-scene" class="cc-scene"></div>
+              <output id="cc-preview-status" class="cc-preview-status" aria-live="polite"
+                >Preparing preview…</output
+              >
+              <div class="cc-map-controls">
+                <button
+                  type="button"
+                  id="cc-zoom-in"
+                  aria-label="Zoom in on preview"
+                  title="Zoom in"
+                >
+                  <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <use href="/icons/pixelarticons.svg#plus"></use>
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  id="cc-zoom-out"
+                  aria-label="Zoom out on preview"
+                  title="Zoom out"
+                >
+                  <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <use href="/icons/pixelarticons.svg#minus"></use>
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  id="cc-expand"
+                  aria-label="Expand map preview"
+                  title="Expand map preview"
+                  aria-pressed="false"
+                >
+                  <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <use href="/icons/pixelarticons.svg#scale"></use>
+                  </svg>
+                </button>
+              </div>
+            </section>
+            <section class="cc-settings" aria-label="Campaign settings">
+              <label class="cc-field"
+                ><span class="cc-field-label">Map name</span
+                ><input
+                  id="cc-name"
+                  type="text"
+                  maxlength="100"
+                  autocomplete="off"
+                  spellcheck="false"
+                  required
+              /></label>
+              <div class="cc-seed-section">
+                <label class="cc-field"
+                  ><span class="cc-field-label">Seed</span
+                  ><input
+                    id="cc-seed"
+                    type="text"
+                    maxlength="128"
+                    autocomplete="off"
+                    spellcheck="false"
+                    required
+                /></label>
+                <div class="cc-seed-actions">
+                  <button type="button" id="cc-random-seed">
+                    <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+                      <use href="/icons/pixelarticons.svg#refresh"></use></svg
+                    >Random seed
+                  </button>
+                  <button type="button" id="cc-save-seed" disabled>Save seed</button>
+                </div>
+              </div>
+              <section class="cc-preferences" aria-labelledby="cc-preferences-title">
+                <header class="cc-section-header">
+                  <h3 id="cc-preferences-title">World preferences</h3>
+                  <button type="button" id="cc-reset-preferences">Reset to default</button>
+                </header>
+                <div class="cc-sliders">
+                  <label class="cc-slider"
+                    ><span
+                      >Open water ·
+                      <output id="cc-water-value" for="cc-water">Default</output></span
+                    ><input
+                      id="cc-water"
+                      aria-label="Open water"
+                      type="range"
+                      min="-2"
+                      max="2"
+                      step="1"
+                      value="0"
+                      list="cc-preference-steps"
+                      aria-valuetext="Default"
+                  /></label>
+                  <label class="cc-slider"
+                    ><span
+                      >Elevation ·
+                      <output id="cc-elevation-value" for="cc-elevation">Default</output></span
+                    ><input
+                      id="cc-elevation"
+                      aria-label="Elevation"
+                      type="range"
+                      min="-2"
+                      max="2"
+                      step="1"
+                      value="0"
+                      list="cc-preference-steps"
+                      aria-valuetext="Default"
+                  /></label>
+                  <label class="cc-slider"
+                    ><span
+                      >Forests ·
+                      <output id="cc-forests-value" for="cc-forests">Default</output></span
+                    ><input
+                      id="cc-forests"
+                      aria-label="Forests"
+                      type="range"
+                      min="-2"
+                      max="2"
+                      step="1"
+                      value="0"
+                      list="cc-preference-steps"
+                      aria-valuetext="Default"
+                  /></label>
+                  <label class="cc-slider"
+                    ><span
+                      >Settlements ·
+                      <output id="cc-settlements-value" for="cc-settlements">Default</output></span
+                    ><input
+                      id="cc-settlements"
+                      aria-label="Settlements"
+                      type="range"
+                      min="-2"
+                      max="2"
+                      step="1"
+                      value="0"
+                      list="cc-preference-steps"
+                      aria-valuetext="Default"
+                  /></label>
+                </div>
+                <datalist id="cc-preference-steps">
+                  <option value="-2"></option>
+                  <option value="-1"></option>
+                  <option value="0"></option>
+                  <option value="1"></option>
+                  <option value="2"></option>
+                </datalist>
+              </section>
+              <label class="cc-field"
+                ><span class="cc-field-label">Palette</span
+                ><select id="cc-palette"></select
+              ></label>
+            </section>
+          </div>
+          <footer class="palette-manager-actions cc-footer">
+            <button type="button" id="cc-close">Close</button>
+            <button type="button" id="cc-restore" title="Discard seed and slider changes" hidden>
+              Keep current map
+            </button>
+            <button type="button" id="cc-generate">
+              <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <use href="/icons/pixelarticons.svg#refresh"></use></svg
+              ><span>Generate new map</span>
+            </button>
+            <button type="button" id="cc-create" class="cc-primary" disabled>
+              Create campaign
+            </button>
+          </footer>
+        </dialog>
+        <dialog id="discard-campaign-draft-dialog" aria-labelledby="discard-campaign-draft-title">
+          <h2 id="discard-campaign-draft-title">Discard campaign setup?</h2>
+          <p>Your changes will be lost.</p>
+          <div class="dialog-actions cluster">
+            <button type="button" id="cc-keep-editing" autofocus>Keep editing</button
+            ><button type="button" id="cc-discard" class="menu-danger">Discard changes</button>
+          </div>
         </dialog>
         <dialog
           id="delete-campaign-dialog"

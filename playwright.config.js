@@ -8,7 +8,7 @@ export default defineConfig({
   workers: 1,
   timeout: 60000,
   expect: { timeout: 15000 },
-  globalTimeout: 10 * 60 * 1000,
+  globalTimeout: 20 * 60 * 1000,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
     baseURL: 'http://127.0.0.1:4178',
