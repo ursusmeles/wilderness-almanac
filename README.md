@@ -16,7 +16,7 @@ Build a world, find a place worth exploring, and make it your own. Wilderness Al
 - **Keep several adventures.** Name your campaigns, choose their tile icons and return to them from the campaign library.
 - **Explore on desktop or mobile.** Pan and zoom, fold away the tool panels, or expand the map to fill the browser viewport. Trees, reeds and water have optional ambient motion.
 
-Campaign icons use cached 3D previews. Until a matching preview is available, the card shows a tile in the campaign’s colours.
+Opening a campaign prepares up to eight tile icons: four settlements and four points of interest. Refresh cycles through these previews in order. You can also choose any hex with **Set as world icon** in the Hex Inspector. Before previews are ready, the card shows a tile in the campaign’s colours.
 
 Wilderness Almanac is actively developing. The Hex Inspector is functional; the Campaign Tracker panel is a placeholder for future campaign tools.
 

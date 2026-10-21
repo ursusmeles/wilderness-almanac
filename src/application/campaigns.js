@@ -59,8 +59,9 @@ export function createCampaign(world, colors, paletteName, variant = 0) {
   });
 }
 
+// Stable gallery: four settlements, four distinct POIs, then spare landmarks.
 export function campaignIconCandidates(world) {
-  return world.cells.filter(
+  const eligible = world.cells.filter(
     (cell) =>
       cell.water !== 'ocean' &&
       cell.water !== 'lake' &&
@@ -69,21 +70,22 @@ export function campaignIconCandidates(world) {
         cell.pointsOfInterest?.length ||
         cell.crossing),
   );
+  const settlements = eligible.filter((cell) => cell.pointOfLight);
+  const first = settlements.slice(0, 4);
+  const pois = eligible.filter((cell) => cell.pointsOfInterest?.length);
+  const selected = new Set(first.map((cell) => cell.key));
+  const pool = [
+    ...first,
+    ...pois.filter((cell) => !selected.has(cell.key)).slice(0, 4),
+    ...settlements,
+    ...pois,
+  ];
+  const landmarks = [...new Map(pool.map((cell) => [cell.key, cell])).values()];
+  return (landmarks.length ? landmarks : eligible).slice(0, 8);
 }
 
-export function chooseCampaignIcon(world, previousKey, random = Math.random) {
-  const eligible = campaignIconCandidates(world);
-  const alternatives = eligible.filter((cell) => cell.key !== previousKey);
-  const landmark = (cell) => cell.pointOfLight || cell.pointsOfInterest?.length;
-  const landmarks = alternatives.filter(landmark);
-  let candidates = landmarks;
-  if (previousKey !== undefined) {
-    const terrain = alternatives.filter((cell) => !landmark(cell));
-    // Roll the pool first, so its size cannot bias the 50/50 split.
-    const pools = random() < 0.5 ? [landmarks, terrain] : [terrain, landmarks];
-    candidates = pools.find((pool) => pool.length) ?? eligible;
-  }
-  return candidates.length ? candidates[Math.floor(random() * candidates.length)].key : undefined;
+export function chooseCampaignIcon(world) {
+  return campaignIconCandidates(world)[0]?.key;
 }
 
 export function replaceCampaignMap(campaign, world, previousWorldName) {

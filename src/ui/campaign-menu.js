@@ -1,7 +1,7 @@
 import { generateWorld } from '../generation/world.js';
 import { campaignWorld } from '../generation/campaign-world.js';
 import { cloneTemplate } from './templates.js';
-import { loadThumbnail } from './thumbnail-cache.js';
+import { loadThumbnails } from './thumbnail-cache.js';
 import { copyText, mapLink } from './map-link.js';
 import { createCampaignStore } from './campaign-store.js';
 import {
@@ -11,7 +11,6 @@ import {
   exportCampaign,
   campaignFilename,
   findCampaignReplay,
-  campaignIconCandidates,
   chooseCampaignIcon,
   MAX_CAMPAIGN_BYTES,
 } from '../application/campaigns.js';
@@ -102,29 +101,38 @@ export function createCampaignMenu({ storage, previous, defaultPalette, onEnter,
       };
       cached.set(campaign.id, data);
     }
-    if (!campaignIconCandidates(data.world).some((cell) => cell.key === campaign.iconKey)) {
+    if (!data.world.cells.some((cell) => cell.key === campaign.iconKey)) {
       campaign.iconKey = chooseCampaignIcon(data.world);
       save();
     }
     return data;
   }
 
-  async function paintIcon(card, campaign) {
-    const img = card.querySelector('.campaign-icon img');
-    const placeholder = card.querySelector('.campaign-icon-placeholder');
+  async function paintIcon(card, campaign, ready) {
     const request = {};
     card.iconRequest = request;
-    img.hidden = true;
-    placeholder.hidden = false;
+    const shuffle = card.querySelector('[data-action="shuffle"]');
+    if (!ready) shuffle.disabled = true;
+    const images = ready ?? (await loadThumbnails(campaign));
+    if (!card.isConnected || card.iconRequest !== request) return;
+    card.iconEntries = images;
+    shuffle.disabled = opening || images.length < 2;
+    shuffle.title =
+      images.length === 0
+        ? 'Open this campaign to prepare icon previews'
+        : images.length === 1
+          ? 'No other icon previews available'
+          : 'Next cached world icon';
+    const img = card.querySelector('.campaign-icon img');
+    const placeholder = card.querySelector('.campaign-icon-placeholder');
+    const image = images.find((entry) => entry.key === campaign.iconKey)?.image;
     for (const [index, role] of ['ground', 'water', 'elements'].entries())
       placeholder.style.setProperty(`--preview-${role}`, campaign.colors[index]);
     img.alt = `Terrain hex from ${campaign.name}`;
     img.dataset.hexKey = campaign.iconKey ?? '';
-    const image = await loadThumbnail(campaign);
-    if (!card.isConnected || card.iconRequest !== request) return;
+    if (image) img.src = image;
     img.hidden = !image;
     placeholder.hidden = Boolean(image);
-    if (image) img.src = image;
   }
 
   function labelActions(card, campaign) {
@@ -134,7 +142,7 @@ export function createCampaignMenu({ storage, previous, defaultPalette, onEnter,
       ['enter', 'Enter'],
       ['download', 'Download JSON for'],
       ['delete', 'Delete'],
-      ['shuffle', 'Shuffle icon for'],
+      ['shuffle', 'Next icon for'],
       ['icon-controls', 'Show icon controls for'],
     ])
       card
@@ -313,10 +321,13 @@ export function createCampaignMenu({ storage, previous, defaultPalette, onEnter,
     if (action === 'enter') return enter(campaign, button);
     if (action === 'download') return download(campaign);
     if (action === 'shuffle') {
-      const data = campaignData(campaign);
-      campaign.iconKey = chooseCampaignIcon(data.world, campaign.iconKey);
+      const card = button.closest('.campaign-card');
+      const images = card.iconEntries ?? [];
+      if (images.length < 2) return;
+      const index = images.findIndex((entry) => entry.key === campaign.iconKey);
+      campaign.iconKey = images[(index + 1) % images.length].key;
       const saved = save();
-      void paintIcon(button.closest('.campaign-card'), campaign);
+      void paintIcon(card, campaign, images);
       if (saved) status.textContent = 'Campaign icon updated';
       return;
     }

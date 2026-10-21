@@ -38,6 +38,64 @@ test('homepage never requests WebGL code, and cached icons survive reload withou
   expect(scripts.some((url) => url.includes('map-view-'))).toBe(false);
 });
 
+test('icon refresh cycles prepared previews and wraps without loading WebGL on the menu', async ({
+  page,
+}) => {
+  await openCampaign(page);
+  await page.locator('#hp-return-menu').click();
+  const card = page.locator('.campaign-card');
+  const image = card.locator('.campaign-icon img');
+  await card.locator('[data-action="icon-controls"]').click();
+  const next = card.locator('[data-action="shuffle"]');
+  await expect(next).toBeEnabled();
+  const count = await card.evaluate((element) => element.iconEntries.length);
+  expect(count).toBeGreaterThanOrEqual(8);
+  expect(count).toBeLessThanOrEqual(9);
+  const first = await image.getAttribute('data-hex-key');
+  const seen = new Set([first]);
+  for (let i = 0; i < count; i++) {
+    const before = await image.getAttribute('data-hex-key');
+    await next.click();
+    await expect(image).toBeVisible();
+    await expect(card.locator('.campaign-icon-placeholder')).toBeHidden();
+    await expect(image).not.toHaveAttribute('data-hex-key', before);
+    seen.add(await image.getAttribute('data-hex-key'));
+  }
+  expect(seen.size).toBe(count);
+  await expect(image).toHaveAttribute('data-hex-key', first);
+  await next.click();
+  const chosen = await image.getAttribute('data-hex-key');
+  const requests = [];
+  page.on('request', (request) => requests.push(request.url()));
+  await page.reload();
+  await expect(image).toBeVisible();
+  await expect(image).toHaveAttribute('data-hex-key', chosen);
+  expect(requests.some((url) => url.includes('map-view-'))).toBe(false);
+});
+
+test('Inspector can set a water hex as world icon and keep it after returning and reloading', async ({
+  page,
+}) => {
+  await openCampaign(page);
+  const key = await page
+    .locator('#hp-selection option')
+    .evaluateAll(
+      (options) => options.find((option) => /Open water|Lake/.test(option.textContent)).value,
+    );
+  await page.locator('#hp-selection').selectOption(key);
+  const setIcon = page.getByRole('button', { name: 'Set as world icon', exact: true });
+  await setIcon.click();
+  await expect(setIcon).toBeDisabled();
+  expect((await library(page)).campaigns[0].iconKey).toBe(key);
+  await page.locator('#hp-return-menu').click();
+  const image = page.locator('.campaign-icon img');
+  await expect(image).toBeVisible();
+  await expect(image).toHaveAttribute('data-hex-key', key);
+  await page.reload();
+  await expect(image).toBeVisible();
+  await expect(image).toHaveAttribute('data-hex-key', key);
+});
+
 test('New Map replaces one campaign, retains its name/identity and preserves zoom', async ({
   page,
 }) => {

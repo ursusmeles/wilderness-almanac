@@ -115,6 +115,11 @@ export function createCampaignSession({ persist }) {
       save();
       return result('palette', 'Palette changed');
     },
+    icon() {
+      state = { ...state, campaign: { ...state.campaign, iconKey: selected } };
+      save();
+      return result('icon', 'World icon updated');
+    },
     apply(patch) {
       try {
         const relock = Boolean(state.campaign.hexEdits?.cells[selected]?.lock);

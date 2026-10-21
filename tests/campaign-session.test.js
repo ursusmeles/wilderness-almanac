@@ -128,3 +128,20 @@ test('local reroll and locking remain replayable; reset preserves tracking', () 
   assert.equal(session.reset().ok, true);
   assert.deepEqual(session.snapshot().campaign.hexEdits.cells['0,0'], { visited: true });
 });
+
+test('world icon selection persists without rebuilding the world or adding hex Undo history', () => {
+  const { session, writes } = fixture();
+  session.visit();
+  const before = session.snapshot();
+  const key = before.world.cells.find((cell) => cell.water)?.key ?? before.world.cells[1].key;
+  session.select(key);
+  assert.equal(session.icon().scope, 'icon');
+  const after = session.snapshot();
+  assert.equal(after.campaign.iconKey, key);
+  assert.equal(writes.at(-1).iconKey, key);
+  assert.equal(after.world, before.world);
+  assert.equal(after.dressing, before.dressing);
+  assert.equal(session.undo().ok, true);
+  assert.equal(session.snapshot().campaign.iconKey, key);
+  assert.equal(session.snapshot().canUndo, false);
+});

@@ -5,12 +5,12 @@ import { readPreferences, savePreferences } from './ui/storage.js';
 import { readMapLink, mapLink, copyText, describeHex, shortCoordinates } from './ui/map-link.js';
 import { createMapConsole } from './ui/map-console.js';
 import { createSaveStatus } from './ui/save-status.js';
-import { createCampaign } from './application/campaigns.js';
+import { createCampaign, campaignIconCandidates } from './application/campaigns.js';
 import { createCampaignSession } from './application/campaign-session.js';
 import { createCampaignMenu } from './ui/campaign-menu.js';
 import { createPanels } from './ui/panels.js';
 import { createHexInspector } from './ui/hex-inspector.js';
-import { saveThumbnail } from './ui/thumbnail-cache.js';
+import { loadThumbnails, saveThumbnails } from './ui/thumbnail-cache.js';
 import { createViewNavigation } from './ui/view-navigation.js';
 import { cloneTemplate } from './ui/templates.js';
 
@@ -38,6 +38,8 @@ let renderer;
 let mapView;
 let mapViewLoading;
 let disposed = false;
+let iconCacheRevision = 0;
+let iconCacheTimer;
 const session = createCampaignSession({ persist: persistCampaign });
 const initialVariant =
   linked.variant ?? (linked.seed && linked.seed !== saved.seed ? 0 : (saved.variant ?? 0));
@@ -228,15 +230,49 @@ function presentCampaign({ resetView = false } = {}) {
   root.dataset.seed = campaign.seed;
   root.dataset.hexCount = String(world.cells.length);
   mapConsole.reset(`${world.cells.length} hexes · ${world.regions.length} regions`);
-  void cacheCampaignIcon();
+  scheduleCampaignIcons();
 }
 
-async function cacheCampaignIcon() {
-  const { campaign } = session.snapshot();
-  const tile = layout?.find((tile) => tile.key === campaign.iconKey);
+function scheduleCampaignIcons() {
+  const revision = ++iconCacheRevision;
+  clearTimeout(iconCacheTimer);
+  // Let the map and page transition paint before preparing still previews.
+  iconCacheTimer = setTimeout(() => void cacheCampaignIcons(revision), 300);
+}
+
+async function cacheCampaignIcons(revision) {
+  const { campaign, world } = session.snapshot();
+  const tiles = layout;
+  const current = () => !disposed && revision === iconCacheRevision;
   try {
-    const image = mapView.tilePreview(tile, campaign.colors);
-    if (await saveThumbnail(campaign, image)) campaignMenu.refreshThumbnail(campaign);
+    const previous = await loadThumbnails(campaign);
+    const cached = new Map(previous.map((entry) => [entry.key, entry]));
+    const keys = [
+      ...new Set([...campaignIconCandidates(world).map((cell) => cell.key), campaign.iconKey]),
+    ];
+    const images = [];
+    for (const key of keys) {
+      if (!current()) return;
+      let entry = cached.get(key);
+      if (!entry) {
+        // One tile per task keeps the map interactive while the gallery fills.
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        if (!current()) return;
+        const image = mapView.tilePreview(
+          tiles?.find((tile) => tile.key === key),
+          campaign.colors,
+        );
+        if (image) entry = { key, image };
+      }
+      if (entry) images.push(entry);
+    }
+    if (!current()) return;
+    if (
+      images.length !== previous.length ||
+      images.some((entry, index) => entry !== previous[index])
+    )
+      await saveThumbnails(campaign, images);
+    if (current()) campaignMenu.refreshThumbnail(campaign);
   } catch {
     /* Optional thumbnails never interfere with the current campaign. */
   }
@@ -252,6 +288,7 @@ function handleAction(result) {
     applyPalette();
     updateInspector();
   } else updateInspector();
+  scheduleCampaignIcons();
   if (result.notification) mapConsole.notify(result.notification);
   return true;
 }
@@ -381,7 +418,6 @@ async function showMenu() {
   await navigation.show('back', () => {
     campaignMenu.show();
   });
-  void cacheCampaignIcon();
 }
 listen(element('return-menu'), 'click', returnToMenu);
 listen(element('mobile-menu'), 'click', returnToMenu);
@@ -467,6 +503,7 @@ function updateInspector() {
     visited: edit?.visited ?? false,
     locked: Boolean(edit?.lock),
     canUndo,
+    isIcon: campaign.iconKey === selected,
   });
 }
 
@@ -479,6 +516,7 @@ inspector = createHexInspector(panels.inspector, {
   onRegenerate: () => handleAction(session.regenerateHex()),
   onReset: () => handleAction(session.reset()),
   onUndo: () => handleAction(session.undo()),
+  onSetIcon: () => handleAction(session.icon()),
 });
 
 let pendingMapSeed;
@@ -528,6 +566,8 @@ if (linked.seed) {
 if (import.meta.hot)
   import.meta.hot.dispose(() => {
     disposed = true;
+    clearTimeout(iconCacheTimer);
+    iconCacheRevision++;
     navigation.dispose();
     setExpanded(false);
     listeners.abort();

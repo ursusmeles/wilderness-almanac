@@ -7,7 +7,7 @@ import { cloneTemplate } from './templates.js';
 const title = (text) => (text ? text[0].toUpperCase() + text.slice(1) : 'None');
 export function createHexInspector(
   host,
-  { onApply, onVisit, onLock, onRegenerate, onReset, onUndo, visible, preview },
+  { onApply, onVisit, onLock, onRegenerate, onReset, onUndo, onSetIcon, visible, preview },
 ) {
   const listeners = new AbortController();
   const listen = (target, event, handler) =>
@@ -81,9 +81,12 @@ export function createHexInspector(
     el('constraint').hidden = !enabled;
     el('edit').hidden = enabled;
     el('apply').hidden = el('cancel').hidden = !enabled;
-    for (const name of ['visited', 'lock', 'regenerate', 'reset', 'undo'])
+    for (const name of ['visited', 'lock', 'regenerate', 'reset', 'undo', 'icon'])
       el(name).disabled =
-        enabled || (name === 'undo' && !state?.canUndo) || (name === 'regenerate' && state?.locked);
+        enabled ||
+        (name === 'undo' && !state?.canUndo) ||
+        (name === 'regenerate' && state?.locked) ||
+        (name === 'icon' && state?.isIcon);
     el('feedback').textContent = '';
     if (state) fill();
   }
@@ -128,6 +131,7 @@ export function createHexInspector(
   listen(el('regenerate'), 'click', onRegenerate);
   listen(el('reset'), 'click', onReset);
   listen(el('undo'), 'click', onUndo);
+  listen(el('icon'), 'click', onSetIcon);
   listen(unsaved, 'click', (event) => {
     const action = event.target.closest('[data-unsaved]')?.dataset.unsaved;
     if (!action) return;

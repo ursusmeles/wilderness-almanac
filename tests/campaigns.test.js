@@ -165,76 +165,42 @@ test('default campaign names follow New Map while edited names survive, includin
   assert.equal(importCampaign(exportCampaign(updated)).nameEdited, false);
 });
 
-test('initial icons use settlement/POI tiles; refresh rolls the pool before selecting a tile', () => {
-  const base = { terrain: 'meadow', water: null, pointOfLight: null, pointsOfInterest: [] };
-  const cells = [
-    { ...base, key: '0,0' },
-    { ...base, key: '1,0', terrain: 'ocean', water: 'ocean' },
-    { ...base, key: '2,0', terrain: 'lake', water: 'lake' },
-    { ...base, key: '3,0', terrain: 'dense forest' },
-    { ...base, key: '4,0', terrain: 'mountains', elevation: 4 },
-    { ...base, key: '5,0', terrain: 'river', water: 'river' },
-    { ...base, key: '6,0', terrain: 'wetlands' },
-    { ...base, key: '7,0', terrain: 'farmlands' },
-    { ...base, key: '8,0', pointOfLight: { type: 'village' } },
-    { ...base, key: '9,0', pointsOfInterest: [{ kind: 'stronghold' }] },
-  ];
-  const model = { cells };
-  const eligible = campaignIconCandidates(model);
-  assert.deepEqual(eligible, cells.slice(3));
-  assert.equal(
-    chooseCampaignIcon(model, undefined, () => 0),
-    '8,0',
-  );
-  assert.equal(
-    chooseCampaignIcon(model, '3,0', () => 0),
-    '8,0',
-  );
-  assert.equal(
-    chooseCampaignIcon(model, '4,0', () => 0.999),
-    '7,0',
-  );
-  assert.equal(
-    chooseCampaignIcon(model, undefined, () => 0.999),
-    '9,0',
-  );
-  const roll = (pool, tile) => {
-    const values = [pool, tile];
-    return chooseCampaignIcon(model, '3,0', () => values.shift());
-  };
-  assert.equal(roll(0.499999, 0.999), '9,0');
-  assert.equal(roll(0.5, 0), '4,0');
-  // Two landmark tiles and five terrain tiles still receive equal pool odds.
-  const counts = new Map();
-  for (let i = 0; i < 1000; i++) {
-    const values = [i / 1000, ((i * 137) % 1000) / 1000];
-    const key = chooseCampaignIcon(model, 'not-a-key', () => values.shift());
-    counts.set(key, (counts.get(key) ?? 0) + 1);
-  }
-  assert.equal(counts.get('8,0') + counts.get('9,0'), 500);
-  assert.equal(
-    [...counts.values()].reduce((sum, count) => sum + count, 0),
-    1000,
-  );
-  assert.equal(counts.size, 7, 'Both pools reach every eligible tile');
-  assert.equal(chooseCampaignIcon({ cells: [cells[3]] }, '3,0'), '3,0');
-  assert.equal(chooseCampaignIcon({ cells: cells.slice(3, 8) }), undefined);
-  assert.equal(
-    chooseCampaignIcon({ cells: [cells[8], cells[3]] }, '8,0', () => 0),
-    '3,0',
-  );
-  assert.equal(
-    chooseCampaignIcon({ cells: [cells[8], cells[9]] }, '8,0', () => 0.9),
-    '9,0',
-  );
-  assert.equal(chooseCampaignIcon({ cells: [] }, 'missing'), undefined);
-  assert.equal(chooseCampaignIcon({ cells: cells.slice(0, 3) }), undefined);
+test('icon galleries select four settlements and four distinct POIs in stable order', () => {
+  const base = { terrain: 'meadow', water: null, pointsOfInterest: [] };
+  const settlements = Array.from({ length: 6 }, (_, i) => ({
+    ...base,
+    key: `${i},0`,
+    pointOfLight: { type: 'village' },
+  }));
+  settlements[0].pointsOfInterest = [{ kind: 'watchtower' }];
+  const pois = Array.from({ length: 6 }, (_, i) => ({
+    ...base,
+    key: `${i},1`,
+    pointsOfInterest: [{ kind: 'ruins' }],
+  }));
+  const model = { cells: [...settlements, ...pois] };
+  const expected = [...settlements.slice(0, 4), ...pois.slice(0, 4)];
+  assert.deepEqual(campaignIconCandidates(model), expected);
+  assert.deepEqual(campaignIconCandidates(model), expected);
+  assert.equal(chooseCampaignIcon(model), settlements[0].key);
+  assert.equal(new Set(expected.map((cell) => cell.key)).size, 8);
+  assert.deepEqual(campaignIconCandidates({ cells: [...settlements, pois[0]] }), [
+    ...settlements.slice(0, 4),
+    pois[0],
+    ...settlements.slice(4),
+  ]);
+  assert.deepEqual(campaignIconCandidates({ cells: pois }), pois);
+  const forest = { ...base, key: '0,2', terrain: 'dense forest' };
+  assert.deepEqual(campaignIconCandidates({ cells: [base, { ...base, water: 'ocean' }, forest] }), [
+    forest,
+  ]);
+  assert.equal(chooseCampaignIcon({ cells: [] }), undefined);
   const older = { ...campaign };
   delete older.iconKey;
   assert.deepEqual(importCampaign(exportCampaign(older)), older);
-  const shuffled = { ...campaign, iconKey: chooseCampaignIcon(world, campaign.iconKey) };
-  assert.notEqual(shuffled.iconKey, campaign.iconKey);
-  assert.deepEqual(importCampaign(exportCampaign(shuffled)), shuffled);
+  // Inspector choices can include any valid world hex, including open water.
+  const manual = { ...campaign, iconKey: world.cells.find((cell) => cell.water)?.key ?? '0,0' };
+  assert.deepEqual(importCampaign(exportCampaign(manual)), manual);
 });
 
 test('individual icon preparation retains the complete map river and mountain geometry', () => {
