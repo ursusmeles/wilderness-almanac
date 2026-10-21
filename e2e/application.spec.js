@@ -106,30 +106,6 @@ test('Inspector can set a water hex as world icon and keep it after returning an
   await expect(image).toHaveAttribute('data-hex-key', key);
 });
 
-test('New Map replaces one campaign, retains its name/identity and preserves zoom', async ({
-  page,
-}) => {
-  await openCampaign(page);
-  const before = (await library(page)).campaigns[0];
-  const zoom = await page.locator('#hp-scene canvas').getAttribute('data-zoom');
-  await page.getByRole('button', { name: 'New map settings', exact: true }).click();
-  await page.getByRole('textbox', { name: 'Map seed', exact: true }).fill('browser replacement');
-  await page.getByRole('button', { name: 'Create map', exact: true }).click();
-  await expect(page.locator('#campaign-workspace')).toHaveAttribute(
-    'data-seed',
-    'browser replacement',
-  );
-  const after = await library(page);
-  expect(after.campaigns).toHaveLength(1);
-  expect(after.campaigns[0]).toMatchObject({
-    id: before.id,
-    name: before.name,
-    createdAt: before.createdAt,
-    seed: 'browser replacement',
-  });
-  await expect(page.locator('#hp-scene canvas')).toHaveAttribute('data-zoom', zoom);
-});
-
 test('campaign JSON export/import preserves edits and creates an independent save', async ({
   page,
 }) => {
@@ -176,9 +152,7 @@ test('unapplied edits can be kept or applied before changing selection; Undo res
   expect((await library(page)).campaigns[0].hexEdits).toBeUndefined();
 });
 
-test('leaving the map protects a draft and map replacement confirms clearing saved edits', async ({
-  page,
-}) => {
+test('leaving the map protects a draft and retains saved edits', async ({ page }) => {
   await openCampaign(page);
   await page.getByRole('button', { name: 'Edit hex', exact: true }).click();
   await page.getByRole('combobox', { name: 'Terrain', exact: true }).selectOption('meadow');
@@ -189,15 +163,14 @@ test('leaving the map protects a draft and map replacement confirms clearing sav
   await expect(page.locator('#campaign-menu')).toBeVisible();
   await page.getByRole('button', { name: 'Enter Test campaign', exact: true }).click();
   await page.getByRole('switch', { name: 'Visited', exact: true }).click();
-  await page.getByRole('button', { name: 'New Map', exact: true }).click();
-  const replace = page.getByRole('dialog', { name: 'Replace this world?', exact: true });
-  await expect(replace).toBeVisible();
-  await replace.getByRole('button', { name: 'Keep world', exact: true }).click();
+  await page.locator('#hp-return-menu').click();
+  await page.getByRole('button', { name: 'Enter Test campaign', exact: true }).click();
+  await expect(page.getByRole('switch', { name: 'Visited', exact: true })).toHaveAttribute(
+    'aria-checked',
+    'true',
+  );
   expect((await library(page)).campaigns[0].seed).toBe('7');
-  await page.getByRole('button', { name: 'New Map', exact: true }).click();
-  await replace.getByRole('button', { name: 'Create new map', exact: true }).click();
-  await expect(page.locator('#campaign-workspace')).not.toHaveAttribute('data-seed', '7');
-  expect((await library(page)).campaigns[0].hexEdits).toBeUndefined();
+  expect((await library(page)).campaigns[0].hexEdits.cells['0,0'].visited).toBe(true);
 });
 
 test('storage errors remain visible, exports contain unsaved changes, and successful retries clear the warning', async ({

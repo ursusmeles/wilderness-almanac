@@ -1340,30 +1340,6 @@
     padding: 0;
     width: var(--control-size);
   }
-  .hp-new-map-actions {
-    display: inline-flex;
-    & button:first-child {
-      border-radius: var(--radius) 0 0 var(--radius);
-    }
-    & #hp-map-settings {
-      display: grid;
-      place-items: center;
-      width: var(--control-size);
-      padding: 0;
-      border-left: 0;
-      border-radius: 0 var(--radius) var(--radius) 0;
-      --icon-size: var(--icon-small);
-    }
-  }
-  .hp-new-map-form {
-    --stack-gap: var(--space-8);
-    & h2 {
-      margin-bottom: var(--space-4);
-    }
-    & .hp-tools {
-      justify-content: end;
-    }
-  }
   @container (max-width: 360px) {
     .hp-palette {
       grid-template-columns: repeat(2, minmax(0, 1fr));

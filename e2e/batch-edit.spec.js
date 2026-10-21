@@ -21,9 +21,7 @@ test('multi edit applies only chosen fields, persists, and undoes the entire sel
   const toggle = await enableMultiEdit(page);
   const initial = (await library(page)).campaigns[0];
   await expect(page.locator('#hp-batch-count')).toHaveText('1 hex selected');
-  const toggleBounds = await toggle.boundingBox();
-  const windBounds = await page.getByRole('switch', { name: 'Wind', exact: true }).boundingBox();
-  expect(toggleBounds.y + toggleBounds.height).toBeLessThanOrEqual(windBounds.y);
+  await expect(page.locator('.hp-top #hp-multi-edit')).toBeVisible();
   await page.locator('#hp-selection').selectOption('1,0');
   await expect(page.locator('#hp-batch-count')).toHaveText('2 hexes selected');
   await page.locator('#hp-batch-terrain').selectOption('meadow');
@@ -78,14 +76,16 @@ test('multi edit protects drafts, supports all/clear and rejects incompatible ta
   await expect(page.locator('#hp-batch-count')).toHaveText('0 hexes selected');
   await expect(page.locator('#hp-batch-terrain')).toBeDisabled();
   await expect(page.locator('#hp-batch-apply')).toBeDisabled();
-  // A map click adds a hex; clicking it again removes it. Dragging still pans.
+  // A plain map click selects one hex; Ctrl+click toggles it. Dragging still pans.
   await page.locator('#hp-scene canvas').scrollIntoViewIfNeeded();
   const bounds = await page.locator('#hp-scene canvas').boundingBox();
   const x = bounds.x + bounds.width / 2,
     y = bounds.y + bounds.height / 2;
   await page.mouse.click(x, y);
   await expect(page.locator('#hp-batch-count')).toHaveText('1 hex selected');
+  await page.keyboard.down('Control');
   await page.mouse.click(x, y);
+  await page.keyboard.up('Control');
   await expect(page.locator('#hp-batch-count')).toHaveText('0 hexes selected');
   await page.mouse.move(x, y);
   await page.mouse.down();

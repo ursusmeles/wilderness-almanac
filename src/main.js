@@ -17,7 +17,6 @@ import { createBatchInspector } from './ui/batch-inspector.js';
 import { createMapAction } from './ui/map-action.js';
 import { loadThumbnails, saveThumbnails } from './ui/thumbnail-cache.js';
 import { createViewNavigation } from './ui/view-navigation.js';
-import { cloneTemplate } from './ui/templates.js';
 
 const root = document.getElementById('campaign-workspace');
 const navigation = createViewNavigation(document.getElementById('campaign-menu'), root);
@@ -58,7 +57,6 @@ let movement = saved.motion ?? true;
 const selection = element('selection');
 const preset = element('preset');
 const message = element('message');
-const dialog = element('new-map-dialog');
 const saveStatus = createSaveStatus(({ campaigns, preferences, message }) => {
   document.getElementById('campaign-save-warning').hidden = !campaigns && !preferences;
   document.getElementById('campaign-save-message').textContent = message;
@@ -106,7 +104,7 @@ function setSettingsOpen(enabled) {
       control.disabled = !enabled;
     });
   element('motion').hidden = !enabled;
-  element('multi-edit').hidden = !enabled;
+  element('regenerate').hidden = !enabled;
 }
 setSettingsOpen(settingsOpen);
 listen(element('toggle-settings'), 'click', () => {
@@ -228,7 +226,7 @@ function presentCampaign({ resetView = false } = {}) {
   if (!renderer)
     renderer = mapView.createMapRenderer(element('scene'), {
       motion: movement,
-      onSelect(key, { ctrlKey = false } = {}) {
+      onSelect(key, { additive = false } = {}) {
         if (!key) return;
         if (mapAction.isBusy()) {
           renderer.select(session.snapshot().selected, { notify: false });
@@ -236,8 +234,8 @@ function presentCampaign({ resetView = false } = {}) {
           return;
         }
         const { selected, multiEdit } = session.snapshot();
-        const enableMultiEdit = ctrlKey && !multiEdit;
-        const proceed = () => renderer.select(key, { ctrlKey });
+        const enableMultiEdit = additive && !multiEdit;
+        const proceed = () => renderer.select(key, { additive });
         const ready = enableMultiEdit
           ? inspector.beforeLeave(proceed)
           : multiEdit
@@ -254,6 +252,7 @@ function presentCampaign({ resetView = false } = {}) {
           inspector.reset();
           batchInspector.reset();
         }
+        if (multiEdit && !additive) session.clearSelection();
         if (!enableMultiEdit || key !== selected) session.select(key);
         selection.value = key;
         root.dataset.selected = key;
@@ -374,18 +373,6 @@ function renderWorld({ resetView = false } = {}) {
   updateInspector();
 }
 
-function newMap(seed, confirmed = false) {
-  if (!confirmed && !activeInspector().beforeLeave(() => newMap(seed))) return;
-  const result = session.replace(seed, { confirmed });
-  if (result.requiresConfirmation) {
-    pendingMapSeed = seed;
-    if (!replaceDialog.open) replaceDialog.showModal();
-    return;
-  }
-  presentCampaign();
-  mapConsole.notify(result.notification);
-}
-
 function updatePaletteOptions() {
   preset.querySelectorAll('[data-saved]').forEach((option) => option.remove());
   savedPalettes.forEach((palette, index) => {
@@ -428,7 +415,9 @@ function paletteLabel(candidate) {
     : (savedPalettes.find((palette) => same(palette.colors))?.name ?? 'Custom');
 }
 
-listen(selection, 'change', () => renderer?.select(selection.value));
+listen(selection, 'change', () =>
+  renderer?.select(selection.value, { additive: session.snapshot()?.multiEdit }),
+);
 listen(element('in'), 'click', () => renderer?.zoom(1.2));
 listen(element('out'), 'click', () => renderer?.zoom(1 / 1.2));
 listen(element('mobile-in'), 'click', () => renderer?.zoom(1.2));
@@ -481,7 +470,7 @@ listen(element('multi-edit'), 'click', () => {
     updateInspector();
     mapConsole.notify(
       session.snapshot().multiEdit
-        ? 'Multi edit on: select hexes to edit together'
+        ? 'Multi edit on: Ctrl+click to add or remove hexes'
         : 'Multi edit off',
     );
   };
@@ -511,26 +500,6 @@ listen(element('mobile-menu'), 'click', returnToMenu);
 listen(element('download-unsaved'), 'click', () =>
   campaignMenu.download(session.snapshot().campaign),
 );
-listen(element('new-map'), 'click', () => newMap(freshSeed()));
-listen(element('map-settings'), 'click', () => {
-  element('seed').value = freshSeed();
-  element('seed').setCustomValidity('');
-  dialog.showModal();
-  element('seed').select();
-});
-listen(element('cancel-new-map'), 'click', () => dialog.close());
-listen(element('new-map-form'), 'submit', (event) => {
-  event.preventDefault();
-  const input = element('seed');
-  if (!input.value.trim()) {
-    input.setCustomValidity('Enter a seed.');
-    input.reportValidity();
-    return;
-  }
-  newMap(input.value.trim());
-  dialog.close();
-});
-listen(element('seed'), 'input', () => element('seed').setCustomValidity(''));
 listen(element('regenerate'), 'click', (event) =>
   mapAction.run(event.currentTarget, () => handleAction(session.regenerate()), 'Regenerating…'),
 );
@@ -659,18 +628,6 @@ batchInspector = createBatchInspector(batchInspectorHost, {
     ),
 });
 
-let pendingMapSeed;
-const replaceDialog = cloneTemplate('replace-world-dialog-template').firstElementChild;
-root.append(replaceDialog);
-listen(replaceDialog, 'click', (event) => {
-  const action = event.target.closest('[data-replace]')?.dataset.replace;
-  if (!action) return;
-  if (action === 'confirm') {
-    newMap(pendingMapSeed, true);
-  }
-  replaceDialog.close();
-});
-
 updatePaletteOptions();
 applyPalette();
 previousMap.paletteName = paletteLabel(previousMap.colors);
@@ -738,6 +695,5 @@ if (import.meta.hot)
     inspector.dispose();
     batchInspector.dispose();
     panels.dispose();
-    replaceDialog.remove();
     mapView?.disposeTilePreview();
   });

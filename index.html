@@ -519,24 +519,19 @@
             </p>
           </hgroup>
           <div class="hp-tools cluster">
-            <span class="hp-new-map-actions">
-              <button type="button" id="hp-new-map">New Map</button>
-              <button
-                type="button"
-                id="hp-map-settings"
-                aria-label="New map settings"
-                title="New map settings"
+            <button
+              type="button"
+              id="hp-multi-edit"
+              class="hp-motion"
+              role="switch"
+              aria-checked="false"
+              aria-label="Multi edit"
+              aria-controls="hp-inspector-body"
+            >
+              <span class="hp-motion-light" aria-hidden="true"></span>
+              <span
+                >Multi edit is <span id="hp-multi-edit-state" aria-hidden="true">OFF</span></span
               >
-                <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
-                  <use href="/icons/pixelarticons.svg#settings-cog"></use>
-                </svg>
-              </button>
-            </span>
-            <button type="button" id="hp-regenerate">
-              <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <use href="/icons/pixelarticons.svg#refresh"></use>
-              </svg>
-              Regenerate
             </button>
             <span class="hp-zooms" role="group" aria-label="Map zoom">
               <button class="hp-zoom" id="hp-out" type="button" aria-label="Zoom out">
@@ -667,19 +662,11 @@
               </div>
             </div>
             <div class="hp-map-navigation stack">
-              <button
-                type="button"
-                id="hp-multi-edit"
-                class="hp-motion"
-                role="switch"
-                aria-checked="false"
-                aria-label="Multi edit"
-                aria-controls="hp-inspector-body"
-              >
-                <span class="hp-motion-light" aria-hidden="true"></span>
-                <span
-                  >Multi edit is <span id="hp-multi-edit-state" aria-hidden="true">OFF</span></span
-                >
+              <button type="button" id="hp-regenerate">
+                <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <use href="/icons/pixelarticons.svg#refresh"></use>
+                </svg>
+                Regenerate
               </button>
               <button
                 type="button"
@@ -720,25 +707,6 @@
             </div>
           </form>
         </section>
-        <dialog id="hp-new-map-dialog" aria-labelledby="hp-dialog-title">
-          <form id="hp-new-map-form" class="hp-new-map-form stack">
-            <h2 id="hp-dialog-title">New Map</h2>
-            <label for="hp-seed">Map seed</label>
-            <input
-              id="hp-seed"
-              name="seed"
-              type="text"
-              maxlength="128"
-              required
-              autocomplete="off"
-              spellcheck="false"
-            />
-            <div class="hp-tools cluster">
-              <button id="hp-cancel-new-map" type="button">Cancel</button>
-              <button type="submit">Create map</button>
-            </div>
-          </form>
-        </dialog>
       </section>
     </main>
 
@@ -963,19 +931,7 @@
         </div>
       </dialog>
     </template>
-    <template id="replace-world-dialog-template">
-      <dialog aria-labelledby="hp-replace-title">
-        <h2 id="hp-replace-title">Replace this world?</h2>
-        <p>
-          A new map clears hex edits, visited statuses and dressing locks in this campaign. Export
-          the campaign first to keep a copy.
-        </p>
-        <div class="hp-tools cluster">
-          <button type="button" data-replace="cancel">Keep world</button>
-          <button type="button" data-replace="confirm">Create new map</button>
-        </div>
-      </dialog>
-    </template>
+
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

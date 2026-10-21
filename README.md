@@ -26,13 +26,13 @@ Open the app and choose **New campaign** to preview a map, choose a palette and 
 
 Open **Palette manager** in the main menu to add palettes, edit their three colours, rename them or choose a default for new campaigns. Bundled palettes stay read-only. Deleting a custom palette keeps existing campaigns’ colours; deleting the default restores Forbidden Lands as the default. Palettes save in this browser alongside your settings.
 
-Turn **Multi edit is ON** above Wind in the palette and settings to edit several hexes together. You can also **Ctrl+click** a map hex to turn multi-edit on, keeping the inspected hex selected and adding the clicked hex. Click or tap hexes to add or remove them, or use **Select all** and **Clear selection** in the Inspector. Choose only the fields you want to change, then apply to the selection. One **Undo** restores the entire batch. Open water removes settlements and POIs; incompatible edits leave the whole batch unapplied. Turn Multi edit off to return to the single-hex Inspector.
+Turn **Multi edit is ON** in the top toolbar to edit several hexes together. You can also **Ctrl+click** a map hex to turn multi-edit on, keeping the inspected hex selected and adding the clicked hex. Hold **Ctrl** while clicking to add or remove hexes; a plain click or tap replaces the selection with that hex. The coordinate selector toggles hexes while multi-edit is on, and the Inspector offers **Select all** and **Clear selection**. Choose only the fields you want to change, then apply to the selection. One **Undo** restores the entire batch. Open water removes settlements and POIs; incompatible edits leave the whole batch unapplied. Turn Multi edit off to return to the single-hex Inspector.
 
 Select connected town or city hexes to **Join town** or **Join city**. Villages always occupy one hex each.
 
 **Reset selected**, next to Undo, restores the selected hexes to their generated defaults after confirmation. It clears their edits, visited status and dressing locks. Undo restores the reset hexes.
 
-**Regenerate** changes the map's cosmetic dressing while keeping its geography and locations. **New Map** replaces the world in the current campaign slot. Hexes with locked dressing keep their appearance through map-wide regeneration.
+**Regenerate**, above Wind in palette and settings, changes the map's cosmetic dressing while keeping its geography and locations. Create a different world through **New campaign** in the main menu. Hexes with locked dressing keep their appearance through map-wide regeneration.
 
 ### Saving and sharing
 
