@@ -86,13 +86,13 @@ export function createMapControls({
     activeRing.position.set(0, 0, 0);
     activeRing.visible = points.length > 0;
   }
-  function choose(key, { notify = true } = {}) {
+  function choose(key, { notify = true, ctrlKey = false } = {}) {
     const cell = cells.find((cell) => cell.key === key);
     if (!cell) return;
     selected = key;
     hoverRing.visible = false;
     if (selectionKeys === null) showSelection();
-    if (notify) onSelect(key);
+    if (notify) onSelect(key, { ctrlKey });
     draw();
   }
   activeRing.visible = false;
@@ -210,7 +210,7 @@ export function createMapControls({
     pointers.delete(e.pointerId);
     if (wasLast && !pinched && start && Math.hypot(e.clientX - start.x, e.clientY - start.y) < 6) {
       const key = hit(e.clientX, e.clientY);
-      if (key) choose(key);
+      if (key) choose(key, { ctrlKey: e.ctrlKey });
     }
     last = null;
     start = null;

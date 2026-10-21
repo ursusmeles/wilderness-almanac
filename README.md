@@ -26,7 +26,7 @@ Open the app and choose **New campaign** to preview a map, choose a palette and 
 
 Open **Palette manager** in the main menu to add palettes, edit their three colours, rename them or choose a default for new campaigns. Bundled palettes stay read-only. Deleting a custom palette keeps existing campaigns’ colours; deleting the default restores Forbidden Lands as the default. Palettes save in this browser alongside your settings.
 
-Turn **Multi edit is ON** above Wind in the palette and settings to edit several hexes together. Click or tap hexes to add or remove them, or use **Select all** and **Clear selection** in the Inspector. Choose only the fields you want to change, then apply to the selection. One **Undo** restores the entire batch. Open water removes settlements and POIs; incompatible edits leave the whole batch unapplied. Turn Multi edit off to return to the single-hex Inspector.
+Turn **Multi edit is ON** above Wind in the palette and settings to edit several hexes together. You can also **Ctrl+click** a map hex to turn multi-edit on, keeping the inspected hex selected and adding the clicked hex. Click or tap hexes to add or remove them, or use **Select all** and **Clear selection** in the Inspector. Choose only the fields you want to change, then apply to the selection. One **Undo** restores the entire batch. Open water removes settlements and POIs; incompatible edits leave the whole batch unapplied. Turn Multi edit off to return to the single-hex Inspector.
 
 Select connected town or city hexes to **Join town** or **Join city**. Villages always occupy one hex each.
 

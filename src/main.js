@@ -228,7 +228,7 @@ function presentCampaign({ resetView = false } = {}) {
   if (!renderer)
     renderer = mapView.createMapRenderer(element('scene'), {
       motion: movement,
-      onSelect(key) {
+      onSelect(key, { ctrlKey = false } = {}) {
         if (!key) return;
         if (mapAction.isBusy()) {
           renderer.select(session.snapshot().selected, { notify: false });
@@ -236,17 +236,25 @@ function presentCampaign({ resetView = false } = {}) {
           return;
         }
         const { selected, multiEdit } = session.snapshot();
-        const proceed = () => renderer.select(key);
-        const ready = multiEdit
-          ? batchInspector.beforeLeave(proceed)
-          : inspector.beforeSelection(key, proceed);
+        const enableMultiEdit = ctrlKey && !multiEdit;
+        const proceed = () => renderer.select(key, { ctrlKey });
+        const ready = enableMultiEdit
+          ? inspector.beforeLeave(proceed)
+          : multiEdit
+            ? batchInspector.beforeLeave(proceed)
+            : inspector.beforeSelection(key, proceed);
         if (!ready) {
           renderer.select(selected, { notify: false });
           selection.value = selected;
           syncSelection();
           return;
         }
-        session.select(key);
+        if (enableMultiEdit) {
+          session.setMultiEdit(true);
+          inspector.reset();
+          batchInspector.reset();
+        }
+        if (!enableMultiEdit || key !== selected) session.select(key);
         selection.value = key;
         root.dataset.selected = key;
         mapConsole.hover(shortCoordinates(cellsByKey.get(key)));
