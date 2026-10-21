@@ -1,5 +1,4 @@
-export const icon = (name, className = '') =>
-  `<svg class="ui-icon ${className}" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons/pixelarticons.svg#${name}"></use></svg>`;
+import { cloneTemplate } from './templates.js';
 
 export function createPanels(root, preferences, onChange) {
   const listeners = new AbortController();
@@ -23,11 +22,21 @@ export function createPanels(root, preferences, onChange) {
     ['tracker', 'Campaign Tracker'],
     ['inspector', 'Hex Inspector'],
   ]) {
-    const panel = document.createElement('section');
-    panel.className = `hp-tool-panel hp-${id}-panel`;
+    const panel = cloneTemplate('tool-panel-template').firstElementChild;
+    panel.classList.add(`hp-${id}-panel`);
     panel.dataset.panel = id;
     panel.setAttribute('aria-labelledby', `hp-${id}-title`);
-    panel.innerHTML = `<header class="hp-panel-bar cluster"><h2 id="hp-${id}-title">${name}</h2><div class="hp-panel-buttons"><button type="button" class="hp-panel-order hp-move-up" data-direction="-1" aria-label="Move ${name} up" title="Move panel up">${icon('arrow-bar-up')}</button><button type="button" class="hp-panel-order hp-move-down" data-direction="1" aria-label="Move ${name} down" title="Move panel down">${icon('arrow-bar-down')}</button><button type="button" class="hp-panel-horizontal" data-horizontal aria-controls="hp-${id}-body">${icon('chevron-up')}</button><button type="button" data-collapse aria-controls="hp-${id}-body">${icon('chevron-up')}</button></div></header><div class="hp-panel-body" id="hp-${id}-body"></div>`;
+    const heading = panel.querySelector('h2');
+    heading.id = `hp-${id}-title`;
+    heading.textContent = name;
+    panel.querySelector('.hp-panel-body').id = `hp-${id}-body`;
+    for (const button of panel.querySelectorAll('[data-direction]'))
+      button.setAttribute(
+        'aria-label',
+        `Move ${name} ${button.dataset.direction === '-1' ? 'up' : 'down'}`,
+      );
+    for (const button of panel.querySelectorAll('[data-horizontal], [data-collapse]'))
+      button.setAttribute('aria-controls', `hp-${id}-body`);
     panels[id] = panel;
     panel.addEventListener(
       'click',

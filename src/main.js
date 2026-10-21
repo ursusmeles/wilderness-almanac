@@ -11,8 +11,11 @@ import { createCampaignMenu } from './ui/campaign-menu.js';
 import { createPanels } from './ui/panels.js';
 import { createHexInspector } from './ui/hex-inspector.js';
 import { saveThumbnail } from './ui/thumbnail-cache.js';
+import { createViewNavigation } from './ui/view-navigation.js';
+import { cloneTemplate } from './ui/templates.js';
 
 const root = document.getElementById('campaign-workspace');
+const navigation = createViewNavigation(document.getElementById('campaign-menu'), root);
 const element = (id) => root.querySelector(`#hp-${id}`);
 let storage;
 try {
@@ -168,16 +171,24 @@ function persistCampaign(campaign) {
 }
 
 async function openCampaign(campaign) {
-  mapViewLoading ??= import('./ui/map-view.js').catch((error) => {
-    mapViewLoading = undefined;
+  try {
+    const opened = await navigation.show('forward', async () => {
+      mapViewLoading ??= import('./ui/map-view.js').catch((error) => {
+        mapViewLoading = undefined;
+        throw error;
+      });
+      mapView = await mapViewLoading;
+      if (disposed) return false;
+      const keepView = Boolean(renderer && session.snapshot()?.campaign.id === campaign.id);
+      session.open(campaign);
+      presentCampaign({ resetView: !keepView });
+    });
+    if (opened) inspector.refreshPreview();
+    return opened;
+  } catch (error) {
+    renderer?.setMotion(false);
     throw error;
-  });
-  mapView = await mapViewLoading;
-  if (disposed) return false;
-  const keepView = Boolean(renderer && session.snapshot()?.campaign.id === campaign.id);
-  session.open(campaign);
-  presentCampaign({ resetView: !keepView });
-  return true;
+  }
 }
 
 function presentCampaign({ resetView = false } = {}) {
@@ -355,11 +366,10 @@ listen(element('motion'), 'click', () => {
 function returnToMenu() {
   if (inspector.beforeLeave(showMenu)) showMenu();
 }
-function showMenu() {
+async function showMenu() {
   setExpanded(false);
   session.save();
   renderer?.setMotion(false);
-  root.hidden = true;
   const url = new URL(window.location.href);
   ['seed', 'variant', 'colors'].forEach((key) => url.searchParams.delete(key));
   try {
@@ -368,9 +378,10 @@ function showMenu() {
     /* Sandboxed embeddings can restrict history updates. */
   }
   document.title = 'Wilderness Almanac';
-  campaignMenu.show();
+  await navigation.show('back', () => {
+    campaignMenu.show();
+  });
   void cacheCampaignIcon();
-  document.getElementById('new-campaign').focus({ preventScroll: true });
 }
 listen(element('return-menu'), 'click', returnToMenu);
 listen(element('mobile-menu'), 'click', returnToMenu);
@@ -471,10 +482,7 @@ inspector = createHexInspector(panels.inspector, {
 });
 
 let pendingMapSeed;
-const replaceDialog = document.createElement('dialog');
-replaceDialog.setAttribute('aria-labelledby', 'hp-replace-title');
-replaceDialog.innerHTML =
-  '<h2 id="hp-replace-title">Replace this world?</h2><p>A new map clears hex edits, visited statuses and dressing locks in this campaign. Export the campaign first to keep a copy.</p><div class="hp-tools cluster"><button type="button" data-replace="cancel">Keep world</button><button type="button" data-replace="confirm">Create new map</button></div>';
+const replaceDialog = cloneTemplate('replace-world-dialog-template').firstElementChild;
 root.append(replaceDialog);
 listen(replaceDialog, 'click', (event) => {
   const action = event.target.closest('[data-replace]')?.dataset.replace;
@@ -520,6 +528,7 @@ if (linked.seed) {
 if (import.meta.hot)
   import.meta.hot.dispose(() => {
     disposed = true;
+    navigation.dispose();
     setExpanded(false);
     listeners.abort();
     mapConsole.dispose();

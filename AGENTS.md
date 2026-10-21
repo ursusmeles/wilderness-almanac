@@ -22,8 +22,8 @@ Read `README.md`, `docs/DEVELOPMENT.md` and `docs/PROJECT_STATE.md` before makin
 
 ## Verification and maintenance
 
-- For generation changes, run `npm test`. For runnable source changes, run `npm run build`. Run `npm run format:check` and check the diff for whitespace errors.
-- For changes to campaign actions, navigation, loading or shared responsive layouts, build and run `npm run test:e2e`. `npm run check` runs all CI checks; install Chromium with `npx playwright install chromium` first.
-- For visual changes, inspect in a real browser when available and state verification limitations. Check desktop and mobile layouts when touching shared styles.
+- Prefer lightweight, focused verification: review the diff and use targeted checks or browser inspection where useful. State what was checked and any verification limitations.
+- Do not automatically run full test suites, browser suites, repeated builds or `npm run check` on every change. Reserve expensive checks for explicit requests or substantial risk, and run them once after changes settle.
+- After pushing, do not wait for or poll GitHub Actions. Link CI as pending; investigate only when explicitly asked or when a relevant failure is already known.
 - Update the relevant maintainer docs when behaviour or architecture changes. Avoid chronological task logs and stale test counts in the README.
 - Keep the AGPLv3 application license and bundled third-party font/icon licenses and attribution intact.

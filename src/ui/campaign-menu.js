@@ -1,5 +1,6 @@
 import { generateWorld } from '../generation/world.js';
 import { campaignWorld } from '../generation/campaign-world.js';
+import { cloneTemplate } from './templates.js';
 import { loadThumbnail } from './thumbnail-cache.js';
 import { copyText, mapLink } from './map-link.js';
 import { createCampaignStore } from './campaign-store.js';
@@ -18,9 +19,9 @@ import {
 export function createCampaignMenu({ storage, previous, defaultPalette, onEnter, saveStatus }) {
   const menu = document.getElementById('campaign-menu');
   const list = document.getElementById('campaign-list');
+  const newButton = document.getElementById('new-campaign');
   const status = document.getElementById('campaign-message');
   const fileInput = document.getElementById('campaign-file');
-  const template = document.getElementById('campaign-template');
   const undoDelete = document.getElementById('undo-delete-campaign');
   const deleteDialog = document.getElementById('delete-campaign-dialog');
   const listeners = new AbortController();
@@ -32,6 +33,8 @@ export function createCampaignMenu({ storage, previous, defaultPalette, onEnter,
   let deletedCampaign = store.deletedCampaign;
   let storageAvailable = true;
   let pendingDeleteId;
+  let opening = false;
+  let releaseBusy = () => {};
 
   function hideIconControls(except) {
     list.querySelectorAll('.campaign-icon.is-revealed').forEach((icon) => {
@@ -144,7 +147,7 @@ export function createCampaignMenu({ storage, previous, defaultPalette, onEnter,
     document.getElementById('campaign-count').textContent = campaigns.length;
     for (const campaign of campaigns) {
       const data = campaignData(campaign);
-      const card = template.content.firstElementChild.cloneNode(true);
+      const card = cloneTemplate('campaign-template').firstElementChild;
       card.dataset.id = campaign.id;
       const name = card.querySelector('.campaign-name');
       name.value = campaign.name;
@@ -178,15 +181,52 @@ export function createCampaignMenu({ storage, previous, defaultPalette, onEnter,
     save();
   }
 
-  async function enter(campaign) {
+  async function enter(campaign, button = newButton) {
+    if (opening || menu.hidden || listeners.signal.aborted) return false;
+    opening = true;
+    const creating = !campaign;
+    const controls = [...menu.querySelectorAll('button, input')].map((control) => [
+      control,
+      control.disabled,
+    ]);
+    const label = button.getAttribute('aria-label');
+    const title = newButton.querySelector('strong');
+    const originalTitle = title.textContent;
+    releaseBusy = () => {
+      for (const [control, disabled] of controls) control.disabled = disabled;
+      button.removeAttribute('aria-busy');
+      if (label === null) button.removeAttribute('aria-label');
+      else button.setAttribute('aria-label', label);
+      title.textContent = originalTitle;
+      opening = false;
+      releaseBusy = () => {};
+    };
+    for (const [control] of controls) control.disabled = true;
+    button.setAttribute('aria-busy', 'true');
+    if (button === newButton)
+      title.textContent = creating ? 'Creating campaign…' : 'Opening campaign…';
+    else button.setAttribute('aria-label', `Opening ${campaign.name}…`);
     expireUndo();
-    status.textContent = 'Opening campaign…';
+    status.textContent = creating ? 'Creating your campaign…' : 'Opening campaign…';
     try {
-      if ((await onEnter(campaign)) !== false) menu.hidden = true;
+      // Two frames guarantee feedback paints before synchronous generation/WebGL work.
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      if (listeners.signal.aborted) return false;
+      if (creating) {
+        const world = generateWorld(crypto.randomUUID());
+        campaign = createCampaign(world, defaultPalette.colors, defaultPalette.paletteName);
+        add(campaign);
+      }
+      return (await onEnter(campaign)) !== false;
     } catch (error) {
-      menu.hidden = false;
-      render();
-      status.textContent = `Could not open the map. ${error.message}`;
+      if (!listeners.signal.aborted) {
+        menu.hidden = false;
+        render();
+        status.textContent = `Could not ${creating ? 'create the campaign' : 'open the map'}. ${error.message}`;
+      }
+      return false;
+    } finally {
+      if (!listeners.signal.aborted) releaseBusy();
     }
   }
 
@@ -257,7 +297,7 @@ export function createCampaignMenu({ storage, previous, defaultPalette, onEnter,
   });
   listen(list, 'click', async (event) => {
     const button = event.target.closest('[data-action]');
-    if (!button) return;
+    if (!button || opening || menu.hidden) return;
     const campaign = campaigns.find(
       (item) => item.id === button.closest('.campaign-card').dataset.id,
     );
@@ -270,7 +310,7 @@ export function createCampaignMenu({ storage, previous, defaultPalette, onEnter,
       button.setAttribute('aria-expanded', String(revealed));
       return;
     }
-    if (action === 'enter') return enter(campaign);
+    if (action === 'enter') return enter(campaign, button);
     if (action === 'download') return download(campaign);
     if (action === 'shuffle') {
       const data = campaignData(campaign);
@@ -324,13 +364,7 @@ export function createCampaignMenu({ storage, previous, defaultPalette, onEnter,
       .querySelectorAll('[data-action="delete"]')
       [Math.min(index, campaigns.length - 1)]?.focus({ preventScroll: true });
   });
-  listen(document.getElementById('new-campaign'), 'click', () => {
-    const seed = crypto.randomUUID();
-    const world = generateWorld(seed);
-    const campaign = createCampaign(world, defaultPalette.colors, defaultPalette.paletteName);
-    add(campaign);
-    enter(campaign);
-  });
+  listen(newButton, 'click', () => enter());
   listen(document.getElementById('import-campaign'), 'click', () => {
     expireUndo();
     fileInput.click();
@@ -379,6 +413,7 @@ export function createCampaignMenu({ storage, previous, defaultPalette, onEnter,
         status.textContent = deletedCampaign ? `Deleted “${deletedCampaign.campaign.name}”` : '';
     },
     dispose() {
+      releaseBusy();
       listeners.abort();
     },
   };

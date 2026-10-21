@@ -2,7 +2,7 @@ import { TERRAIN_TYPES } from '../generation/terrain-types.js';
 import { POI_TYPES, SETTLEMENT_TYPES, variantsFor } from '../generation/hex-edits.js';
 import { inspectDistances } from '../generation/campaign-world.js';
 import { describeHex } from './map-link.js';
-import { icon } from './panels.js';
+import { cloneTemplate } from './templates.js';
 
 const title = (text) => (text ? text[0].toUpperCase() + text.slice(1) : 'None');
 export function createHexInspector(
@@ -12,26 +12,8 @@ export function createHexInspector(
   const listeners = new AbortController();
   const listen = (target, event, handler) =>
     target.addEventListener(event, handler, { signal: listeners.signal });
-  host.innerHTML = `<div class="hp-inspector-overview"><button type="button" id="hp-hex-visited" class="hp-motion hp-hex-visited" role="switch" aria-label="Visited"><span class="hp-motion-light" aria-hidden="true"></span><span id="hp-hex-visited-state">Not yet visited</span></button><div class="hp-hex-preview-frame"><img id="hp-hex-preview" width="240" height="240" alt="" /></div><div class="hp-inspector-heading"><span class="hp-eyebrow">Selected hex</span><h3 id="hp-hex-name"></h3><span id="hp-hex-address" class="hp-pixel"></span>
-    <dl class="hp-hex-distances" aria-label="Distances in hex steps"><div><dt>Nearest settlement</dt><dd id="hp-hex-distance-settlement"></dd></div><div><dt>Nearest river</dt><dd id="hp-hex-distance-river"></dd></div><div><dt>Nearest open water</dt><dd id="hp-hex-distance-water"></dd></div></dl></div></div>
-    <form id="hp-hex-form" class="hp-inspector-content" aria-labelledby="hp-hex-name"><fieldset id="hp-hex-fields" class="hp-hex-fields grid-pair" disabled>
-    <label>Terrain<select id="hp-hex-terrain"></select></label><label>Settlement<select id="hp-hex-settlement"></select></label>
-    <label>Point of interest<select id="hp-hex-poi"></select></label><label id="hp-hex-subtype-label">POI variant<select id="hp-hex-subtype"></select></label>
-    <label>Elevation<select id="hp-hex-elevation"><option value="0">0 · Lowland</option><option value="1">1 · Low rise</option><option value="2">2 · Upland</option><option value="3">3 · Highland</option><option value="4">4 · Mountains</option></select></label><label>Crossing<select id="hp-hex-crossing"><option value="">None</option><option value="bridge">Bridge</option><option value="ferry">Ferry</option></select></label>
-    <p id="hp-hex-constraint" class="hp-field-note" hidden></p></fieldset>
-    <output id="hp-hex-feedback" class="hp-hex-feedback" role="alert"></output>
-    <div class="hp-inspector-action-cluster"><div class="hp-inspector-edit-actions"><button type="button" id="hp-hex-edit">${icon('pencil')}Edit hex</button><button type="submit" id="hp-hex-apply" hidden>Apply changes</button><button type="button" id="hp-hex-cancel" hidden>Cancel</button><button type="button" id="hp-hex-undo">${icon('undo')}Undo</button><button type="button" id="hp-hex-reset">Reset hex</button></div>
-    <div class="hp-inspector-actions"><button type="button" id="hp-hex-regenerate">${icon('refresh')}Regenerate hex</button><button type="button" id="hp-hex-lock" role="switch" aria-label="Lock hex dressing">${icon('lock')}<span id="hp-hex-lock-state"></span></button></div></div></form>`;
+  host.replaceChildren(cloneTemplate('hex-inspector-template'));
   const el = (name) => host.querySelector(`#hp-hex-${name}`);
-  for (const [name, label] of Object.entries({
-    terrain: 'Terrain',
-    settlement: 'Settlement',
-    poi: 'Point of interest',
-    subtype: 'POI variant',
-    elevation: 'Elevation',
-    crossing: 'Crossing',
-  }))
-    el(name).setAttribute('aria-label', label);
   const options = (control, values, none = false) => {
     control.replaceChildren(
       ...(none ? [''] : []).concat(values).map((value) => {
@@ -52,10 +34,7 @@ export function createHexInspector(
     frame,
     previewTile,
     previewColors;
-  const unsaved = document.createElement('dialog');
-  unsaved.className = 'hp-inspector-dialog';
-  unsaved.setAttribute('aria-labelledby', 'hp-unsaved-title');
-  unsaved.innerHTML = `<h2 id="hp-unsaved-title">Unapplied hex changes</h2><p>Apply or discard your changes before inspecting another hex.</p><div class="hp-tools cluster"><button type="button" data-unsaved="keep">Keep editing</button><button type="button" data-unsaved="discard">Discard</button><button type="button" data-unsaved="apply">Apply changes</button></div>`;
+  const unsaved = cloneTemplate('unsaved-hex-dialog-template').firstElementChild;
   host.closest('#campaign-workspace').append(unsaved);
 
   function constraints() {
@@ -205,8 +184,7 @@ export function createHexInspector(
           value === null ? 'None on map' : `${value} ${value === 1 ? 'hex' : 'hexes'}`;
       el('visited-state').textContent = next.visited ? 'Already visited' : 'Not yet visited';
       el('visited').setAttribute('aria-checked', String(next.visited));
-      el('lock').innerHTML =
-        `${icon('lock')}<span>${next.locked ? 'Unlock hex' : 'Lock hex'}</span>`;
+      el('lock-state').textContent = next.locked ? 'Unlock hex' : 'Lock hex';
       el('lock').setAttribute('aria-checked', String(next.locked));
       el('lock').title = next.locked
         ? 'Unlock this hex’s dressing'
