@@ -18,7 +18,7 @@ Build a world, find a place worth exploring, and make it your own. Wilderness Al
 
 Opening a campaign prepares up to eight tile icons: four settlements and four points of interest. Refresh cycles through these previews in order. You can also choose any hex with **Set as world icon** in the Hex Inspector. Before previews are ready, the card shows a meadow tile in a fixed dusk-and-ember palette.
 
-Wilderness Almanac is actively developing. The Hex Inspector is functional; the Campaign Tracker panel is a placeholder for future campaign tools.
+Wilderness Almanac is actively developing. The Hex Inspector is functional; the Sandbox tools panel is a placeholder for future campaign tools.
 
 ## Getting started
 

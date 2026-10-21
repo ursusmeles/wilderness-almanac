@@ -1330,15 +1330,12 @@
   }
   .hp-panel-actions {
     display: grid;
-    grid-template-columns: var(--control-size) minmax(0, 1fr);
+    grid-template-columns: var(--control-compact-size) minmax(0, 1fr);
+    align-items: center;
     gap: var(--space-8);
   }
   #hp-return-menu {
     white-space: nowrap;
-  }
-  #hp-toggle-settings {
-    padding: 0;
-    width: var(--control-size);
   }
   @container (max-width: 360px) {
     .hp-palette {
@@ -1395,13 +1392,13 @@
   .hp-panel-buttons {
     display: flex;
     gap: var(--space-4);
+  }
+  :is(.hp-panel-buttons button, #hp-toggle-settings) {
     --icon-size: var(--icon-small);
-    & button {
-      padding: 0;
-      width: var(--control-compact-size);
-      height: var(--control-compact-size);
-      min-height: var(--control-compact-size);
-    }
+    padding: 0;
+    width: var(--control-compact-size);
+    height: var(--control-compact-size);
+    min-height: var(--control-compact-size);
   }
   .hp-panel-body {
     overflow: auto;
@@ -1786,11 +1783,19 @@
     .hp-map-navigation {
       grid-column: 1 / -1;
       width: 100%;
+      grid-template-columns: minmax(0, 1fr) var(--control-compact-size);
+      align-items: center;
+      border-top: 1px solid var(--line);
+      padding-top: var(--space-12);
     }
     .hp-map-modes {
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      border-top: 1px solid var(--line);
-      padding-top: var(--space-12);
+    }
+    .hp-panel-actions {
+      grid-template-columns: var(--control-compact-size);
+    }
+    #hp-return-menu {
+      display: none;
     }
     .hp-map-options.is-collapsed .hp-map-modes,
     .hp-map-options.is-collapsed .hp-seed {
@@ -1798,7 +1803,7 @@
     }
     .hp-map-options.is-collapsed {
       & .hp-palette {
-        grid-template-columns: 4.375rem minmax(0, 1fr) var(--compact-actions-width);
+        grid-template-columns: 4.375rem minmax(0, 1fr) var(--control-compact-size);
         gap: var(--space-8);
       }
       & .hp-colors {
@@ -1813,17 +1818,10 @@
       }
       & .hp-map-navigation {
         grid-column: 3;
-        width: var(--compact-actions-width);
-      }
-      & .hp-panel-actions {
-        grid-template-columns: repeat(2, var(--control-size));
-        justify-content: end;
-      }
-      & .hp-return-label {
-        display: none;
-      }
-      & #hp-return-menu {
-        padding: 0;
+        width: var(--control-compact-size);
+        grid-template-columns: var(--control-compact-size);
+        border-top: 0;
+        padding-top: 0;
       }
     }
     .hp-side-panels {

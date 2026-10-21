@@ -62,7 +62,7 @@ test('new campaign previews before saving, paints loading feedback, and slides b
   await expect(page.locator('#campaign-menu')).toBeHidden();
   await expect(page.locator('#hp-scene canvas')).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.transitionDirections)).toEqual(['forward']);
-  await page.locator('#hp-return-menu').click();
+  await page.locator('#hp-return-menu:visible, #hp-mobile-menu:visible').click();
   await expect(page.locator('#campaign-menu')).toBeVisible();
   await expect(button).toBeEnabled();
   await expect(button).not.toHaveAttribute('aria-busy');
@@ -105,7 +105,7 @@ for (const mode of ['reduced motion', 'unsupported transitions'])
         document.startViewTransition = undefined;
       });
     await openCampaign(page);
-    await page.locator('#hp-return-menu').click();
+    await page.locator('#hp-return-menu:visible, #hp-mobile-menu:visible').click();
     await expect(page.locator('#new-campaign')).toBeVisible();
     await expect(page.locator('#new-campaign')).toBeEnabled();
     await expect(page.locator('html')).not.toHaveAttribute('data-view-direction');

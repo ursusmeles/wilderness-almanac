@@ -34,7 +34,7 @@ test('homepage never requests WebGL code, and cached icons survive reload withou
   await page.getByRole('button', { name: 'Enter Test campaign', exact: true }).click();
   await expect(page.locator('#hp-scene canvas')).toBeVisible();
   expect(scripts.some((url) => url.includes('map-view-'))).toBe(true);
-  await page.locator('#hp-return-menu').click();
+  await page.locator('#hp-return-menu:visible, #hp-mobile-menu:visible').click();
   await expect(page.locator('.campaign-icon img')).toBeVisible();
   await expect(page.locator('.campaign-icon img')).toHaveAttribute('src', /^data:image\/png/);
   expect(
@@ -52,7 +52,7 @@ test('icon refresh cycles prepared previews and wraps without loading WebGL on t
   page,
 }) => {
   await openCampaign(page);
-  await page.locator('#hp-return-menu').click();
+  await page.locator('#hp-return-menu:visible, #hp-mobile-menu:visible').click();
   const card = page.locator('.campaign-card');
   const image = card.locator('.campaign-icon img');
   await card.locator('[data-action="icon-controls"]').click();
@@ -97,7 +97,7 @@ test('Inspector can set a water hex as world icon and keep it after returning an
   await setIcon.click();
   await expect(setIcon).toBeDisabled();
   expect((await library(page)).campaigns[0].iconKey).toBe(key);
-  await page.locator('#hp-return-menu').click();
+  await page.locator('#hp-return-menu:visible, #hp-mobile-menu:visible').click();
   const image = page.locator('.campaign-icon img');
   await expect(image).toBeVisible();
   await expect(image).toHaveAttribute('data-hex-key', key);
@@ -112,7 +112,7 @@ test('campaign JSON export/import preserves edits and creates an independent sav
   await openCampaign(page);
   await page.getByRole('switch', { name: 'Visited', exact: true }).click();
   await page.getByRole('switch', { name: 'Lock hex dressing', exact: true }).click();
-  await page.locator('#hp-return-menu').click();
+  await page.locator('#hp-return-menu:visible, #hp-mobile-menu:visible').click();
   const download = await exportFromMenu(page);
   expect(download.suggestedFilename()).toMatch(/^wilderness-almanac-test-campaign-\d{4}-\d{2}-\d{2}\.json$/);
   const source = await readFile(await download.path(), 'utf8');
@@ -156,7 +156,7 @@ test('leaving the map protects a draft and retains saved edits', async ({ page }
   await openCampaign(page);
   await page.getByRole('button', { name: 'Edit hex', exact: true }).click();
   await page.getByRole('combobox', { name: 'Terrain', exact: true }).selectOption('meadow');
-  await page.locator('#hp-return-menu').click();
+  await page.locator('#hp-return-menu:visible, #hp-mobile-menu:visible').click();
   const dialog = page.getByRole('dialog', { name: 'Unsaved edits', exact: true });
   await expect(dialog).toBeVisible();
   await dialog.getByRole('button', { name: 'Discard changes', exact: true }).click();
@@ -165,7 +165,7 @@ test('leaving the map protects a draft and retains saved edits', async ({ page }
   const expand = page.getByRole('button', { name: 'Expand Hex Inspector', exact: true });
   if (await expand.isVisible()) await expand.click();
   await page.getByRole('switch', { name: 'Visited', exact: true }).click();
-  await page.locator('#hp-return-menu').click();
+  await page.locator('#hp-return-menu:visible, #hp-mobile-menu:visible').click();
   await page.getByRole('button', { name: 'Enter Test campaign', exact: true }).click();
   if (await expand.isVisible()) await expand.click();
   await expect(page.getByRole('switch', { name: 'Visited', exact: true })).toHaveAttribute(
@@ -217,7 +217,7 @@ test('unreadable saved records survive normal campaign actions and recovery down
   await expect(page.locator('#campaign-recovery')).toBeVisible();
   await page.getByRole('button', { name: 'Enter Test campaign', exact: true }).click();
   await page.getByRole('switch', { name: 'Visited', exact: true }).click();
-  await page.locator('#hp-return-menu').click();
+  await page.locator('#hp-return-menu:visible, #hp-mobile-menu:visible').click();
   const event = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download recovery file', exact: true }).click();
   const recovered = JSON.parse(await readFile(await (await event).path(), 'utf8'));

@@ -21,7 +21,7 @@ export function createPanels(root, preferences, onChange) {
   const activeCollapsed = () => (mobile.matches ? mobileCollapsed : collapsed);
   const panels = {};
   for (const [id, name] of [
-    ['tracker', 'Campaign Tracker'],
+    ['tracker', 'Sandbox tools'],
     ['inspector', 'Hex Inspector'],
   ]) {
     const panel = cloneTemplate('tool-panel-template').firstElementChild;
@@ -105,7 +105,7 @@ export function createPanels(root, preferences, onChange) {
       panel.querySelector('.hp-move-up').disabled = index === 0;
       panel.querySelector('.hp-move-down').disabled = index === 1;
       const toggle = panel.querySelector('[data-collapse]');
-      const name = id === 'tracker' ? 'Campaign Tracker' : 'Hex Inspector';
+      const name = id === 'tracker' ? 'Sandbox tools' : 'Hex Inspector';
       toggle.setAttribute('aria-expanded', String(!current[id]));
       toggle.setAttribute('aria-label', `${current[id] ? 'Expand' : 'Minimise'} ${name}`);
       toggle.title = `${current[id] ? 'Expand' : 'Minimise'} panel`;
