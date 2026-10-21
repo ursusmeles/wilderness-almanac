@@ -162,9 +162,12 @@ test('leaving the map protects a draft and retains saved edits', async ({ page }
   await dialog.getByRole('button', { name: 'Discard changes', exact: true }).click();
   await expect(page.locator('#campaign-menu')).toBeVisible();
   await page.getByRole('button', { name: 'Enter Test campaign', exact: true }).click();
+  const expand = page.getByRole('button', { name: 'Expand Hex Inspector', exact: true });
+  if (await expand.isVisible()) await expand.click();
   await page.getByRole('switch', { name: 'Visited', exact: true }).click();
   await page.locator('#hp-return-menu').click();
   await page.getByRole('button', { name: 'Enter Test campaign', exact: true }).click();
+  if (await expand.isVisible()) await expand.click();
   await expect(page.getByRole('switch', { name: 'Visited', exact: true })).toHaveAttribute(
     'aria-checked',
     'true',
@@ -221,11 +224,11 @@ test('unreadable saved records survive normal campaign actions and recovery down
   expect(recovered.campaigns.find((record) => record.id === 'future')).toEqual(future);
 });
 
-test('mobile panels follow a viewport-height map and restore correctly after expansion', async ({
+test('mobile panels start closed above the fold and restore correctly after expansion', async ({
   page,
 }, testInfo) => {
   test.skip(testInfo.project.name !== 'mobile', 'mobile layout');
-  await openCampaign(page);
+  await openCampaign(page, { expandInspector: false });
   const dimensions = await page.evaluate(() => {
     const map = document.querySelector('.hp-map-panel').getBoundingClientRect();
     const inspector = document.querySelector('.hp-inspector-panel').getBoundingClientRect();
@@ -237,10 +240,15 @@ test('mobile panels follow a viewport-height map and restore correctly after exp
       mapBottom: map.bottom,
       trackerTop: tracker.top,
       inspectorBottom: inspector.bottom,
+      trackerBottom: tracker.bottom,
+      toolsHeight: inspector.height + tracker.height,
       overflow: document.documentElement.scrollWidth > innerWidth,
     };
   });
-  expect(dimensions.height).toBe(dimensions.viewport);
+  expect(dimensions.height + dimensions.toolsHeight).toBe(dimensions.viewport);
+  expect(dimensions.trackerBottom).toBeLessThanOrEqual(dimensions.viewport);
+  await expect(page.locator('#hp-inspector-body')).toBeHidden();
+  await expect(page.locator('#hp-tracker-body')).toBeHidden();
   expect(dimensions.inspectorTop).toBeGreaterThanOrEqual(dimensions.mapBottom);
   expect(dimensions.trackerTop).toBeGreaterThanOrEqual(dimensions.inspectorBottom);
   expect(dimensions.overflow).toBe(false);
@@ -248,8 +256,6 @@ test('mobile panels follow a viewport-height map and restore correctly after exp
   await expect(page.locator('.hp-side-panels')).toBeHidden();
   await page.getByRole('button', { name: 'Exit expanded map', exact: true }).click();
   await expect(page.locator('.hp-side-panels')).toBeVisible();
-  await page.getByRole('button', { name: 'Minimise Hex Inspector', exact: true }).click();
-  await expect(page.locator('#hp-inspector-body')).toBeHidden();
   await page.getByRole('button', { name: 'Expand Hex Inspector', exact: true }).click();
   await expect(page.locator('#hp-inspector-body')).toBeVisible();
 });

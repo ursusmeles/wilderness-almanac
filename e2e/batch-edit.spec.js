@@ -3,9 +3,17 @@ import { test, expect, library, openCampaign } from './fixtures.js';
 async function enableMultiEdit(page) {
   await openCampaign(page);
   const toggle = page.getByRole('switch', { name: 'Multi edit', exact: true });
-  if (!(await toggle.isVisible()))
-    await page.getByRole('button', { name: 'Open palette and settings', exact: true }).click();
-  await toggle.click();
+  if (await toggle.isVisible()) await toggle.click();
+  else {
+    const canvas = page.locator('#hp-scene canvas');
+    await canvas.scrollIntoViewIfNeeded();
+    await page.keyboard.down('Control');
+    await canvas.click();
+    await page.keyboard.up('Control');
+    await page.locator('#hp-batch-clear').click();
+    await expect(page.locator('#hp-batch-count')).toHaveText('0 hexes selected');
+    await page.locator('#hp-selection').selectOption('0,0');
+  }
   await expect(toggle).toHaveAttribute('aria-checked', 'true');
   return toggle;
 }
@@ -21,7 +29,8 @@ test('multi edit applies only chosen fields, persists, and undoes the entire sel
   const toggle = await enableMultiEdit(page);
   const initial = (await library(page)).campaigns[0];
   await expect(page.locator('#hp-batch-count')).toHaveText('1 hex selected');
-  await expect(page.locator('.hp-top #hp-multi-edit')).toBeVisible();
+  if (testInfo.project.name === 'mobile') await expect(toggle).toBeHidden();
+  else await expect(page.locator('.hp-top #hp-multi-edit')).toBeVisible();
   await page.locator('#hp-selection').selectOption('1,0');
   await expect(page.locator('#hp-batch-count')).toHaveText('2 hexes selected');
   await page.locator('#hp-batch-terrain').selectOption('meadow');
@@ -39,7 +48,8 @@ test('multi edit applies only chosen fields, persists, and undoes the entire sel
   await finishMapAction(page, page.locator('#hp-batch-undo'));
   expect((await library(page)).campaigns[0].hexEdits).toEqual(initial.hexEdits);
   await expect(page.locator('#hp-batch-undo')).toBeDisabled();
-  await toggle.click();
+  if (testInfo.project.name === 'mobile') await openCampaign(page);
+  else await toggle.click();
   await expect(page.locator('#hp-hex-edit')).toBeVisible();
   await page.reload();
   await expect(page.locator('#hp-scene canvas')).toBeVisible();
@@ -51,7 +61,8 @@ test('multi edit protects drafts, supports all/clear and rejects incompatible ta
 }) => {
   const toggle = await enableMultiEdit(page);
   await page.locator('#hp-batch-terrain').selectOption('meadow');
-  await toggle.click();
+  if (await toggle.isVisible()) await toggle.click();
+  else await page.locator('#hp-mobile-menu').click();
   const dialog = page.getByRole('dialog', { name: 'Unsaved edits', exact: true });
   await expect(dialog).toBeVisible();
   await dialog.getByRole('button', { name: 'Keep editing', exact: true }).click();
@@ -109,9 +120,17 @@ test('whole-map batch edits survive reload and preserve the mobile map footprint
     height: document.querySelector('.hp-map-panel').getBoundingClientRect().height,
     viewport: innerHeight,
     overflow: document.documentElement.scrollWidth > innerWidth,
+    toolHeaders: [...document.querySelectorAll('.hp-tool-panel')].reduce(
+      (sum, panel) =>
+        sum +
+        panel.querySelector('.hp-panel-bar').getBoundingClientRect().height +
+        parseFloat(getComputedStyle(panel).borderTopWidth),
+      0,
+    ),
   }));
   expect(dimensions.overflow).toBe(false);
-  if (testInfo.project.name === 'mobile') expect(dimensions.height).toBe(dimensions.viewport);
+  if (testInfo.project.name === 'mobile')
+    expect(dimensions.height + dimensions.toolHeaders).toBe(dimensions.viewport);
   await page.reload();
   await expect(page.locator('#hp-scene canvas')).toBeVisible();
   const terrains = await page

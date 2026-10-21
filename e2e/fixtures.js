@@ -57,11 +57,13 @@ export const test = base.extend({
 export { expect };
 export const library = (page) =>
   page.evaluate(() => JSON.parse(localStorage.getItem('wilderness-almanac:campaigns-v1')));
-export async function openCampaign(page) {
+export async function openCampaign(page, { expandInspector = true } = {}) {
   await page.goto('/');
   await page.getByRole('button', { name: 'Enter Test campaign', exact: true }).click();
   await expect(page.locator('#hp-scene canvas')).toBeVisible();
   await expect(page.locator('#campaign-menu')).toBeHidden();
+  const expand = page.getByRole('button', { name: 'Expand Hex Inspector', exact: true });
+  if (expandInspector && (await expand.isVisible())) await expand.click();
 }
 export async function exportFromMenu(page) {
   const download = page.waitForEvent('download');

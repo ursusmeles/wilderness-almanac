@@ -14,7 +14,7 @@ Build a world, find a place worth exploring, and make it your own. Wilderness Al
 - **Shape the map.** Use the Hex Inspector to change terrain, elevation, settlements and points of interest. Regenerate a single hex, lock its dressing, mark it visited, or undo an edit.
 - **Set the atmosphere.** Choose from nine palettes or make your own from three colours. The palette system keeps surfaces, water and props readable while preserving deep shadows and saturated accents.
 - **Keep several adventures.** Name your campaigns, choose their tile icons and return to them from the campaign library.
-- **Explore on desktop or mobile.** Pan and zoom, fold away the tool panels, or expand the map to fill the browser viewport. Trees, reeds and water have optional ambient motion.
+- **Explore on desktop or mobile.** Pan and zoom, fold away the tool panels, or expand the map to fill the browser viewport. On mobile, both tool panels start closed below the map, with their headers visible on the first screen. Trees, reeds and water have optional ambient motion.
 
 Opening a campaign prepares up to eight tile icons: four settlements and four points of interest. Refresh cycles through these previews in order. You can also choose any hex with **Set as world icon** in the Hex Inspector. Before previews are ready, the card shows a meadow tile in a fixed dusk-and-ember palette.
 
@@ -26,13 +26,13 @@ Open the app and choose **New campaign** to preview a map, choose a palette and 
 
 Open **Palette manager** in the main menu to add palettes, edit their three colours, rename them or choose a default for new campaigns. Bundled palettes stay read-only. Deleting a custom palette keeps existing campaigns’ colours; deleting the default restores Forbidden Lands as the default. Palettes save in this browser alongside your settings.
 
-Turn **Multi edit is ON** in the top toolbar to edit several hexes together. You can also **Ctrl+click** a map hex to turn multi-edit on, keeping the inspected hex selected and adding the clicked hex. Hold **Ctrl** while clicking to add or remove hexes; a plain click or tap replaces the selection with that hex. The coordinate selector toggles hexes while multi-edit is on, and the Inspector offers **Select all** and **Clear selection**. Choose only the fields you want to change, then apply to the selection. One **Undo** restores the entire batch. Open water removes settlements and POIs; incompatible edits leave the whole batch unapplied. Turn Multi edit off to return to the single-hex Inspector.
+Turn **Multi edit is ON** in the desktop top toolbar to edit several hexes together. You can also **Ctrl+click** a map hex to turn multi-edit on, keeping the inspected hex selected and adding the clicked hex. Hold **Ctrl** while clicking to add or remove hexes; a plain click or tap replaces the selection with that hex. The coordinate selector toggles hexes while multi-edit is on, and the Inspector offers **Select all** and **Clear selection**. Choose only the fields you want to change, then apply to the selection. One **Undo** restores the entire batch. Open water removes settlements and POIs; incompatible edits leave the whole batch unapplied. Turn Multi edit off to return to the single-hex Inspector.
 
 Select connected town or city hexes to **Join town** or **Join city**. Villages always occupy one hex each.
 
 **Reset selected**, next to Undo, restores the selected hexes to their generated defaults after confirmation. It clears their edits, visited status and dressing locks. Undo restores the reset hexes.
 
-**Regenerate**, above Wind in palette and settings, changes the map's cosmetic dressing while keeping its geography and locations. Create a different world through **New campaign** in the main menu. Hexes with locked dressing keep their appearance through map-wide regeneration.
+**Regenerate**, next to Wind on mobile and above it on desktop in palette and settings, changes the map's cosmetic dressing while keeping its geography and locations. Create a different world through **New campaign** in the main menu. Hexes with locked dressing keep their appearance through map-wide regeneration.
 
 ### Saving and sharing
 

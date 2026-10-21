@@ -662,23 +662,25 @@
               </div>
             </div>
             <div class="hp-map-navigation stack">
-              <button type="button" id="hp-regenerate">
-                <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
-                  <use href="/icons/pixelarticons.svg#refresh"></use>
-                </svg>
-                Regenerate
-              </button>
-              <button
-                type="button"
-                id="hp-motion"
-                class="hp-motion"
-                role="switch"
-                aria-checked="true"
-                aria-label="Wind"
-              >
-                <span class="hp-motion-light" aria-hidden="true"></span>
-                <span>Wind is <span id="hp-motion-state" aria-hidden="true">ON</span></span>
-              </button>
+              <div class="hp-map-modes stack">
+                <button type="button" id="hp-regenerate">
+                  <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <use href="/icons/pixelarticons.svg#refresh"></use>
+                  </svg>
+                  Regenerate
+                </button>
+                <button
+                  type="button"
+                  id="hp-motion"
+                  class="hp-motion"
+                  role="switch"
+                  aria-checked="true"
+                  aria-label="Wind"
+                >
+                  <span class="hp-motion-light" aria-hidden="true"></span>
+                  <span>Wind is <span id="hp-motion-state" aria-hidden="true">ON</span></span>
+                </button>
+              </div>
               <div class="hp-panel-actions">
                 <button
                   type="button"

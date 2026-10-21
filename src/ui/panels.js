@@ -12,11 +12,13 @@ export function createPanels(root, preferences, onChange) {
   side.setAttribute('aria-label', 'Campaign tools');
   root.append(side);
   let order = preferences.panelOrder ?? ['tracker', 'inspector'];
-  const collapsed = preferences.panelsCollapsed ?? { tracker: true, inspector: false };
+  const collapsed = { ...(preferences.panelsCollapsed ?? { tracker: true, inspector: false }) };
+  const mobileCollapsed = { tracker: true, inspector: true };
   const horizontal = preferences.panelsHorizontal ?? { tracker: false, inspector: false };
   const mobile = window.matchMedia(
     '(max-width: 760px), (max-width: 1024px) and (max-height: 500px)',
   );
+  const activeCollapsed = () => (mobile.matches ? mobileCollapsed : collapsed);
   const panels = {};
   for (const [id, name] of [
     ['tracker', 'Campaign Tracker'],
@@ -43,8 +45,10 @@ export function createPanels(root, preferences, onChange) {
       (event) => {
         const button = event.target.closest('button');
         if (!button) return;
-        if (button.hasAttribute('data-collapse')) collapsed[id] = !collapsed[id];
-        else if (button.hasAttribute('data-horizontal')) horizontal[id] = !horizontal[id];
+        if (button.hasAttribute('data-collapse')) {
+          const current = activeCollapsed();
+          current[id] = !current[id];
+        } else if (button.hasAttribute('data-horizontal')) horizontal[id] = !horizontal[id];
         else if (button.dataset.direction) {
           const index = order.indexOf(id),
             next = index + Number(button.dataset.direction);
@@ -63,18 +67,19 @@ export function createPanels(root, preferences, onChange) {
     );
   }
   function render() {
+    const current = activeCollapsed();
     const railIds = mobile.matches ? [] : order.filter((id) => horizontal[id]);
     const stackedIds = order.filter((id) => !railIds.includes(id));
     root.dataset.panelRails = String(railIds.length);
     side.style.setProperty('--rail-count', railIds.length);
     const rows = stackedIds.map((id) =>
-      collapsed[id]
+      current[id]
         ? 'max-content'
         : id === 'inspector'
           ? 'minmax(var(--inspector-min-height, 300px), 1fr)'
           : 'minmax(52px, 2fr)',
     );
-    if (!stackedIds.some((id) => !collapsed[id])) rows.push('minmax(0, 1fr)');
+    if (!stackedIds.some((id) => !current[id])) rows.push('minmax(0, 1fr)');
     side.style.setProperty('--panel-rows', rows.join(' '));
     side.style.setProperty(
       '--panel-columns',
@@ -85,12 +90,12 @@ export function createPanels(root, preferences, onChange) {
     for (const [index, id] of order.entries()) {
       const panel = panels[id];
       side.append(panel);
-      panel.classList.toggle('is-collapsed', collapsed[id]);
+      panel.classList.toggle('is-collapsed', current[id]);
       const rail = railIds.includes(id);
       panel.classList.toggle('is-side-collapsed', rail);
       const body = panel.querySelector('.hp-panel-body');
       const wasHidden = body.hidden;
-      body.hidden = collapsed[id] || rail;
+      body.hidden = current[id] || rail;
       if (wasHidden && !body.hidden) body.scrollTop = 0;
       panel.style.setProperty(
         '--panel-column',
@@ -101,10 +106,10 @@ export function createPanels(root, preferences, onChange) {
       panel.querySelector('.hp-move-down').disabled = index === 1;
       const toggle = panel.querySelector('[data-collapse]');
       const name = id === 'tracker' ? 'Campaign Tracker' : 'Hex Inspector';
-      toggle.setAttribute('aria-expanded', String(!collapsed[id]));
-      toggle.setAttribute('aria-label', `${collapsed[id] ? 'Expand' : 'Minimise'} ${name}`);
-      toggle.title = `${collapsed[id] ? 'Expand' : 'Minimise'} panel`;
-      toggle.querySelector('svg').classList.toggle('hp-rotate', collapsed[id]);
+      toggle.setAttribute('aria-expanded', String(!current[id]));
+      toggle.setAttribute('aria-label', `${current[id] ? 'Expand' : 'Minimise'} ${name}`);
+      toggle.title = `${current[id] ? 'Expand' : 'Minimise'} panel`;
+      toggle.querySelector('svg').classList.toggle('hp-rotate', current[id]);
       const sideways = panel.querySelector('[data-horizontal]');
       sideways.setAttribute('aria-expanded', String(!rail));
       sideways.setAttribute(
@@ -119,6 +124,7 @@ export function createPanels(root, preferences, onChange) {
   mobile.addEventListener(
     'change',
     () => {
+      if (mobile.matches) mobileCollapsed.tracker = mobileCollapsed.inspector = true;
       render();
       onChange();
     },
@@ -146,8 +152,12 @@ export function createPanels(root, preferences, onChange) {
   render();
   return {
     inspector: panels.inspector.querySelector('.hp-panel-body'),
+    enterCampaign() {
+      mobileCollapsed.tracker = mobileCollapsed.inspector = true;
+      render();
+    },
     inspectorVisible: () =>
-      !collapsed.inspector &&
+      !activeCollapsed().inspector &&
       (mobile.matches || !horizontal.inspector) &&
       !root.hidden &&
       !root.classList.contains('hp-map-expanded'),

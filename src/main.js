@@ -148,6 +148,10 @@ listen(document, 'keydown', (event) => {
   }
 });
 function syncMobileLayout() {
+  const seedRow = root.querySelector('.hp-seed');
+  if (mobileLayout.matches)
+    element('palette-form').insertBefore(seedRow, root.querySelector('.hp-map-navigation'));
+  else root.querySelector('.hp-heading').append(seedRow);
   if (!mobileLayout.matches) setExpanded(false);
 }
 listen(mobileLayout, 'change', syncMobileLayout);
@@ -207,6 +211,7 @@ async function openCampaign(campaign) {
       await loadMapView();
       if (disposed) return false;
       const keepView = Boolean(renderer && session.snapshot()?.campaign.id === campaign.id);
+      panels.enterCampaign();
       session.open(campaign);
       presentCampaign({ resetView: !keepView });
     });
