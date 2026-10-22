@@ -138,7 +138,9 @@ test('unapplied edits can be kept or applied before changing selection; Undo res
   await openCampaign(page);
   await page.getByRole('button', { name: 'Edit hex', exact: true }).click();
   await page.getByRole('combobox', { name: 'Terrain', exact: true }).selectOption('meadow');
-  await page.getByRole('combobox', { name: 'Selected hex', exact: true }).selectOption('1,0');
+  await page
+    .getByRole('combobox', { name: 'Selected hex or party', exact: true })
+    .selectOption('1,0');
   const dialog = page.getByRole('dialog', { name: 'Unsaved edits', exact: true });
   await expect(dialog).toBeVisible();
   await dialog.getByRole('button', { name: 'Keep editing', exact: true }).click();

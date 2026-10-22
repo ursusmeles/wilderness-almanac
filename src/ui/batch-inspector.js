@@ -8,7 +8,7 @@ const fields = ['terrain', 'settlement', 'poi', 'elevation', 'crossing', 'visite
 
 export function createBatchInspector(
   host,
-  { onApply, onJoin, onUndo, onResetSelected, onSelectAll, onClear },
+  { onApply, onJoin, onUndo, onResetSelected, onSelectAll, onClear, onTurnOff },
 ) {
   host.replaceChildren(cloneTemplate('batch-inspector-template'));
   const el = (name) => host.querySelector(`#hp-batch-${name}`);
@@ -160,6 +160,7 @@ export function createBatchInspector(
   });
   listen(el('join'), 'click', () => guarded(() => onJoin(el('join'))));
   listen(el('all'), 'click', () => guarded(() => onSelectAll(el('all'))));
+  listen(el('off'), 'click', onTurnOff);
   listen(el('clear'), 'click', () => guarded(() => onClear(el('clear'))));
   listen(unsaved, 'click', async (event) => {
     const action = event.target.closest('[data-unsaved]')?.dataset.unsaved;

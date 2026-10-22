@@ -62,6 +62,9 @@ const initialVariant =
   linked.variant ?? (linked.seed && linked.seed !== saved.seed ? 0 : (saved.variant ?? 0));
 let movement = saved.motion ?? true;
 const selection = element('selection');
+const PARTY_SELECTION = '__party__';
+const movePartyDialog = element('move-party-dialog');
+let pendingPartyMove;
 const preset = element('preset');
 const message = element('message');
 const saveStatus = createSaveStatus(({ campaigns, preferences, message }) => {
@@ -242,33 +245,30 @@ function presentCampaign({ resetView = false } = {}) {
   if (!renderer)
     renderer = mapView.createMapRenderer(element('scene'), {
       motion: movement,
+      touchMultiSelect: true,
       onPartyMove(key) {
         if (mapAction.isBusy()) return false;
         return handleAction(session.moveParty(key));
       },
-      onPartySelect() {
-        if (mapAction.isBusy()) return false;
-        if (session.snapshot().partySelected) return true;
-        const change = () => {
-          session.selectParty();
-          inspector.reset();
-          batchInspector.reset();
-          partyInspector.reset();
-          syncSelection();
-          updateInspector();
-        };
-        if (!activeInspector().beforeLeave(change)) return false;
-        change();
-        return true;
-      },
-      onSelect(key, { additive = false } = {}) {
+      onPartySelect: selectParty,
+      onSelect(key, { additive = false, fromMap = false } = {}) {
         if (!key) return;
         if (mapAction.isBusy()) {
           renderer.select(session.snapshot().selected, { notify: false });
           syncSelection();
           return;
         }
-        const { selected, multiEdit } = session.snapshot();
+        const { selected, multiEdit, partySelected } = session.snapshot();
+        if (fromMap && mobileLayout.matches && partySelected) {
+          renderer.select(selected, { notify: false });
+          syncSelection();
+          pendingPartyMove = { key, campaignId: session.snapshot().campaign.id };
+          const name = session.snapshot().campaign.partyToken.name ?? 'Adventurers';
+          element('move-party-question').textContent =
+            `Move ${name} token to ${selection.querySelector(`option[value="${key}"]`).textContent}?`;
+          if (!movePartyDialog.open) movePartyDialog.showModal();
+          return;
+        }
         const enableMultiEdit = additive && !multiEdit;
         const proceed = () => renderer.select(key, { additive });
         const ready = enableMultiEdit
@@ -388,7 +388,11 @@ function renderWorld({ resetView = false } = {}) {
   const { world, dressing, selected, campaign } = session.snapshot();
   cellsByKey = new Map(world.cells.map((cell) => [cell.key, cell]));
   const dressedCells = new Map(dressing.cells.map((cell) => [cell.key, cell]));
+  const partyOption = document.createElement('option');
+  partyOption.value = PARTY_SELECTION;
+  partyOption.textContent = campaign.partyToken.name ?? 'Adventurers';
   selection.replaceChildren(
+    partyOption,
     ...world.cells.map((cell) => {
       const option = document.createElement('option');
       option.value = cell.key;
@@ -455,7 +459,11 @@ function applyPalette() {
 
 function syncParty() {
   const campaign = session.snapshot()?.campaign;
-  if (campaign?.partyToken) renderer?.setParty(campaign.partyToken, campaign.colors);
+  if (campaign?.partyToken) {
+    renderer?.setParty(campaign.partyToken, campaign.colors);
+    const option = selection.querySelector(`option[value="${PARTY_SELECTION}"]`);
+    if (option) option.textContent = campaign.partyToken.name ?? 'Adventurers';
+  }
 }
 
 function selectPalette(colors) {
@@ -475,9 +483,41 @@ function paletteLabel(candidate) {
     : (savedPalettes.find((palette) => same(palette.colors))?.name ?? 'Custom');
 }
 
-listen(selection, 'change', () =>
-  renderer?.select(selection.value, { additive: session.snapshot()?.multiEdit }),
-);
+function selectParty() {
+  if (mapAction.isBusy()) {
+    syncSelection();
+    return false;
+  }
+  if (session.snapshot().partySelected) return true;
+  const change = () => {
+    session.selectParty();
+    inspector.reset();
+    batchInspector.reset();
+    partyInspector.reset();
+    syncSelection();
+    updateInspector();
+  };
+  if (!activeInspector().beforeLeave(change)) {
+    syncSelection();
+    return false;
+  }
+  change();
+  return true;
+}
+listen(selection, 'change', () => {
+  if (selection.value === PARTY_SELECTION) selectParty();
+  else renderer?.select(selection.value, { additive: session.snapshot()?.multiEdit });
+});
+listen(movePartyDialog, 'close', () => {
+  pendingPartyMove = undefined;
+});
+listen(element('move-party-cancel'), 'click', () => movePartyDialog.close());
+listen(element('move-party-confirm'), 'click', () => {
+  const target = pendingPartyMove;
+  if (target && target.campaignId === session.snapshot()?.campaign.id && !mapAction.isBusy())
+    handleAction(session.moveParty(target.key));
+  movePartyDialog.close();
+});
 listen(element('in'), 'click', () => renderer?.zoom(1.2));
 listen(element('out'), 'click', () => renderer?.zoom(1 / 1.2));
 listen(element('mobile-in'), 'click', () => renderer?.zoom(1.2));
@@ -522,13 +562,13 @@ function syncSelection() {
     state.partySelected ? 0 : state.multiEdit ? state.selectedKeys.length : 1,
   );
   root.dataset.selected = state.partySelected ? '' : state.selected;
-  selection.value = state.partySelected ? '' : state.selected;
+  selection.value = state.partySelected ? PARTY_SELECTION : state.selected;
   singleInspectorHost.hidden = state.partySelected || state.multiEdit;
   batchInspectorHost.hidden = state.partySelected || !state.multiEdit;
   partyInspectorHost.hidden = !state.partySelected;
   panels.setInspectorMode(state.partySelected ? 'party' : 'hex');
 }
-listen(element('multi-edit'), 'click', () => {
+function toggleMultiEdit() {
   const change = () => {
     session.setMultiEdit(!session.snapshot().multiEdit);
     inspector.reset();
@@ -541,8 +581,9 @@ listen(element('multi-edit'), 'click', () => {
         : 'Multi edit off',
     );
   };
-  if (activeInspector().beforeLeave(change)) change();
-});
+  if (!mapAction.isBusy() && activeInspector().beforeLeave(change)) change();
+}
+listen(element('multi-edit'), 'click', toggleMultiEdit);
 function returnToMenu() {
   if (activeInspector().beforeLeave(showMenu)) showMenu();
 }
@@ -715,6 +756,7 @@ batchInspector = createBatchInspector(batchInspectorHost, {
       },
       'Selecting…',
     ),
+  onTurnOff: toggleMultiEdit,
   onClear: (button) =>
     mapAction.run(
       button,

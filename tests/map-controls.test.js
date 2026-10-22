@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createMapControls } from '../src/rendering/map-controls.js';
 
-function fixture(t, party) {
+function fixture(t, party, touchMultiSelect = true) {
   const original = globalThis.ResizeObserver;
   globalThis.ResizeObserver = class {
     observe() {}
@@ -20,7 +20,10 @@ function fixture(t, party) {
   const material = new THREE.MeshBasicMaterial();
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(2, 1, 2), material);
   mesh.userData.key = '0,0';
-  map.add(mesh);
+  const neighbour = new THREE.Mesh(mesh.geometry, material);
+  neighbour.userData.key = '1,0';
+  neighbour.position.x = 3;
+  map.add(mesh, neighbour);
   scene.add(map);
   const selections = [];
   const controls = createMapControls({
@@ -28,7 +31,10 @@ function fixture(t, party) {
     scene,
     map,
     renderer: { setSize() {} },
-    cells: [{ key: '0,0', top: 0.5, g: mesh }],
+    cells: [
+      { key: '0,0', top: 0.5, g: mesh },
+      { key: '1,0', top: 0.5, g: neighbour },
+    ],
     materials: { line: material, hover: material },
     draw() {
       scene.updateMatrixWorld(true);
@@ -36,6 +42,7 @@ function fixture(t, party) {
     onSelect: (key, options) => selections.push({ key, ...options }),
     onHover() {},
     party,
+    touchMultiSelect,
   });
   controls.refresh();
   t.after(() => {
@@ -72,9 +79,9 @@ test('Command and Control map clicks request additive selection; plain clicks re
     pointer('pointerup', modifiers);
   }
   assert.deepEqual(selections, [
-    { key: '0,0', additive: true },
-    { key: '0,0', additive: true },
-    { key: '0,0', additive: false },
+    { key: '0,0', additive: true, fromMap: true },
+    { key: '0,0', additive: true, fromMap: true },
+    { key: '0,0', additive: false, fromMap: true },
   ]);
 });
 
@@ -137,4 +144,72 @@ test('explicit focus centres an elevated hex and zooms closer without changing s
   assert.equal(controls.focus('missing'), false);
   assert.ok(controls.camera.position.equals(position));
   assert.equal(controls.camera.zoom, 12);
+});
+
+test('touch hold adds an unselected hex once while keeping the previous selection', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const { pointer, controls, selections } = fixture(t);
+  controls.select('1,0');
+  selections.length = 0;
+  pointer('pointerdown', { pointerType: 'touch' });
+  t.mock.timers.tick(549);
+  assert.deepEqual(selections, []);
+  t.mock.timers.tick(1);
+  assert.deepEqual(selections, [{ key: '0,0', additive: true, fromMap: true }]);
+  pointer('pointerup', { pointerType: 'touch' });
+  assert.equal(selections.length, 1, 'release does not replace the additive selection');
+});
+
+test('touch holds on selected hexes or without a selection remain ordinary taps', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const { pointer, controls, selections } = fixture(t);
+  for (const keys of [[], ['0,0']]) {
+    controls.setSelection(keys);
+    pointer('pointerdown', { pointerType: 'touch' });
+    t.mock.timers.tick(600);
+    assert.equal(selections.length, 0);
+    pointer('pointerup', { pointerType: 'touch' });
+    assert.deepEqual(selections.pop(), { key: '0,0', additive: false, fromMap: true });
+  }
+});
+
+test('pan, pinch, cancellation and disposal cancel a pending touch hold', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const { pointer, controls, selections } = fixture(t);
+  controls.setSelection(['1,0']);
+  pointer('pointerdown', { pointerType: 'touch' });
+  pointer('pointermove', { pointerType: 'touch', clientX: 230 });
+  pointer('pointermove', { pointerType: 'touch', clientX: 200 });
+  t.mock.timers.tick(600);
+  pointer('pointerup', { pointerType: 'touch' });
+  assert.deepEqual(selections, []);
+
+  pointer('pointerdown', { pointerType: 'touch' });
+  pointer('pointerdown', { pointerType: 'touch', pointerId: 2, clientX: 230 });
+  t.mock.timers.tick(600);
+  pointer('pointerup', { pointerType: 'touch', pointerId: 2 });
+  pointer('pointerup', { pointerType: 'touch' });
+  assert.deepEqual(selections, []);
+
+  pointer('pointerdown', { pointerType: 'touch' });
+  pointer('pointercancel', { pointerType: 'touch' });
+  t.mock.timers.tick(600);
+  pointer('pointerup', { pointerType: 'touch' });
+  assert.deepEqual(selections, []);
+
+  pointer('pointerdown', { pointerType: 'touch' });
+  controls.dispose();
+  t.mock.timers.tick(600);
+  assert.deepEqual(selections, []);
+});
+
+test('creation previews can retain ordinary touch selection without multiselect holds', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const { pointer, controls, selections } = fixture(t, undefined, false);
+  controls.setSelection(['1,0']);
+  pointer('pointerdown', { pointerType: 'touch' });
+  t.mock.timers.tick(600);
+  assert.deepEqual(selections, []);
+  pointer('pointerup', { pointerType: 'touch' });
+  assert.deepEqual(selections, [{ key: '0,0', additive: false, fromMap: true }]);
 });

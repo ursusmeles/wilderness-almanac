@@ -9,7 +9,14 @@ import { PARTY_STYLES } from '../application/party-token.js';
 
 export function createMapRenderer(
   host,
-  { onSelect = () => {}, onHover = () => {}, onPartyMove, onPartySelect, motion = true } = {},
+  {
+    onSelect = () => {},
+    onHover = () => {},
+    onPartyMove,
+    onPartySelect,
+    motion = true,
+    touchMultiSelect = false,
+  } = {},
 ) {
   const loading = host.querySelector('#hp-loading');
   let renderer;
@@ -78,6 +85,7 @@ export function createMapRenderer(
     materials: palette.materials,
     draw,
     onSelect,
+    touchMultiSelect,
     onHover,
     party,
   });

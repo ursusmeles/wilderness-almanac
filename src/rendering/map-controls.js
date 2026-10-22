@@ -14,6 +14,7 @@ export function createMapControls({
   onSelect,
   onHover,
   party,
+  touchMultiSelect = false,
 }) {
   const listeners = new AbortController();
   const listen = (target, event, handler, options = {}) =>
@@ -89,13 +90,13 @@ export function createMapControls({
     activeRing.position.set(0, 0, 0);
     activeRing.visible = points.length > 0;
   }
-  function choose(key, { notify = true, additive = false } = {}) {
+  function choose(key, { notify = true, additive = false, fromMap = false } = {}) {
     const cell = cells.find((cell) => cell.key === key);
     if (!cell) return;
     selected = key;
     hoverRing.visible = false;
     if (selectionKeys === null) showSelection();
-    if (notify) onSelect(key, { additive });
+    if (notify) onSelect(key, { additive, ...(fromMap ? { fromMap } : {}) });
     draw();
   }
   activeRing.visible = false;
@@ -174,12 +175,20 @@ export function createMapControls({
   }
   const pointers = new Map();
   let partyPointer = null;
+  let longPressTimer,
+    longPressed = false,
+    gestureMoved = false;
+  function cancelLongPress() {
+    clearTimeout(longPressTimer);
+    longPressTimer = undefined;
+  }
   let last = null,
     start = null,
     pinched = false,
     pinchDistance = 0;
   listen(host, 'pointerdown', (e) => {
     if (e.button !== 0) return;
+    cancelLongPress();
     if (partyPointer !== null) {
       party.cancel();
       partyPointer = null;
@@ -196,6 +205,16 @@ export function createMapControls({
       last = { x: e.clientX, y: e.clientY };
       start = { ...last };
       pinched = false;
+      longPressed = false;
+      gestureMoved = false;
+      const key = touchMultiSelect && e.pointerType === 'touch' ? hit(e.clientX, e.clientY) : null;
+      const keys = selectionKeys ?? (selected ? [selected] : []);
+      if (key && keys.length && !keys.includes(key)) {
+        longPressTimer = setTimeout(() => {
+          longPressed = true;
+          choose(key, { additive: true, fromMap: true });
+        }, 550);
+      }
     } else {
       pinched = true;
       const [a, b] = [...pointers.values()];
@@ -211,6 +230,11 @@ export function createMapControls({
       return;
     }
     if (pointers.has(e.pointerId)) {
+      if (longPressed) return;
+      if (start && Math.hypot(e.clientX - start.x, e.clientY - start.y) >= 6) {
+        gestureMoved = true;
+        cancelLongPress();
+      }
       pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (pointers.size === 2) {
         const [a, b] = [...pointers.values()];
@@ -246,6 +270,7 @@ export function createMapControls({
     }
   });
   function release(e) {
+    cancelLongPress();
     if (partyPointer === e.pointerId) {
       partyPointer = null;
       party.end(e, hit);
@@ -253,9 +278,16 @@ export function createMapControls({
     }
     const wasLast = pointers.size === 1;
     pointers.delete(e.pointerId);
-    if (wasLast && !pinched && start && Math.hypot(e.clientX - start.x, e.clientY - start.y) < 6) {
+    if (
+      wasLast &&
+      !pinched &&
+      !longPressed &&
+      !gestureMoved &&
+      start &&
+      Math.hypot(e.clientX - start.x, e.clientY - start.y) < 6
+    ) {
       const key = hit(e.clientX, e.clientY);
-      if (key) choose(key, { additive: e.ctrlKey || e.metaKey });
+      if (key) choose(key, { additive: e.ctrlKey || e.metaKey, fromMap: true });
     }
     last = null;
     start = null;
@@ -263,6 +295,7 @@ export function createMapControls({
   }
   listen(host, 'pointerup', release);
   listen(host, 'pointercancel', (e) => {
+    cancelLongPress();
     if (partyPointer === e.pointerId) {
       partyPointer = null;
       party.cancel();
@@ -271,6 +304,9 @@ export function createMapControls({
     pointers.delete(e.pointerId);
     last = null;
     start = null;
+  });
+  listen(host, 'contextmenu', (event) => {
+    if (longPressTimer !== undefined || longPressed) event.preventDefault();
   });
   listen(host, 'pointerleave', () => {
     hovered = null;
@@ -315,6 +351,7 @@ export function createMapControls({
     },
     zoom: changeZoom,
     dispose() {
+      cancelLongPress();
       listeners.abort();
       observer.disconnect();
       for (const ring of [activeRing, hoverRing]) {

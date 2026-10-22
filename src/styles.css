@@ -1280,12 +1280,13 @@
   .hp-seed {
     display: flex;
     align-items: center;
-    gap: var(--space-8);
+    gap: 0;
     color: var(--muted);
     font-size: var(--text-control);
     margin: var(--space-8) 0 0;
     overflow-wrap: anywhere;
     & output {
+      margin-inline: var(--space-8) calc((var(--control-compact-size) - var(--icon-small)) / 2);
       font-family: var(--font-pixel);
       max-width: min(32ch, 100%);
       min-width: 0;
@@ -1518,15 +1519,11 @@
   }
   @container inspector (max-width: 420px) {
     .hp-party-overview {
-      & .hp-inspector-heading {
-        display: contents;
-      }
+      grid-template-columns: clamp(6.5rem, 36%, 10rem) minmax(0, 1fr);
+      align-items: center;
+      column-gap: var(--space-24);
       & .campaign-name-form {
-        grid-column: 2;
-        align-self: center;
-      }
-      & p {
-        grid-column: 1 / -1;
+        grid-area: auto;
       }
     }
     .hp-party-portrait {
@@ -1534,6 +1531,15 @@
     }
     .hp-party-overview .hp-hex-distances {
       grid-column: 1 / -1;
+    }
+  }
+  @container inspector (max-width: 360px) {
+    .hp-batch-overview .hp-inspector-edit-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      & #hp-batch-all {
+        grid-column: 1 / -1;
+      }
     }
   }
   @media (pointer: coarse) {
