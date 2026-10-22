@@ -753,6 +753,136 @@
         <div class="hp-panel-body"></div>
       </section>
     </template>
+    <template id="party-inspector-template">
+      <div class="hp-party-overview">
+        <div class="hp-party-portrait hp-hex-preview-frame">
+          <button
+            type="button"
+            id="hp-party-reveal"
+            aria-label="Party token appearance"
+            aria-controls="hp-party-appearance"
+            aria-expanded="false"
+          >
+            <img id="hp-party-preview" alt="Party token" />
+          </button>
+          <div id="hp-party-appearance" class="hp-party-appearance">
+            <button
+              type="button"
+              id="hp-party-color"
+              aria-label="Cycle party token color"
+              title="Cycle token color"
+            >
+              <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <use href="/icons/pixelarticons.svg#colors-swatch"></use>
+              </svg>
+            </button>
+            <button
+              type="button"
+              id="hp-party-type"
+              aria-label="Cycle party token type"
+              title="Cycle token type"
+            >
+              <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <use href="/icons/pixelarticons.svg#user"></use>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="hp-inspector-heading">
+          <form id="hp-party-name-form" class="campaign-name-form">
+            <input
+              id="hp-party-name"
+              class="campaign-name"
+              type="text"
+              aria-label="Party name"
+              value="Adventurers"
+              maxlength="100"
+              required
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <use href="/icons/pixelarticons.svg#pencil"></use>
+            </svg>
+          </form>
+          <p class="hp-party-location-value hp-pixel">
+            <button
+              type="button"
+              id="hp-party-locate-position"
+              class="hp-seed-action"
+              aria-label="Locate party hex"
+              title="Select and focus party hex"
+            >
+              <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <use href="/icons/pixelarticons.svg#map-pin"></use>
+              </svg>
+            </button>
+            <span id="hp-party-address"></span>
+          </p>
+          <dl class="hp-hex-distances">
+            <div>
+              <dt>Nearest settlement</dt>
+              <dd class="hp-party-location-value">
+                <button
+                  type="button"
+                  id="hp-party-locate-settlement"
+                  class="hp-seed-action"
+                  aria-label="Locate nearest settlement"
+                  title="Select and focus nearest settlement"
+                >
+                  <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <use href="/icons/pixelarticons.svg#map-pin"></use>
+                  </svg>
+                </button>
+                <span id="hp-party-settlement"></span>
+              </dd>
+            </div>
+            <div>
+              <dt>Nearest point of interest</dt>
+              <dd class="hp-party-location-value">
+                <button
+                  type="button"
+                  id="hp-party-locate-poi"
+                  class="hp-seed-action"
+                  aria-label="Locate nearest point of interest"
+                  title="Select and focus nearest point of interest"
+                >
+                  <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <use href="/icons/pixelarticons.svg#map-pin"></use>
+                  </svg>
+                </button>
+                <span id="hp-party-poi"></span>
+              </dd>
+            </div>
+            <div>
+              <dt>Hexes visited</dt>
+              <dd class="hp-party-location-value">
+                <button
+                  type="button"
+                  id="hp-party-locate-visited"
+                  class="hp-seed-action"
+                  aria-label="Select visited land hexes"
+                  title="Select all visited land hexes"
+                >
+                  <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <use href="/icons/pixelarticons.svg#map-pin"></use>
+                  </svg>
+                </button>
+                <span id="hp-party-visited"></span>
+              </dd>
+            </div>
+            <div>
+              <dt>Days travelled</dt>
+              <dd id="hp-party-days"></dd>
+            </div>
+            <div>
+              <dt>Sessions played</dt>
+              <dd id="hp-party-sessions"></dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+    </template>
     <template id="hex-inspector-template">
       <div class="hp-inspector-overview">
         <div class="hp-hex-preview-frame">

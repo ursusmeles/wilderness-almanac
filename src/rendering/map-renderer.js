@@ -4,10 +4,12 @@ import { createMapMeshes } from './map-meshes.js';
 import { createMapControls } from './map-controls.js';
 import { createAmbientLoop } from './ambient-motion.js';
 import { createPartyToken } from './party-token.js';
+import { createPartyPiece } from './party-piece.js';
+import { PARTY_STYLES } from '../application/party-token.js';
 
 export function createMapRenderer(
   host,
-  { onSelect = () => {}, onHover = () => {}, onPartyMove, motion = true } = {},
+  { onSelect = () => {}, onHover = () => {}, onPartyMove, onPartySelect, motion = true } = {},
 ) {
   const loading = host.querySelector('#hp-loading');
   let renderer;
@@ -63,7 +65,10 @@ export function createMapRenderer(
   const palette = createMapMaterials();
   const meshes = createMapMeshes(palette);
   scene.add(meshes.group);
-  const party = onPartyMove ? createPartyToken({ host, draw, onMove: onPartyMove }) : null;
+  const party = onPartyMove
+    ? createPartyToken({ host, draw, onMove: onPartyMove, onSelect: onPartySelect })
+    : null;
+  let previewPiece;
   const controls = createMapControls({
     host,
     renderer,
@@ -92,13 +97,26 @@ export function createMapRenderer(
   return {
     setMotion: ambientLoop.setMotion,
     setMap(layout, options) {
+      previewPiece?.group.removeFromParent();
+      previewPiece?.dispose();
+      previewPiece = null;
       if (options?.resetView) party?.deselect();
       meshes.setMap(layout);
       controls.refresh(options);
     },
     select: controls.select,
+    focus: controls.focus,
     setSelection: controls.setSelection,
     setParty: (token, seeds) => party?.set(token, meshes.cells, seeds),
+    setPartySelected: (selected) => party?.setSelected(selected),
+    setPartyPiece(style, color) {
+      previewPiece?.group.removeFromParent();
+      previewPiece?.dispose();
+      meshes.setMap([]);
+      previewPiece = createPartyPiece(PARTY_STYLES.indexOf(style), color);
+      meshes.group.add(previewPiece.group);
+      controls.refresh({ resetView: true, fitContent: true });
+    },
     zoom: controls.zoom,
     snapshot() {
       draw();
@@ -112,6 +130,8 @@ export function createMapRenderer(
     dispose() {
       ambientLoop.dispose();
       party?.dispose();
+      previewPiece?.group.removeFromParent();
+      previewPiece?.dispose();
       controls.dispose();
       meshes.dispose();
       palette.dispose();

@@ -10,7 +10,12 @@ import { validateHexEdits } from '../generation/hex-edits.js';
 import { replaceCampaignMap } from './campaigns.js';
 import { settlementJoin, joinSettlements } from '../generation/settlement-edits.js';
 import { hexAddress } from '../generation/hex.js';
-import { initialPartyToken, PARTY_STYLES } from './party-token.js';
+import {
+  initialPartyToken,
+  partyMetadata,
+  PARTY_STYLES,
+  validatePartyToken,
+} from './party-token.js';
 
 // Own campaign transitions and history independently of DOM, rendering and storage.
 // The persistence adapter reports failures; a failed write keeps the live edits.
@@ -20,12 +25,14 @@ export function createCampaignSession({ persist }) {
   let selected = '0,0';
   let multiEdit = false;
   let selectedKeys = new Set();
+  let partySelected = false;
   const snapshot = () =>
     state && {
       ...state,
       selected,
       multiEdit,
       selectedKeys: [...selectedKeys],
+      partySelected,
       join: multiEdit ? settlementJoin(state.world, selectedKeys) : null,
       canUndo: history.length > 0,
     };
@@ -119,6 +126,7 @@ export function createCampaignSession({ persist }) {
     history = [];
     multiEdit = false;
     selectedKeys = new Set();
+    partySelected = false;
     if (!world.cells.some((cell) => cell.key === selected)) selected = world.cells[0].key;
     save();
     return result('open');
@@ -127,6 +135,21 @@ export function createCampaignSession({ persist }) {
     snapshot,
     save,
     open,
+    selectParty() {
+      partySelected = true;
+      multiEdit = false;
+      selectedKeys = new Set();
+    },
+    partyDetails(patch) {
+      try {
+        const partyToken = validatePartyToken({ ...state.campaign.partyToken, ...patch });
+        state = { ...state, campaign: { ...state.campaign, partyToken } };
+        save();
+        return result('tracking');
+      } catch (error) {
+        return { ok: false, error: error.message };
+      }
+    },
     moveParty(key) {
       if (!state.world.cells.some((cell) => cell.key === key)) return { ok: false };
       const next = updateHex(
@@ -148,6 +171,7 @@ export function createCampaignSession({ persist }) {
     select(key) {
       if (!state?.world.cells.some((cell) => cell.key === key)) return false;
       selected = key;
+      partySelected = false;
       if (multiEdit) {
         if (selectedKeys.has(key)) selectedKeys.delete(key);
         else selectedKeys.add(key);
@@ -155,11 +179,21 @@ export function createCampaignSession({ persist }) {
       return true;
     },
     setMultiEdit(enabled) {
+      partySelected = false;
       multiEdit = Boolean(enabled);
       selectedKeys = new Set(multiEdit ? [selected] : []);
     },
     selectAll() {
       if (multiEdit) selectedKeys = new Set(state.world.cells.map((cell) => cell.key));
+    },
+    selectVisited() {
+      const keys = partyMetadata(state.world, state.campaign).visitedKeys;
+      if (!keys.length) return false;
+      partySelected = false;
+      multiEdit = true;
+      selectedKeys = new Set(keys);
+      selected = keys[0];
+      return true;
     },
     clearSelection() {
       selectedKeys = new Set();

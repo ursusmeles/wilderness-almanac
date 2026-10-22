@@ -4,8 +4,16 @@ import { PARTY_STYLES } from '../application/party-token.js';
 import { createPartyPiece } from './party-piece.js';
 import { partyColor } from './party-color.js';
 
+// Grounded nudge: a right sway, a much smaller left rebound, then rest.
+export function partyNudgeAngle(progress) {
+  const p = THREE.MathUtils.clamp(progress, 0, 1);
+  const [start, end, from, to] =
+    p < 0.28 ? [0, 0.28, 0, 0.09] : p < 0.66 ? [0.28, 0.66, 0.09, -0.018] : [0.66, 1, -0.018, 0];
+  return THREE.MathUtils.lerp(from, to, THREE.MathUtils.smoothstep(p, start, end));
+}
+
 // A separately rendered piece shares the map camera, but never moves it.
-export function createPartyToken({ host, draw, onMove }) {
+export function createPartyToken({ host, draw, onMove, onSelect }) {
   const scene = new THREE.Scene(),
     root = new THREE.Group();
   scene.add(root, new THREE.HemisphereLight(0xffffff, 0x777777, 1.8));
@@ -16,7 +24,8 @@ export function createPartyToken({ host, draw, onMove }) {
   const listeners = new AbortController();
   const ray = new THREE.Raycaster(),
     mouse = new THREE.Vector2(),
-    target = new THREE.Vector3();
+    target = new THREE.Vector3(),
+    screenRight = new THREE.Vector3();
   let piece,
     state,
     tiles,
@@ -24,6 +33,7 @@ export function createPartyToken({ host, draw, onMove }) {
     dragging = false,
     frame = 0,
     drop = -1,
+    nudge = -1,
     lastTime = 0,
     previous,
     pointerStart,
@@ -77,22 +87,36 @@ export function createPartyToken({ host, draw, onMove }) {
         if (progress === 1) drop = -1;
       }
     }
-    root.rotation.x = THREE.MathUtils.damp(root.rotation.x, reduced.matches ? 0 : leanX, 14, dt);
-    root.rotation.z = THREE.MathUtils.damp(root.rotation.z, reduced.matches ? 0 : leanZ, 14, dt);
+    if (nudge >= 0) {
+      const progress = Math.min(1, (time - nudge) / 400);
+      const angle = partyNudgeAngle(progress);
+      root.rotation.x = screenRight.z * angle;
+      root.rotation.z = -screenRight.x * angle;
+      if (progress === 1) nudge = -1;
+    } else {
+      root.rotation.x = THREE.MathUtils.damp(root.rotation.x, reduced.matches ? 0 : leanX, 14, dt);
+      root.rotation.z = THREE.MathUtils.damp(root.rotation.z, reduced.matches ? 0 : leanZ, 14, dt);
+    }
     leanX *= 0.85;
     leanZ *= 0.85;
     draw();
-    if (dragging || drop >= 0 || Math.abs(root.rotation.x) + Math.abs(root.rotation.z) > 0.001)
+    if (
+      dragging ||
+      drop >= 0 ||
+      nudge >= 0 ||
+      Math.abs(root.rotation.x) + Math.abs(root.rotation.z) > 0.001
+    )
       schedule();
   }
-  function land() {
+  function land(fall = true) {
     dragging = false;
+    nudge = -1;
     leanX = leanZ = 0;
     host.style.removeProperty('cursor');
     if (!state) return;
     target.copy(position(state.key));
-    drop = reduced.matches ? -1 : performance.now();
-    if (reduced.matches) {
+    drop = reduced.matches || !fall ? -1 : performance.now();
+    if (drop < 0) {
       root.position.copy(target);
       root.rotation.set(0, 0, 0);
     }
@@ -104,7 +128,7 @@ export function createPartyToken({ host, draw, onMove }) {
       if (document.hidden) {
         cancelAnimationFrame(frame);
         frame = 0;
-        land();
+        land(false);
       } else schedule();
     },
     { signal: listeners.signal },
@@ -114,6 +138,7 @@ export function createPartyToken({ host, draw, onMove }) {
     () => {
       if (reduced.matches) {
         drop = -1;
+        nudge = -1;
         leanX = leanZ = 0;
         root.rotation.set(0, 0, 0);
       }
@@ -127,7 +152,7 @@ export function createPartyToken({ host, draw, onMove }) {
       const next = position(value.key);
       if (!next) return;
       const changed = state && state.key !== value.key;
-      const color = partyColor(seeds),
+      const color = value.color ?? partyColor(seeds),
         signature = `${value.style}:${color}`;
       if (appearance !== signature) {
         piece?.group.removeFromParent();
@@ -148,9 +173,13 @@ export function createPartyToken({ host, draw, onMove }) {
       cast(event, camera);
       root.updateWorldMatrix(true, true);
       if (!ray.intersectObject(root, true).length) return false;
+      if (onSelect?.() === false) return true;
       select(true);
       dragging = true;
       drop = -1;
+      nudge = -1;
+      root.rotation.set(0, 0, 0);
+      screenRight.setFromMatrixColumn(camera.matrixWorld, 0);
       moved = false;
       pointerStart = { x: event.clientX, y: event.clientY };
       previous = null;
@@ -179,6 +208,7 @@ export function createPartyToken({ host, draw, onMove }) {
       schedule();
     },
     end(event, hit) {
+      if (!dragging) return;
       const rect = host.getBoundingClientRect();
       const inside =
         event.clientX >= rect.left &&
@@ -188,10 +218,15 @@ export function createPartyToken({ host, draw, onMove }) {
       const key = inside && moved ? hit(event.clientX, event.clientY) : null;
       dragging = false;
       if (key) onMove(key);
-      land();
+      land(moved);
+      if (!moved && !reduced.matches) {
+        nudge = performance.now();
+        schedule();
+      }
     },
-    cancel: land,
+    cancel: () => land(moved),
     deselect: () => select(false),
+    setSelected: select,
     render(renderer, camera) {
       if (piece) {
         renderer.clearDepth();

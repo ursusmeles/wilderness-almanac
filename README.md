@@ -20,7 +20,7 @@ Opening a campaign prepares up to eight tile icons: four settlements and four po
 
 Wilderness Almanac is actively developing. The Hex Inspector and party marker are functional; the Sandbox tools panel remains empty for future campaign tools.
 
-The party marker starts at the settlement nearest the map centre and saves its position with the campaign. Its starting hex and each placement become visited in the Hex Inspector. The default piece is Warden; Cairn and Waystone are also supported by campaign data. Selecting the piece highlights only its base. Moving it leaves the map view in place.
+The party marker starts at the settlement nearest the map centre and saves its position with the campaign. Its starting hex and each placement become visited in the Hex Inspector. Selecting the piece clears hex selection and opens the compact **Party Inspector**. Its editable name defaults to **Adventurers**. Hover over the portrait, or tap it once, to reveal colour and token-type controls; the person icon cycles Warden, Waystone and Cairn. Metadata shows coordinates, nearby settlements and POIs, visited coverage, and days/sessions (both initially 1). Coverage excludes ocean/lake hexes and includes river-bank hexes. Small map-pin buttons select and focus the party hex or nearest settlement/POI; the visited pin selects all counted land hexes together. Selecting the piece highlights only its base. Moving it leaves the map view in place.
 
 ## Getting started
 

@@ -47,6 +47,7 @@ function fixture(t, party) {
   return {
     selections,
     controls,
+    mesh,
     pointer(type, options = {}) {
       host.dispatchEvent(
         Object.assign(new Event(type), {
@@ -113,4 +114,27 @@ test('modified drags, cancelled gestures and secondary clicks do not select hexe
   pointer('pointerdown', { button: 2, ctrlKey: true });
   pointer('pointerup', { button: 2, ctrlKey: true });
   assert.deepEqual(selections, []);
+});
+
+test('explicit focus centres an elevated hex and zooms closer without changing selection or camera angle', (t) => {
+  const { controls, mesh, selections } = fixture(t);
+  mesh.position.set(7, 0, -3);
+  controls.zoom(0.7);
+  const beforeZoom = controls.camera.zoom;
+  const angle = controls.camera.quaternion.clone();
+  assert.equal(controls.focus('0,0'), true);
+  const projected = new THREE.Vector3(7, 0.5, -3).project(controls.camera);
+  assert.ok(Math.abs(projected.x) < 1e-10);
+  assert.ok(Math.abs(projected.y) < 1e-10);
+  assert.ok(controls.camera.zoom > beforeZoom && controls.camera.zoom <= 12);
+  assert.ok(controls.camera.quaternion.equals(angle));
+  assert.deepEqual(selections, []);
+
+  controls.zoom(100);
+  controls.focus('0,0');
+  assert.equal(controls.camera.zoom, 12, 'an already closer view is retained');
+  const position = controls.camera.position.clone();
+  assert.equal(controls.focus('missing'), false);
+  assert.ok(controls.camera.position.equals(position));
+  assert.equal(controls.camera.zoom, 12);
 });

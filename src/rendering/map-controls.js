@@ -135,6 +135,23 @@ export function createMapControls({
     camera.updateProjectionMatrix();
     draw();
   }
+  function focus(key) {
+    const cell = cells.find((cell) => cell.key === key);
+    if (!cell) return false;
+    camera.updateMatrixWorld();
+    const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0);
+    const up = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1);
+    const target = new THREE.Vector3(cell.g.position.x, cell.top, cell.g.position.z);
+    const delta = target.sub(camera.position);
+    camera.position.addScaledVector(right, delta.dot(right)).addScaledVector(up, delta.dot(up));
+    // Show roughly six mesh units vertically; retain an already closer view.
+    zoom = Math.min(12, Math.max(zoom, (camera.top - camera.bottom) / 6));
+    camera.zoom = zoom;
+    camera.updateProjectionMatrix();
+    camera.updateMatrixWorld();
+    draw();
+    return true;
+  }
   const raycaster = new THREE.Raycaster(),
     mouse = new THREE.Vector2();
   function hit(x, y) {
@@ -173,7 +190,6 @@ export function createMapControls({
       host.setPointerCapture(e.pointerId);
       return;
     }
-    party?.deselect();
     host.setPointerCapture(e.pointerId);
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pointers.size === 1) {
@@ -291,6 +307,7 @@ export function createMapControls({
       resize();
     },
     select: choose,
+    focus,
     setSelection(keys) {
       selectionKeys = keys === null ? null : [...keys];
       showSelection();

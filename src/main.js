@@ -13,6 +13,7 @@ import { createPaletteManager } from './ui/palette-manager.js';
 import { createCampaignCreator } from './ui/campaign-creator.js';
 import { createPanels } from './ui/panels.js';
 import { createHexInspector } from './ui/hex-inspector.js';
+import { createPartyInspector } from './ui/party-inspector.js';
 import { createBatchInspector } from './ui/batch-inspector.js';
 import { createMapAction } from './ui/map-action.js';
 import { loadThumbnails, saveThumbnails } from './ui/thumbnail-cache.js';
@@ -42,7 +43,13 @@ const savedPalettes = paletteLibrary.custom;
 let layout;
 let inspector;
 let batchInspector;
-const activeInspector = () => (session.snapshot()?.multiEdit ? batchInspector : inspector);
+let partyInspector;
+const activeInspector = () =>
+  session.snapshot()?.partySelected
+    ? partyInspector
+    : session.snapshot()?.multiEdit
+      ? batchInspector
+      : inspector;
 let cellsByKey = new Map();
 let renderer;
 let mapView;
@@ -70,6 +77,7 @@ const listen = (target, type, handler) =>
 const panels = createPanels(root, saved, () => {
   if (session.snapshot()) session.save();
   inspector?.refreshPreview();
+  partyInspector?.refreshPreview();
 });
 const mapConsole = createMapConsole({
   write(text, kind) {
@@ -238,6 +246,21 @@ function presentCampaign({ resetView = false } = {}) {
         if (mapAction.isBusy()) return false;
         return handleAction(session.moveParty(key));
       },
+      onPartySelect() {
+        if (mapAction.isBusy()) return false;
+        if (session.snapshot().partySelected) return true;
+        const change = () => {
+          session.selectParty();
+          inspector.reset();
+          batchInspector.reset();
+          partyInspector.reset();
+          syncSelection();
+          updateInspector();
+        };
+        if (!activeInspector().beforeLeave(change)) return false;
+        change();
+        return true;
+      },
       onSelect(key, { additive = false } = {}) {
         if (!key) return;
         if (mapAction.isBusy()) {
@@ -249,10 +272,12 @@ function presentCampaign({ resetView = false } = {}) {
         const enableMultiEdit = additive && !multiEdit;
         const proceed = () => renderer.select(key, { additive });
         const ready = enableMultiEdit
-          ? inspector.beforeLeave(proceed)
+          ? activeInspector().beforeLeave(proceed)
           : multiEdit
             ? batchInspector.beforeLeave(proceed)
-            : inspector.beforeSelection(key, proceed);
+            : session.snapshot().partySelected
+              ? partyInspector.beforeLeave(proceed)
+              : inspector.beforeSelection(key, proceed);
         if (!ready) {
           renderer.select(selected, { notify: false });
           selection.value = selected;
@@ -488,13 +513,20 @@ listen(element('motion'), 'click', () => {
 function syncSelection() {
   const state = session.snapshot();
   if (!state) return;
-  renderer?.setSelection(state.multiEdit ? state.selectedKeys : null);
+  renderer?.setSelection(state.partySelected ? [] : state.multiEdit ? state.selectedKeys : null);
+  renderer?.setPartySelected(state.partySelected);
   element('multi-edit').setAttribute('aria-checked', String(state.multiEdit));
   element('multi-edit-state').textContent = state.multiEdit ? 'ON' : 'OFF';
   root.dataset.multiEdit = String(state.multiEdit);
-  root.dataset.selectionCount = String(state.multiEdit ? state.selectedKeys.length : 1);
-  singleInspectorHost.hidden = state.multiEdit;
-  batchInspectorHost.hidden = !state.multiEdit;
+  root.dataset.selectionCount = String(
+    state.partySelected ? 0 : state.multiEdit ? state.selectedKeys.length : 1,
+  );
+  root.dataset.selected = state.partySelected ? '' : state.selected;
+  selection.value = state.partySelected ? '' : state.selected;
+  singleInspectorHost.hidden = state.partySelected || state.multiEdit;
+  batchInspectorHost.hidden = state.partySelected || !state.multiEdit;
+  partyInspectorHost.hidden = !state.partySelected;
+  panels.setInspectorMode(state.partySelected ? 'party' : 'hex');
 }
 listen(element('multi-edit'), 'click', () => {
   const change = () => {
@@ -581,6 +613,10 @@ function updateInspector() {
   const state = session.snapshot();
   if (!state) return;
   const { world, dressing, selected, campaign, canUndo } = state;
+  if (state.partySelected) {
+    partyInspector?.update(state);
+    return;
+  }
   if (state.multiEdit) {
     const keys = new Set(state.selectedKeys);
     batchInspector?.update({
@@ -610,8 +646,36 @@ function updateInspector() {
 
 const singleInspectorHost = document.createElement('div');
 const batchInspectorHost = document.createElement('div');
+const partyInspectorHost = document.createElement('div');
+partyInspectorHost.hidden = true;
 batchInspectorHost.hidden = true;
-panels.inspector.append(singleInspectorHost, batchInspectorHost);
+panels.inspector.append(singleInspectorHost, batchInspectorHost, partyInspectorHost);
+partyInspector = createPartyInspector(partyInspectorHost, {
+  onChange: (patch) => handleAction(session.partyDetails(patch)),
+  onNavigate(key) {
+    if (mapAction.isBusy()) return;
+    renderer.select(key);
+    const state = session.snapshot();
+    if (!state.partySelected && !state.multiEdit && state.selected === key) renderer.focus(key);
+  },
+  onSelectVisited: (button) =>
+    mapAction.run(
+      button,
+      () => {
+        if (!session.selectVisited()) return;
+        inspector.reset();
+        batchInspector.reset();
+        renderer.select(session.snapshot().selected, { notify: false });
+        syncSelection();
+        updateInspector();
+        mapConsole.notify(`${session.snapshot().selectedKeys.length} visited hexes selected`);
+      },
+      'Selecting…',
+    ),
+  preview: (party, colors, color) => mapView?.partyPreview(party, colors, color) ?? '',
+  colorFor: (colors) => mapView.partyColor(colors),
+  visible: () => Boolean(session.snapshot()?.partySelected) && panels.inspectorVisible(),
+});
 inspector = createHexInspector(singleInspectorHost, {
   visible: panels.inspectorVisible,
   preview: (tile, colors) => mapView?.tilePreview(tile, colors, { fitContent: true }) ?? '',
@@ -735,6 +799,7 @@ if (import.meta.hot)
     campaignCreator.dispose();
     paletteManager.dispose();
     inspector.dispose();
+    partyInspector.dispose();
     batchInspector.dispose();
     panels.dispose();
     mapView?.disposeTilePreview();

@@ -20,6 +20,7 @@ export function createPanels(root, preferences, onChange) {
   );
   const activeCollapsed = () => (mobile.matches ? mobileCollapsed : collapsed);
   const panels = {};
+  let inspectorMode = 'hex';
   for (const [id, name] of [
     ['tracker', 'Sandbox tools'],
     ['inspector', 'Hex Inspector'],
@@ -76,7 +77,9 @@ export function createPanels(root, preferences, onChange) {
       current[id]
         ? 'max-content'
         : id === 'inspector'
-          ? 'minmax(var(--inspector-min-height, 300px), 1fr)'
+          ? inspectorMode === 'party'
+            ? 'max-content'
+            : 'minmax(var(--inspector-min-height, 300px), 1fr)'
           : 'minmax(52px, 2fr)',
     );
     if (!stackedIds.some((id) => !current[id])) rows.push('minmax(0, 1fr)');
@@ -105,7 +108,18 @@ export function createPanels(root, preferences, onChange) {
       panel.querySelector('.hp-move-up').disabled = index === 0;
       panel.querySelector('.hp-move-down').disabled = index === 1;
       const toggle = panel.querySelector('[data-collapse]');
-      const name = id === 'tracker' ? 'Sandbox tools' : 'Hex Inspector';
+      const name =
+        id === 'tracker'
+          ? 'Sandbox tools'
+          : inspectorMode === 'party'
+            ? 'Party Inspector'
+            : 'Hex Inspector';
+      panel.querySelector('h2').textContent = name;
+      for (const button of panel.querySelectorAll('[data-direction]'))
+        button.setAttribute(
+          'aria-label',
+          `Move ${name} ${button.dataset.direction === '-1' ? 'up' : 'down'}`,
+        );
       toggle.setAttribute('aria-expanded', String(!current[id]));
       toggle.setAttribute('aria-label', `${current[id] ? 'Expand' : 'Minimise'} ${name}`);
       toggle.title = `${current[id] ? 'Expand' : 'Minimise'} panel`;
@@ -158,6 +172,12 @@ export function createPanels(root, preferences, onChange) {
   render();
   return {
     inspector: panels.inspector.querySelector('.hp-panel-body'),
+    setInspectorMode(mode) {
+      if (inspectorMode === mode) return;
+      inspectorMode = mode;
+      root.dataset.inspectorMode = mode;
+      render();
+    },
     enterCampaign() {
       mobileCollapsed.tracker = mobileCollapsed.inspector = true;
       render();
