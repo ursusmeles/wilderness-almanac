@@ -10,6 +10,7 @@ import { validateHexEdits } from '../generation/hex-edits.js';
 import { replaceCampaignMap } from './campaigns.js';
 import { settlementJoin, joinSettlements } from '../generation/settlement-edits.js';
 import { hexAddress } from '../generation/hex.js';
+import { initialPartyToken, PARTY_STYLES } from './party-token.js';
 
 // Own campaign transitions and history independently of DOM, rendering and storage.
 // The persistence adapter reports failures; a failed write keeps the live edits.
@@ -42,7 +43,11 @@ export function createCampaignSession({ persist }) {
   }
   const result = (scope, notification) => ({ ok: true, scope, notification, state: snapshot() });
   function remember() {
-    history.push({ variant: state.campaign.variant, hexEdits: state.campaign.hexEdits });
+    history.push({
+      variant: state.campaign.variant,
+      hexEdits: state.campaign.hexEdits,
+      partyKey: state.campaign.partyToken.key,
+    });
     if (history.length > 20) history.shift();
   }
   function transition(
@@ -103,11 +108,13 @@ export function createCampaignSession({ persist }) {
   ) {
     const world = campaignWorld(campaign, baseWorld);
     const dressing = campaignDressing(campaign, world);
-    const record = {
+    let record = {
       ...campaign,
       colors: campaign.colors.slice(),
       nameEdited: campaign.nameEdited ?? campaign.name !== world.name,
+      partyToken: campaign.partyToken ?? initialPartyToken(world),
     };
+    if (!campaign.partyToken) record = updateHex(record, record.partyToken.key, { visited: true });
     state = { campaign: record, baseWorld, world, dressing };
     history = [];
     multiEdit = false;
@@ -120,6 +127,24 @@ export function createCampaignSession({ persist }) {
     snapshot,
     save,
     open,
+    moveParty(key) {
+      if (!state.world.cells.some((cell) => cell.key === key)) return { ok: false };
+      const next = updateHex(
+        { ...state.campaign, partyToken: { ...state.campaign.partyToken, key } },
+        key,
+        { visited: true },
+      );
+      return transition(next, { scope: 'tracking' });
+    },
+    partyStyle(style) {
+      if (!PARTY_STYLES.includes(style)) return { ok: false };
+      state = {
+        ...state,
+        campaign: { ...state.campaign, partyToken: { ...state.campaign.partyToken, style } },
+      };
+      save();
+      return result('tracking');
+    },
     select(key) {
       if (!state?.world.cells.some((cell) => cell.key === key)) return false;
       selected = key;
@@ -308,8 +333,12 @@ export function createCampaignSession({ persist }) {
     },
     undo() {
       if (!history.length) return { ok: false };
-      const previous = history.at(-1);
-      const campaign = { ...state.campaign, ...previous };
+      const { partyKey, ...previous } = history.at(-1);
+      const campaign = {
+        ...state.campaign,
+        ...previous,
+        partyToken: { ...state.campaign.partyToken, key: partyKey },
+      };
       const world = campaignWorld(campaign, state.baseWorld);
       const dressing = campaignDressing(campaign, world);
       history.pop();

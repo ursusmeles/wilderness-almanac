@@ -18,7 +18,9 @@ Build a world, find a place worth exploring, and make it your own. Wilderness Al
 
 Opening a campaign prepares up to eight tile icons: four settlements and four points of interest. Refresh cycles through these previews in order. You can also choose any hex with **Set as world icon** in the Hex Inspector. Before previews are ready, the card shows a meadow tile in a fixed dusk-and-ember palette.
 
-Wilderness Almanac is actively developing. The Hex Inspector is functional; the Sandbox tools panel is a placeholder for future campaign tools.
+Wilderness Almanac is actively developing. The Hex Inspector and party marker are functional; the Sandbox tools panel remains empty for future campaign tools.
+
+The party marker starts at the settlement nearest the map centre and saves its position with the campaign. Its starting hex and each placement become visited in the Hex Inspector. The default piece is Warden; Cairn and Waystone are also supported by campaign data. Selecting the piece highlights only its base. Moving it leaves the map view in place.
 
 ## Getting started
 

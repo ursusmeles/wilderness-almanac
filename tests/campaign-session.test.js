@@ -152,11 +152,12 @@ test('batch tracking shares geometry and failed saving retains the complete batc
   assert.equal(after.campaign.hexEdits.cells['1,0'].visited, true);
   assert.equal(after.persistence.saved, false);
   session.undo();
-  assert.equal(session.snapshot().campaign.hexEdits, undefined);
+  assert.deepEqual(session.snapshot().campaign.hexEdits, before.campaign.hexEdits);
 });
 
 test('whole-map terrain conversion uses existing replay format and has finite geometry', () => {
   const { session } = fixture();
+  const before = session.snapshot();
   session.setMultiEdit(true);
   session.selectAll();
   assert.equal(
@@ -171,7 +172,7 @@ test('whole-map terrain conversion uses existing replay format and has finite ge
   assert.ok(layout.every((cell) => Number.isFinite(cell.top)));
   assert.deepEqual(campaignWorld(importCampaign(exportCampaign(after.campaign))), after.world);
   assert.equal(session.undo().ok, true);
-  assert.equal(session.snapshot().campaign.hexEdits, undefined);
+  assert.deepEqual(session.snapshot().campaign.hexEdits, before.campaign.hexEdits);
 });
 
 test('batch result is independent of selection order, including repaired river links', () => {
@@ -228,7 +229,9 @@ test('tracking and lock actions share world/dressing, retain immutable undo stat
   assert.equal(session.visit().ok, true);
   assert.equal(session.snapshot().world, initial.world);
   assert.equal(session.snapshot().dressing, initial.dressing);
-  assert.equal(initial.campaign.hexEdits, undefined);
+  assert.deepEqual(initial.campaign.hexEdits.cells, {
+    [initial.campaign.partyToken.key]: { visited: true },
+  });
   assert.equal(session.snapshot().campaign.hexEdits.cells['0,0'].visited, true);
   assert.equal(session.lock().ok, true);
   assert.ok(session.snapshot().campaign.hexEdits.cells['0,0'].lock);
@@ -300,7 +303,9 @@ test('replacement requires confirmation, keeps campaign identity and renamed nam
   assert.equal(next.campaign.name, 'My world');
   assert.equal(next.campaign.createdAt, current.campaign.createdAt);
   assert.equal(next.campaign.seed, 'replacement');
-  assert.equal(next.campaign.hexEdits, undefined);
+  assert.deepEqual(next.campaign.hexEdits.cells, {
+    [next.campaign.partyToken.key]: { visited: true },
+  });
   assert.equal(next.canUndo, false);
 });
 

@@ -234,6 +234,10 @@ function presentCampaign({ resetView = false } = {}) {
   if (!renderer)
     renderer = mapView.createMapRenderer(element('scene'), {
       motion: movement,
+      onPartyMove(key) {
+        if (mapAction.isBusy()) return false;
+        return handleAction(session.moveParty(key));
+      },
       onSelect(key, { additive = false } = {}) {
         if (!key) return;
         if (mapAction.isBusy()) {
@@ -349,6 +353,7 @@ function handleAction(result) {
     applyPalette();
     updateInspector();
   } else updateInspector();
+  syncParty();
   scheduleCampaignIcons();
   if (result.notification) mapConsole.notify(result.notification);
   return true;
@@ -373,6 +378,7 @@ function renderWorld({ resetView = false } = {}) {
   );
   layout = prepareMap(world, dressing);
   renderer?.setMap(layout, { resetView });
+  syncParty();
   renderer?.select(selected, { notify: false });
   selection.value = selected;
   root.dataset.selected = selected;
@@ -410,6 +416,7 @@ function applyMenuTheme() {
 function applyPalette() {
   const colors = session.snapshot()?.campaign.colors ?? initialColors;
   renderer?.setPalette(colors);
+  syncParty();
   Object.entries(paletteTheme(colors)).forEach(([role, value]) =>
     root.style.setProperty(`--hp-${role}`, value),
   );
@@ -419,6 +426,11 @@ function applyPalette() {
     element(`${name}-value`).textContent = colors[index].toUpperCase();
   });
   selectPalette(colors);
+}
+
+function syncParty() {
+  const campaign = session.snapshot()?.campaign;
+  if (campaign?.partyToken) renderer?.setParty(campaign.partyToken, campaign.colors);
 }
 
 function selectPalette(colors) {

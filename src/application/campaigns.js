@@ -2,6 +2,7 @@ import { SUPPORTED_GENERATOR_VERSIONS } from '../generation/world.js';
 import { worldPreferences } from '../generation/world-preferences.js';
 import { validateHexEdits } from '../generation/hex-edits.js';
 import { campaignWorld, campaignDressing } from '../generation/campaign-world.js';
+import { validatePartyToken } from './party-token.js';
 
 export const MAX_CAMPAIGN_BYTES = 4 * 1024 * 1024;
 const text = (value, max) =>
@@ -46,6 +47,7 @@ export function validateCampaign(value) {
     ...(value.nameEdited !== undefined ? { nameEdited: value.nameEdited } : {}),
     ...(value.iconKey !== undefined ? { iconKey: value.iconKey } : {}),
     ...(value.hexEdits !== undefined ? { hexEdits: validateHexEdits(value.hexEdits) } : {}),
+    ...(value.partyToken !== undefined ? { partyToken: validatePartyToken(value.partyToken) } : {}),
   };
 }
 
@@ -96,7 +98,7 @@ export function chooseCampaignIcon(world) {
 
 export function replaceCampaignMap(campaign, world, previousWorldName) {
   const nameEdited = campaign.nameEdited ?? campaign.name !== previousWorldName;
-  const { hexEdits: _previousEdits, ...record } = campaign;
+  const { hexEdits: _previousEdits, partyToken: _previousParty, ...record } = campaign;
   return validateCampaign({
     ...record,
     name: nameEdited ? campaign.name : world.name,

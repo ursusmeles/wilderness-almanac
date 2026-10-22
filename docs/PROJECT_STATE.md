@@ -2,7 +2,9 @@
 
 ## Scope and sources
 
-Wilderness Almanac is a browser-only DM toolbox with procedural regional maps, a campaign library and an editable Hex Inspector. Sandbox tools is an empty placeholder. See [DEVELOPMENT.md](DEVELOPMENT.md) for architecture, commands, persistence and interface conventions; this document records generation and visual constraints.
+Wilderness Almanac is a browser-only DM toolbox with procedural regional maps, a campaign library, an editable Hex Inspector and a draggable party marker. Sandbox tools remains empty. See [DEVELOPMENT.md](DEVELOPMENT.md) for architecture, commands, persistence and interface conventions; this document records generation and visual constraints.
+
+The party marker defaults to Warden, with Cairn and Waystone meshes retained. It rests at the screen-left corner of its hex and renders above props. Its red/cyan/lime accent adapts to the palette. Placement has a short drop and dragging an opposing lean, both suppressed by reduced motion. Moving the marker never centres or pans the camera. Clicking the marker selects only the piece, with a highlight at its base; clicking exposed parts of the occupied hex selects the hex normally. The initial hex is the settlement nearest the map centre, falling back to dry land when there are no settlements. Starting and destination hexes are marked visited solely in the Inspector; no route, visited rings or terrain markings are drawn. Sandbox Tools has no controls, movement instructions or arrows yet.
 
 The map depicts regional fantasy terrain, with roughly 18 km between hex centres, rather than a world-scale biome simulation. Names, terrain and POI rules come from the checked-in `src/data/world-rules.json` snapshot, which records its spreadsheet source, read date and ranges. There is no runtime spreadsheet connection. Rule and vocabulary changes require deliberate synchronization and a generator-version decision.
 

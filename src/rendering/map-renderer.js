@@ -3,10 +3,11 @@ import { createMapMaterials } from './map-materials.js';
 import { createMapMeshes } from './map-meshes.js';
 import { createMapControls } from './map-controls.js';
 import { createAmbientLoop } from './ambient-motion.js';
+import { createPartyToken } from './party-token.js';
 
 export function createMapRenderer(
   host,
-  { onSelect = () => {}, onHover = () => {}, motion = true } = {},
+  { onSelect = () => {}, onHover = () => {}, onPartyMove, motion = true } = {},
 ) {
   const loading = host.querySelector('#hp-loading');
   let renderer;
@@ -25,6 +26,7 @@ export function createMapRenderer(
   renderer.toneMapping = THREE.NoToneMapping;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.autoClear = false;
   host.append(renderer.domElement);
   renderer.domElement.setAttribute('role', 'img');
   renderer.domElement.setAttribute(
@@ -61,6 +63,7 @@ export function createMapRenderer(
   const palette = createMapMaterials();
   const meshes = createMapMeshes(palette);
   scene.add(meshes.group);
+  const party = onPartyMove ? createPartyToken({ host, draw, onMove: onPartyMove }) : null;
   const controls = createMapControls({
     host,
     renderer,
@@ -71,10 +74,13 @@ export function createMapRenderer(
     draw,
     onSelect,
     onHover,
+    party,
   });
   function draw() {
     renderer.domElement.dataset.zoom = String(controls.camera.zoom);
+    renderer.clear();
     renderer.render(scene, controls.camera);
+    party?.render(renderer, controls.camera);
   }
   const ambientLoop = createAmbientLoop({
     renderer,
@@ -86,11 +92,13 @@ export function createMapRenderer(
   return {
     setMotion: ambientLoop.setMotion,
     setMap(layout, options) {
+      if (options?.resetView) party?.deselect();
       meshes.setMap(layout);
       controls.refresh(options);
     },
     select: controls.select,
     setSelection: controls.setSelection,
+    setParty: (token, seeds) => party?.set(token, meshes.cells, seeds),
     zoom: controls.zoom,
     snapshot() {
       draw();
@@ -103,6 +111,7 @@ export function createMapRenderer(
     },
     dispose() {
       ambientLoop.dispose();
+      party?.dispose();
       controls.dispose();
       meshes.dispose();
       palette.dispose();

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createMapControls } from '../src/rendering/map-controls.js';
 
-function fixture(t) {
+function fixture(t, party) {
   const original = globalThis.ResizeObserver;
   globalThis.ResizeObserver = class {
     observe() {}
@@ -35,6 +35,7 @@ function fixture(t) {
     },
     onSelect: (key, options) => selections.push({ key, ...options }),
     onHover() {},
+    party,
   });
   controls.refresh();
   t.after(() => {
@@ -45,6 +46,7 @@ function fixture(t) {
   });
   return {
     selections,
+    controls,
     pointer(type, options = {}) {
       host.dispatchEvent(
         Object.assign(new Event(type), {
@@ -73,6 +75,31 @@ test('Command and Control map clicks request additive selection; plain clicks re
     { key: '0,0', additive: true },
     { key: '0,0', additive: false },
   ]);
+});
+
+test('clicking or dragging the party never pans or selects the map', (t) => {
+  let moved = false;
+  const { pointer, selections, controls } = fixture(t, {
+    start: () => {
+      moved = false;
+      return true;
+    },
+    move: () => {
+      moved = true;
+    },
+    end: () => (moved ? null : '0,0'),
+    cancel() {},
+  });
+  const position = controls.camera.position.clone();
+  pointer('pointerdown');
+  pointer('pointerup');
+  assert.deepEqual(selections, []);
+  selections.length = 0;
+  pointer('pointerdown');
+  pointer('pointermove', { clientX: 230 });
+  pointer('pointerup', { clientX: 230 });
+  assert.deepEqual(selections, []);
+  assert.ok(controls.camera.position.equals(position));
 });
 
 test('modified drags, cancelled gestures and secondary clicks do not select hexes', (t) => {

@@ -13,6 +13,7 @@ export function createMapControls({
   draw,
   onSelect,
   onHover,
+  party,
 }) {
   const listeners = new AbortController();
   const listen = (target, event, handler, options = {}) =>
@@ -155,12 +156,24 @@ export function createMapControls({
     return ranges[low].key;
   }
   const pointers = new Map();
+  let partyPointer = null;
   let last = null,
     start = null,
     pinched = false,
     pinchDistance = 0;
   listen(host, 'pointerdown', (e) => {
     if (e.button !== 0) return;
+    if (partyPointer !== null) {
+      party.cancel();
+      partyPointer = null;
+      return;
+    }
+    if (pointers.size === 0 && party?.start(e, camera)) {
+      partyPointer = e.pointerId;
+      host.setPointerCapture(e.pointerId);
+      return;
+    }
+    party?.deselect();
     host.setPointerCapture(e.pointerId);
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pointers.size === 1) {
@@ -177,6 +190,10 @@ export function createMapControls({
     onHover(null);
   });
   listen(host, 'pointermove', (e) => {
+    if (partyPointer === e.pointerId) {
+      party.move(e, camera);
+      return;
+    }
     if (pointers.has(e.pointerId)) {
       pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (pointers.size === 2) {
@@ -213,6 +230,11 @@ export function createMapControls({
     }
   });
   function release(e) {
+    if (partyPointer === e.pointerId) {
+      partyPointer = null;
+      party.end(e, hit);
+      return;
+    }
     const wasLast = pointers.size === 1;
     pointers.delete(e.pointerId);
     if (wasLast && !pinched && start && Math.hypot(e.clientX - start.x, e.clientY - start.y) < 6) {
@@ -225,6 +247,11 @@ export function createMapControls({
   }
   listen(host, 'pointerup', release);
   listen(host, 'pointercancel', (e) => {
+    if (partyPointer === e.pointerId) {
+      partyPointer = null;
+      party.cancel();
+      return;
+    }
     pointers.delete(e.pointerId);
     last = null;
     start = null;
