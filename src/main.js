@@ -602,7 +602,7 @@ batchInspectorHost.hidden = true;
 panels.inspector.append(singleInspectorHost, batchInspectorHost);
 inspector = createHexInspector(singleInspectorHost, {
   visible: panels.inspectorVisible,
-  preview: (tile, colors) => mapView?.tilePreview(tile, colors) ?? '',
+  preview: (tile, colors) => mapView?.tilePreview(tile, colors, { fitContent: true }) ?? '',
   onApply: (patch, button) => mapAction.run(button, () => handleAction(session.apply(patch))),
   onVisit: () => handleAction(session.visit()),
   onLock: () => handleAction(session.lock()),

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { geometryFrom } from './geometry.js';
 import { surfaceHeight } from '../generation/math.js';
+import { fitPreviewCamera } from './preview-framing.js';
 
 export function createMapControls({
   host,
@@ -60,7 +61,8 @@ export function createMapControls({
   let selected = null,
     selectionKeys = null,
     hovered = null,
-    zoom = 1;
+    zoom = 1,
+    fitContent = false;
   function showSelection() {
     if (selectionKeys === null) {
       const cell = cells.find((cell) => cell.key === selected);
@@ -101,6 +103,11 @@ export function createMapControls({
       h = host.clientHeight;
     if (!w || !h) return;
     renderer.setSize(w, h, false);
+    if (fitContent && fitPreviewCamera(camera, map, w / h)) {
+      zoom = 1;
+      draw();
+      return;
+    }
     camera.updateMatrixWorld();
     const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0);
     const up = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1);
@@ -241,7 +248,8 @@ export function createMapControls({
   observer.observe(host);
   return {
     camera,
-    refresh({ resetView = false } = {}) {
+    refresh({ resetView = false, fitContent: fit = false } = {}) {
+      fitContent = fit;
       hovered = null;
       onHover(null);
       hoverRing.visible = false;

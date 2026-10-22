@@ -4,7 +4,7 @@ let host;
 let renderer;
 
 // The menu and inspector share one offscreen, non-animated renderer.
-export function tilePreview(tile, colors) {
+export function tilePreview(tile, colors, { fitContent = false } = {}) {
   if (!tile) return '';
   if (!host) {
     host = document.createElement('div');
@@ -14,9 +14,9 @@ export function tilePreview(tile, colors) {
     renderer = createMapRenderer(host, { motion: false });
   }
   if (!renderer) return '';
-  renderer.setMap([{ ...tile, q: 0, r: 0 }], { resetView: true });
+  renderer.setMap([{ ...tile, q: 0, r: 0 }], { resetView: true, fitContent });
   renderer.setPalette(colors);
-  renderer.zoom(4.1);
+  if (!fitContent) renderer.zoom(4.1);
   return renderer.snapshot();
 }
 
