@@ -112,6 +112,7 @@ export function createMapRenderer(
       meshes.setMap(layout);
       controls.refresh(options);
     },
+    cancelInteraction: controls.cancelInteraction,
     select: controls.select,
     focus: controls.focus,
     setSelection: controls.setSelection,

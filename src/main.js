@@ -247,7 +247,8 @@ function presentCampaign({ resetView = false } = {}) {
       motion: movement,
       touchMultiSelect: true,
       onPartyMove(key) {
-        if (mapAction.isBusy()) return false;
+        if (mapAction.isBusy() || movePartyDialog.open || !session.snapshot()?.partySelected)
+          return false;
         return handleAction(session.moveParty(key));
       },
       onPartySelect: selectParty,
@@ -260,6 +261,7 @@ function presentCampaign({ resetView = false } = {}) {
         }
         const { selected, multiEdit, partySelected } = session.snapshot();
         if (fromMap && mobileLayout.matches && partySelected) {
+          renderer.cancelInteraction();
           renderer.select(selected, { notify: false });
           syncSelection();
           pendingPartyMove = { key, campaignId: session.snapshot().campaign.id };
@@ -508,12 +510,22 @@ listen(selection, 'change', () => {
   if (selection.value === PARTY_SELECTION) selectParty();
   else renderer?.select(selection.value, { additive: session.snapshot()?.multiEdit });
 });
-listen(movePartyDialog, 'close', () => {
+function cancelPartyMove() {
+  const target = pendingPartyMove;
   pendingPartyMove = undefined;
+  renderer?.cancelInteraction();
+  movePartyDialog.close();
+  if (target && target.campaignId === session.snapshot()?.campaign.id) renderer.select(target.key);
+}
+listen(element('move-party-cancel'), 'click', cancelPartyMove);
+listen(movePartyDialog, 'cancel', (event) => {
+  event.preventDefault();
+  cancelPartyMove();
 });
-listen(element('move-party-cancel'), 'click', () => movePartyDialog.close());
 listen(element('move-party-confirm'), 'click', () => {
   const target = pendingPartyMove;
+  pendingPartyMove = undefined;
+  renderer?.cancelInteraction();
   if (target && target.campaignId === session.snapshot()?.campaign.id && !mapAction.isBusy())
     handleAction(session.moveParty(target.key));
   movePartyDialog.close();

@@ -1467,6 +1467,7 @@
     font: 400 var(--text-heading)/1.25 var(--font-pixel);
   }
   .hp-party-location-value {
+    line-height: 1.25;
     display: flex;
     align-items: center;
     gap: var(--space-4);
@@ -1476,7 +1477,6 @@
     }
   }
   .hp-party-overview .hp-hex-distances {
-    grid-column: 2;
     gap: 0;
     margin: 0;
     & > div {
@@ -1484,7 +1484,6 @@
       grid-template-columns: var(--party-pin-size) minmax(0, 1fr) minmax(0, 1fr);
       gap: var(--space-4);
       align-items: center;
-      min-height: var(--party-pin-size);
     }
     & dt {
       grid-column: 1 / span 2;
@@ -1501,7 +1500,7 @@
     }
   }
   .hp-party-portrait {
-    grid-row: 1 / span 2;
+    grid-row: 1;
     position: relative;
     & > button {
       width: 100%;
@@ -1519,18 +1518,9 @@
   }
   @container inspector (max-width: 420px) {
     .hp-party-overview {
-      grid-template-columns: clamp(6.5rem, 36%, 10rem) minmax(0, 1fr);
-      align-items: center;
-      column-gap: var(--space-24);
       & .campaign-name-form {
         grid-area: auto;
       }
-    }
-    .hp-party-portrait {
-      grid-row: 1;
-    }
-    .hp-party-overview .hp-hex-distances {
-      grid-column: 1 / -1;
     }
   }
   @container inspector (max-width: 360px) {
@@ -1669,8 +1659,8 @@
   }
   .hp-hex-distances {
     display: grid;
-    gap: var(--space-4);
-    margin: var(--space-12) 0 0;
+    gap: 0;
+    margin: var(--space-8) 0 0;
     & div {
       display: flex;
       justify-content: space-between;
@@ -1678,10 +1668,11 @@
     }
     & dt {
       font-size: var(--text-control);
+      line-height: 1.25;
       color: var(--muted);
     }
     & dd {
-      font: 400 var(--text-control)/1.5 var(--font-pixel);
+      font: 400 var(--text-control)/1.25 var(--font-pixel);
       text-align: right;
     }
   }

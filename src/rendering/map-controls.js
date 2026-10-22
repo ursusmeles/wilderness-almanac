@@ -342,6 +342,16 @@ export function createMapControls({
       if (selectionKeys !== null) showSelection();
       resize();
     },
+    cancelInteraction() {
+      cancelLongPress();
+      for (const id of [...pointers.keys(), partyPointer])
+        if (id !== null && host.hasPointerCapture?.(id)) host.releasePointerCapture(id);
+      pointers.clear();
+      partyPointer = null;
+      last = start = null;
+      pinched = longPressed = gestureMoved = false;
+      party?.cancel();
+    },
     select: choose,
     focus,
     setSelection(keys) {
