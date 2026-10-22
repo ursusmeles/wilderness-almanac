@@ -2,10 +2,13 @@ import { distance, neighbours } from './hex.js';
 import { randomFor, weightedChoice } from './seed.js';
 import { clamp, distanceField } from './spatial.js';
 import { preferenceWeights } from './world-preferences.js';
+import { generateSettlements } from './settlement-placement.js';
 
 export const chooseCitySize = (random) => weightedChoice(random, [1, 2, 3], [50, 40, 10]);
 
 export function generatePointsOfLight(world) {
+  if (world.generatorVersion >= 8) return generateSettlements(world);
+  // Versions 6/7 retain their original stream consumption, eligibility and order.
   const random = randomFor(world.seed, 'points-of-light');
   const step = world.preferences?.settlements ?? 0;
   const weights = preferenceWeights(world);

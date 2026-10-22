@@ -109,8 +109,28 @@ export function generatePropDressing(
         )
       )
         return false;
-      const y = surface ? surfaceHeight(surface, x, z) : 0;
+      let y = surface ? surfaceHeight(surface, x, z) : 0;
       if (extra.flank && (y < 0.025 || y > 0.18)) return false;
+      let foundation;
+      if (
+        world.generatorVersion >= 8 &&
+        surface &&
+        cell.pointOfLight?.type === 'village' &&
+        ['house', 'tower'].includes(kind)
+      ) {
+        const heights = Array.from({ length: 12 }, (_, side) =>
+          surfaceHeight(
+            surface,
+            x + Math.cos((side * Math.PI) / 6) * footprint,
+            z + Math.sin((side * Math.PI) / 6) * footprint,
+          ),
+        );
+        const top = Math.max(y, ...heights);
+        // Set buildings on short terrain-matched footings, never sheer ridge faces.
+        if (top - Math.min(y, ...heights) > 0.12) return false;
+        y = top;
+        foundation = { foundationHeights: heights.map((height) => height - top - 0.015) };
+      }
       const species = extra.variant ?? cell.treeVariant;
       const temperature =
         cell.pointOfLight || cell.terrain === 'farmlands'
@@ -129,6 +149,7 @@ export function generatePropDressing(
         detailSeed: integer(1, 1000000),
         temperature: (temperature * integer(0, 3)) / 3,
         ...extra,
+        ...foundation,
       });
       return true;
     }

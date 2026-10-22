@@ -321,7 +321,7 @@ test('panel order and disclosure preferences are validated and saved globally', 
 });
 
 test('editing part of a city removes only that hex and repairs its centre and footprint size', () => {
-  const original = generateWorld('0');
+  const original = generateWorld('1');
   const city = original.settlements.find((settlement) => settlement.hexKeys.length >= 2);
   assert.ok(city);
   const initial = createCampaign(original, campaign.colors, campaign.paletteName);

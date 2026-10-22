@@ -47,17 +47,17 @@ test('preferences validate bounded discrete inputs and stack past saturated name
   assert.throws(() => generateWorld('7', { generatorVersion: 6, preferences: { water: 1 } }));
 });
 
-test('version 6 replay stays exact and default version 7 retains the same generated landscape', () => {
+test('version 6 replay stays exact and explicit version 7 retains the same generated landscape', () => {
   const snapshots = {
-    // Hashes captured from the pre-preferences version-6 implementation.
-    0: '58eb59293883b06dbf08c028acc0752e781f792183c8ecb8a2f23940575d6203',
-    7: '605d7aff85b0f317dbe76d1372b0e764a76e380b690987de5c96ff62133e859a',
+    // Pre-preferences version-6 fixtures, with only the approved display words renamed.
+    0: '0c56683ca860a7fabd8858bf97373fd6a23cf797176eccfa1c12926556fd580c',
+    7: 'cf3e7bac8a110c56b255b5dcb4e8f96adbee87987dc8a253fe2651c9135f1d93',
     10: '9851ad96a03dbe4e3f1d1255582a8b1c0bc420533d6ab3c421ec4b45f902bb41',
   };
   for (const [seed, hash] of Object.entries(snapshots)) {
     const legacy = generateWorld(seed, { generatorVersion: 6 });
     assert.equal(createHash('sha256').update(JSON.stringify(legacy)).digest('hex'), hash);
-    const current = generateWorld(seed);
+    const current = generateWorld(seed, { generatorVersion: 7 });
     const { preferences, generatorVersion, ...landscape } = current;
     const { generatorVersion: oldVersion, ...oldLandscape } = legacy;
     assert.deepEqual(landscape, oldLandscape);

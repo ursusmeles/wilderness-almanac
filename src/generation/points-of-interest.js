@@ -1,7 +1,7 @@
 import rules from '../data/world-rules.json' with { type: 'json' };
 import { DIRECTIONS, components, distance, neighbours } from './hex.js';
 import { hashSeed, randomFor, weightedChoice } from './seed.js';
-import { distanceField } from './spatial.js';
+import { clamp, distanceField } from './spatial.js';
 import { crossingChoice, crossingSite, bridgeMaterialFor } from './crossings.js';
 import { prepareRiverGeometry, riverFieldFor } from './presentation.js';
 
@@ -14,8 +14,21 @@ export const poiAnchor = (poi) =>
 const ordinary = POI_RULES.filter((rule) => !['bridge', 'ferry'].includes(rule.kind));
 const rarity = { mystic: 0.25, battlefield: 0.25 };
 
+export function deepForestWeight(cell, byKey) {
+  if (cell.terrain !== 'dense forest') return 1;
+  let count = 0;
+  for (let q = -2; q <= 2; q++)
+    for (let r = -2; r <= 2; r++) {
+      if ((!q && !r) || Math.max(Math.abs(q), Math.abs(r), Math.abs(q + r)) > 2) continue;
+      if (byKey.get(`${cell.q + q},${cell.r + r}`)?.terrain === 'dense forest') count++;
+    }
+  return 1 + clamp((count - 9) / 6, 0, 1);
+}
+
 export function poiSuitability(kind, cell, context) {
-  if (cell.water || (cell.pointOfLight && !['watchtower', 'mystic'].includes(kind))) return 0;
+  const updated = context.generatorVersion >= 8;
+  const shared = ['watchtower', 'mystic', ...(updated ? ['dungeon'] : [])];
+  if (cell.water || (cell.pointOfLight && !shared.includes(kind))) return 0;
   const { pl, smallPL, mountain, lake, canyon } = context;
   const nearPL = pl(cell) <= 3;
   const peninsula =
@@ -29,10 +42,20 @@ export function poiSuitability(kind, cell, context) {
       return (
         (preferred(['mountains', 'dense forest', 'wetlands']) || cell.islandId ? 4 : 1) *
         (nearPL ? 0.25 : 1) *
-        (cell.terrain === 'farmlands' ? 0.2 : 1)
+        (cell.terrain === 'farmlands' ? 0.2 : 1) *
+        (updated ? context.deepForest(cell) : 1)
       );
     case 'encampment':
-      return preferred(['meadow', 'light forest']) ? 4 : 0.5;
+      return (
+        (preferred(['meadow', 'light forest']) ? 4 : 0.5) *
+        (updated
+          ? context.freshwater(cell) <= 1
+            ? 1.5
+            : context.freshwater(cell) <= 2
+              ? 1.2
+              : 1
+          : 1)
+      );
     case 'watchtower':
       return (
         (1 + cell.elevation * 0.6) *
@@ -54,11 +77,12 @@ export function poiSuitability(kind, cell, context) {
         (nearPL ? 0.04 : 1)
       );
     case 'mystic':
-      return remote || lake(cell) <= 1 ? 5 : 1;
+      return (remote || lake(cell) <= 1 ? 5 : 1) * (updated ? context.deepForest(cell) : 1);
     case 'abbey':
       return (
         (cell.terrain === 'farmlands' ? 4 : 1) *
-        (smallPL(cell) <= 1 ? 4 : smallPL(cell) <= 3 ? 2 : 0.5)
+        (smallPL(cell) <= 1 ? 4 : smallPL(cell) <= 3 ? 2 : 0.5) *
+        (updated && cell.islandId && context.islandSizes.get(cell.islandId) <= 3 ? 3 : 1)
       );
     case 'battlefield':
       return cell.terrain === 'meadow' ? 5 : 0.3;
@@ -150,6 +174,7 @@ export function generatePointsOfInterest(world) {
   }
   const byKey = new Map(world.cells.map((cell) => [cell.key, cell]));
   const context = {
+    generatorVersion: world.generatorVersion,
     byKey,
     pl: distanceField(world.cells, byKey, (cell) => !!cell.pointOfLight),
     smallPL: distanceField(world.cells, byKey, (cell) =>
@@ -164,12 +189,24 @@ export function generatePointsOfInterest(world) {
         .flatMap((feature) => feature.hexKeys),
     ),
   };
+  if (world.generatorVersion >= 8) {
+    context.freshwater = distanceField(
+      world.cells,
+      byKey,
+      (cell) => cell.water === 'river' || cell.water === 'lake',
+    );
+    context.islandSizes = new Map(
+      world.geography.islands.map((island) => [island.id, island.hexKeys.length]),
+    );
+    const depth = new Map(world.cells.map((cell) => [cell.key, deepForestWeight(cell, byKey)]));
+    context.deepForest = (cell) => depth.get(cell.key) ?? 1;
+  }
   world.pointsOfInterest = [];
   world.poiBudgets = [];
   const add = (cell, rule, random, bonus = false) => {
     const variant =
       rule.kind === 'watchtower'
-        ? context.coast(cell) === 1 && random() < 0.25
+        ? context.coast(cell) === 1 && random() < (world.generatorVersion >= 8 ? 0.5 : 0.25)
           ? 'lighthouse'
           : 'watchtower'
         : rule.kind === 'dungeon'
@@ -177,7 +214,7 @@ export function generatePointsOfInterest(world) {
             ? 'mine'
             : 'dungeon'
           : rule.kind === 'lair'
-            ? random() < 0.5
+            ? random() < (world.generatorVersion >= 8 ? 0.4 : 0.5)
               ? 'cave'
               : 'nest'
             : rule.kind === 'mystic'

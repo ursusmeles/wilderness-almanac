@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { terrainFootingGeometry } from './geometry.js';
 
 // Reuse cosmetic detail seeds without consuming any placement randomness.
 export const settlementRoofTone = (prop) =>
@@ -6,7 +7,19 @@ export const settlementRoofTone = (prop) =>
 
 // Settlement models share building components and palette roles.
 export function createSettlementBuilder({ addMesh, propMaterial, roofGeometry }) {
+  function makeFooting(parent, prop) {
+    if (!prop.foundationHeights) return;
+    addMesh(
+      parent,
+      terrainFootingGeometry(prop.footprint, prop.foundationHeights),
+      propMaterial('ridge'),
+      prop.x,
+      prop.y,
+      prop.z,
+    );
+  }
   function makeHouse(parent, prop) {
+    makeFooting(parent, prop);
     const g = new THREE.Group();
     g.position.set(prop.x, prop.y || 0, prop.z);
     g.rotation.y = prop.angle;
@@ -90,6 +103,7 @@ export function createSettlementBuilder({ addMesh, propMaterial, roofGeometry })
     parent.add(g);
   }
   function makeTower(parent, prop) {
+    makeFooting(parent, prop);
     const g = new THREE.Group();
     g.position.set(prop.x, prop.y || 0, prop.z);
     g.rotation.y = prop.angle;

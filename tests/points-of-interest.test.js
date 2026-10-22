@@ -88,6 +88,11 @@ test('100 worlds keep POIs sparse and suitable; crossings join dry banks near se
     rolls = { bridge: 0, ferry: 0, neither: 0 };
   let bonus = 0,
     crossingCount = 0;
+  let coastalWatchtowers = 0,
+    lighthouses = 0,
+    lairs = 0,
+    caves = 0,
+    sharedMines = 0;
   for (let seed = 0; seed < 100; seed++) {
     const world = generateWorld(String(seed));
     const byKey = new Map(world.cells.map((cell) => [cell.key, cell]));
@@ -107,9 +112,22 @@ test('100 worlds keep POIs sparse and suitable; crossings join dry banks near se
       kinds.set(poi.kind, (kinds.get(poi.kind) ?? 0) + 1);
       assert.ok(!cell.water && cell.pointsOfInterest.length === 1);
       assert.equal(poi.temperature, ['encampment', 'abbey'].includes(poi.kind) ? 1 : -1);
-      if (cell.pointOfLight) assert.ok(['watchtower', 'mystic'].includes(poi.kind));
+      if (cell.pointOfLight)
+        assert.ok(
+          ['watchtower', 'mystic'].includes(poi.kind) ||
+            (poi.kind === 'dungeon' && poi.variant === 'mine'),
+        );
       if (poi.variant === 'lighthouse')
         assert.ok(neighbours(cell, byKey).some((c) => c.water === 'ocean'));
+      if (poi.kind === 'watchtower' && neighbours(cell, byKey).some((c) => c.water === 'ocean')) {
+        coastalWatchtowers++;
+        lighthouses += Number(poi.variant === 'lighthouse');
+      }
+      if (poi.kind === 'lair') {
+        lairs++;
+        caves += Number(poi.variant === 'cave');
+      }
+      sharedMines += Number(poi.variant === 'mine' && !!cell.pointOfLight);
       if (poi.kind === 'dungeon')
         assert.equal(
           poi.variant === 'mine',
@@ -160,6 +178,9 @@ test('100 worlds keep POIs sparse and suitable; crossings join dry banks near se
   assert.ok(kinds.get('mystic') < kinds.get('encampment') * 0.5);
   assert.ok(kinds.get('battlefield') < kinds.get('ruins') * 0.6);
   assert.ok(bonus > 10 && crossingCount > 100);
+  assert.ok(coastalWatchtowers > 10 && Math.abs(lighthouses / coastalWatchtowers - 0.5) < 0.2);
+  assert.ok(lairs > 30 && Math.abs(caves / lairs - 0.4) < 0.12);
+  assert.ok(sharedMines > 0);
   const total = Object.values(rolls).reduce((a, b) => a + b, 0);
   for (const [kind, share] of [
     ['bridge', 0.5],

@@ -57,6 +57,7 @@ export function settlementBarriers(world, variant) {
   };
   for (const cell of world.cells) {
     if (!cell.pointOfLight) continue;
+    if (world.generatorVersion >= 8 && cell.terrain === 'mountains') continue;
     const { type, id } = cell.pointOfLight;
     if (type === 'city') {
       if (!cities.has(id)) cities.set(id, []);

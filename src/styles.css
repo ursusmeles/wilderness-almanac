@@ -1615,9 +1615,6 @@
     & .hp-panel-bar {
       border-bottom: 0;
     }
-    & #hp-toggle-settings .ui-icon {
-      transform: rotate(180deg);
-    }
     & .hp-colors {
       display: flex;
       align-items: center;
@@ -1657,15 +1654,6 @@
     & .hp-panel-buttons > :not([data-horizontal]) {
       display: none;
     }
-  }
-  .hp-rotate {
-    transform: rotate(180deg);
-  }
-  .hp-caret-left {
-    transform: rotate(-90deg);
-  }
-  .hp-caret-right {
-    transform: rotate(90deg);
   }
   #hp-hex-form:not(.is-editing) select {
     font-family: var(--font-pixel);

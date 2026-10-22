@@ -290,7 +290,8 @@ export function campaignDressing(
       const surface = fixedMountains.get(cell.key)?.surface;
       if (surface)
         for (const prop of cell.props) {
-          if (prop.kind !== 'poi') prop.y = surfaceHeight(surface, prop.x, prop.z);
+          if (prop.kind !== 'poi' && !prop.foundationHeights)
+            prop.y = surfaceHeight(surface, prop.x, prop.z);
           else {
             const heights = Array.from({ length: 12 }, (_, side) =>
               surfaceHeight(

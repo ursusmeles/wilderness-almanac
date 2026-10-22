@@ -11,8 +11,8 @@ import { generatePointsOfLight } from './points-of-light.js';
 import { generatePointsOfInterest } from './points-of-interest.js';
 import { worldPreferences } from './world-preferences.js';
 
-export const GENERATOR_VERSION = 7;
-export const SUPPORTED_GENERATOR_VERSIONS = [6, GENERATOR_VERSION];
+export const GENERATOR_VERSION = 8;
+export const SUPPORTED_GENERATOR_VERSIONS = [6, 7, GENERATOR_VERSION];
 
 export function generateWorld(seed, { preferences, generatorVersion = GENERATOR_VERSION } = {}) {
   if (!SUPPORTED_GENERATOR_VERSIONS.includes(generatorVersion))

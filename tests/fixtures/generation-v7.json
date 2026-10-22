@@ -1,0 +1,90 @@
+[
+  {
+    "seed": "0",
+    "options": {
+      "generatorVersion": 6
+    },
+    "world": "0c56683ca860a7fabd8858bf97373fd6a23cf797176eccfa1c12926556fd580c",
+    "dressing": "bdd63a097f2c28a9066b1f0c2215734fbb0a61d488c8dcc9bf421baa12bf1d79"
+  },
+  {
+    "seed": "7",
+    "options": {
+      "generatorVersion": 6
+    },
+    "world": "cf3e7bac8a110c56b255b5dcb4e8f96adbee87987dc8a253fe2651c9135f1d93",
+    "dressing": "cb8def14d0467caa24ed6fd3325ae15f58b3e25ba51018e8f0ad237312493215"
+  },
+  {
+    "seed": "19",
+    "options": {
+      "generatorVersion": 6
+    },
+    "world": "13523cadcd7ae59ae79e8660747244da9e59fb17f9d5b9b375f5f2ad89bb6bdd",
+    "dressing": "84253d215c5adeeef8ff2af812bb64aed5e62c1d8d43d5cd2259109911279303"
+  },
+  {
+    "seed": "77",
+    "options": {
+      "generatorVersion": 6
+    },
+    "world": "919fe6efce46dd15993078e12f045e3765c45db2ae87a11fce3b7615ca56db00",
+    "dressing": "6ac07982007c88fe6b366e0dc4e57268cced3188dd1b8b2dcaaef354c2abad6f"
+  },
+  {
+    "seed": "0",
+    "options": {
+      "generatorVersion": 7,
+      "preferences": {
+        "water": 1,
+        "elevation": 1,
+        "forests": 1,
+        "settlements": 1
+      }
+    },
+    "world": "11ad6479c3a1d744c77fc7c1750816017f79d418617c8da615d8ba8bf98e5ac9",
+    "dressing": "c6c7c0f8cbfa978e609bbcdf86a08888ebb3a393fa84413382bedc0aa1e662bb"
+  },
+  {
+    "seed": "7",
+    "options": {
+      "generatorVersion": 7,
+      "preferences": {
+        "water": 1,
+        "elevation": 1,
+        "forests": 1,
+        "settlements": 1
+      }
+    },
+    "world": "a20dbe92fd5de63eb05f62466dec8b4954b560304d533199239fe207b239a0a9",
+    "dressing": "a25e113006e801753a3454b3edca79927299fcbfd9923ba6cce6039a2c746785"
+  },
+  {
+    "seed": "19",
+    "options": {
+      "generatorVersion": 7,
+      "preferences": {
+        "water": 1,
+        "elevation": 1,
+        "forests": 1,
+        "settlements": 1
+      }
+    },
+    "world": "8d8db30d363588c42e7409486e01006674145ffbe6fd6d7f227bf85617c1dafa",
+    "dressing": "bf03e2e3a61b8372d8cbfa127433e19201970e894f7a3412e2123f3a2919880b"
+  },
+  {
+    "seed": "77",
+    "options": {
+      "generatorVersion": 7,
+      "preferences": {
+        "water": 1,
+        "elevation": 1,
+        "forests": 1,
+        "settlements": 1
+      }
+    },
+    "world": "383fa92196ac526169c7e9bb977b7aa9f7fa72e188bde3357842efaea314900c",
+    "dressing": "562a9f68e4780e2b040ce57c3278a0d83b30a0455c63fbbfa1068e8434016141"
+  }
+]

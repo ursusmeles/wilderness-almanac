@@ -97,6 +97,9 @@ function setSettingsOpen(enabled) {
   button.setAttribute('aria-expanded', String(enabled));
   button.setAttribute('aria-label', label);
   button.title = label;
+  button
+    .querySelector('use')
+    .setAttribute('href', `/icons/pixelarticons.svg#${enabled ? 'collapse' : 'expand'}`);
   element('palette-create').hidden = !enabled;
   element('palette-create')
     .querySelectorAll('input, button')

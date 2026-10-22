@@ -109,7 +109,9 @@ export function createPanels(root, preferences, onChange) {
       toggle.setAttribute('aria-expanded', String(!current[id]));
       toggle.setAttribute('aria-label', `${current[id] ? 'Expand' : 'Minimise'} ${name}`);
       toggle.title = `${current[id] ? 'Expand' : 'Minimise'} panel`;
-      toggle.querySelector('svg').classList.toggle('hp-rotate', current[id]);
+      toggle
+        .querySelector('use')
+        .setAttribute('href', `/icons/pixelarticons.svg#${current[id] ? 'expand' : 'collapse'}`);
       const sideways = panel.querySelector('[data-horizontal]');
       sideways.setAttribute('aria-expanded', String(!rail));
       sideways.setAttribute(
@@ -117,8 +119,12 @@ export function createPanels(root, preferences, onChange) {
         `${rail ? 'Restore' : 'Collapse'} ${name} ${rail ? 'from' : 'to'} vertical bar`,
       );
       sideways.title = rail ? 'Restore panel width' : 'Collapse panel to vertical bar';
-      sideways.querySelector('svg').classList.toggle('hp-caret-left', rail);
-      sideways.querySelector('svg').classList.toggle('hp-caret-right', !rail);
+      sideways
+        .querySelector('use')
+        .setAttribute(
+          'href',
+          `/icons/pixelarticons.svg#${rail ? 'arrow-bar-left' : 'arrow-bar-right'}`,
+        );
     }
   }
   mobile.addEventListener(

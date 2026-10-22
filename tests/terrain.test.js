@@ -8,6 +8,7 @@ import {
   TERRAIN_TYPES,
 } from '../src/generation/terrain-types.js';
 import { chooseCitySize, generatePointsOfLight } from '../src/generation/points-of-light.js';
+import { settlementSuitability } from '../src/generation/settlement-placement.js';
 import { randomFor } from '../src/generation/seed.js';
 import { components, distance, neighbours, DIRECTIONS } from '../src/generation/hex.js';
 import { fitsHex, fitsTree, lowProp, minimumSpacing } from '../src/generation/prop-placement.js';
@@ -15,7 +16,7 @@ import { TOKEN_ANCHOR } from '../src/generation/props.js';
 import { isBarrier, barrierEnds, barrierDistance } from '../src/generation/settlement-props.js';
 import { createColorScale, palettes } from '../src/palette.js';
 
-test('names replay in sentence case from the 30-by-30 Sheet snapshot', () => {
+test('names replay in sentence case from the 30-by-30 vocabulary', () => {
   assert.equal(NAME_WORDS.adjectives.length, 30);
   assert.equal(NAME_WORDS.nouns.length, 30);
   for (let seed = 0; seed < 100; seed++) {
@@ -28,6 +29,27 @@ test('names replay in sentence case from the 30-by-30 Sheet snapshot', () => {
   assert.equal(nameModifiers(['W', '-W']).W, 1);
   assert.equal(nameModifiers(['W', 'W']).W, 3.2);
   assert.equal(nameModifiers(['-PL', '-PL']).PL, 0.3);
+});
+
+test('revised words retain their existing seeded slots', () => {
+  const names = {
+    0: 'The forbidden borderlands',
+    28: 'The shattered realm',
+    1: 'The restless barrowlands',
+    8: 'The crimson thicket',
+    5: 'The forsaken downs',
+    9: 'The ancient realm',
+    62: 'The timeless crossroads',
+    23: 'The misty woods',
+    92: 'The wyrd plains',
+    47: 'The desolated marsh',
+    15: 'The ashen dominion',
+    31: 'The elder haven',
+    24: 'The wild crossroads',
+  };
+  for (const [seed, name] of Object.entries(names)) {
+    assert.equal(generateMapName(seed).name, name);
+  }
 });
 
 test('name modifiers produce conspicuous differences on identical geography', () => {
@@ -109,23 +131,23 @@ test('100 worlds preserve terrain suitability, clusters, open ground and settlem
         occupied.add(cell.key);
         assert.equal(cell.pointOfLight.id, settlement.id);
         assert.equal(cell.regionId, settlement.regionId);
-        assert.ok(['meadow', 'light forest'].includes(cell.terrain));
-        assert.ok(cell.elevation <= 2 && !cell.water);
-        assert.ok(
-          neighbours(cell, byKey).every((next) => Math.abs(next.elevation - cell.elevation) <= 1),
-        );
+        assert.ok(settlementSuitability(cell, byKey, settlement.type) > 0);
       }
     }
     for (const region of world.regions) {
       for (const [type, maximum] of [
         ['city', 1],
         ['town', 2],
-        ['village', 5],
+        ['village', 4],
       ])
         assert.ok(
           world.settlements.filter((s) => s.regionId === region.id && s.type === type).length <=
             maximum,
         );
+      assert.ok(
+        world.settlements.filter((s) => s.regionId === region.id && s.type !== 'village').length <=
+          2,
+      );
     }
   }
   assert.ok(isolatedForest / forestCount < 0.04, 'Coherent forests, not independent random tiles');

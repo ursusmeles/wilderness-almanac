@@ -15,6 +15,24 @@ export function geometryFrom(points) {
   return g;
 }
 
+export function terrainFootingGeometry(radius, heights) {
+  const vertices = [];
+  const point = (index, y) => [
+    Math.cos((index * Math.PI) / 6) * radius,
+    y,
+    Math.sin((index * Math.PI) / 6) * radius,
+  ];
+  for (let k = 0; k < 12; k++) {
+    const next = (k + 1) % 12;
+    const a = point(k, 0.004),
+      b = point(next, 0.004);
+    const c = point(k, heights[k]),
+      d = point(next, heights[next]);
+    vertices.push(0, 0.004, 0, ...b, ...a, ...a, ...b, ...c, ...b, ...d, ...c);
+  }
+  return geometryFrom(vertices);
+}
+
 // Geometry belongs to the map; materials are shared and disposed by their owner.
 export function clearGeometries(root) {
   const geometries = new Set();

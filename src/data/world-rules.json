@@ -2,7 +2,8 @@
   "source": {
     "url": "https://docs.google.com/spreadsheets/d/17FR-d_LzEMoaRjDUQdgTVXH_jDk3AkRtOZphgF6RKDw/edit",
     "readDate": "2026-10-19",
-    "ranges": ["'Map names'!B4:E33", "'Terrain logic'!A3:E11", "'Points of interest'!A2:D13"]
+    "ranges": ["'Map names'!B4:E33", "'Terrain logic'!A3:E11", "'Points of interest'!A2:D13"],
+    "localOverrides": "Display vocabulary and version-8 POL/POI placement refinements; original Sheet attribution retained."
   },
   "pointsOfInterest": [
     {
@@ -24,21 +25,21 @@
       "name": "Ruins",
       "props": "ruins (different shapes)",
       "hue": "C",
-      "placement": "Prefers mountains, dense forests, islands, wetlands. Dislikes PL and farmlands."
+      "placement": "Prefers mountains, dense forests, islands, wetlands. Dislikes PL and farmlands. Version 8 also favours deep dense forest with an additional multiplier capped at 2."
     },
     {
       "kind": "encampment",
       "name": "Encampment",
       "props": "campfire (0-1), tent (0-3)",
       "hue": "W",
-      "placement": "Prefers meadows, light forests."
+      "placement": "Prefers meadows, light forests. Version 8 adds a modest river/lake proximity preference."
     },
     {
       "kind": "watchtower",
       "name": "Watchtower",
       "props": "single tower or lighthouse",
       "hue": "C",
-      "placement": "Prefers meadows, elevation and PL proximity. Greatly prefers cliffs (elevation shift 2 levels or more). When on the coast, it's a watchtower 75%. Can spawn on islands. Dislikes dense forests. Can spawn in PL."
+      "placement": "Prefers meadows, elevation and PL proximity. Greatly prefers cliffs (elevation shift 2 levels or more). When on the coast, it's a watchtower 50% in version 8 (75% in versions 6/7). Can spawn on islands. Dislikes dense forests. Can spawn in PL."
     },
     {
       "kind": "stronghold",
@@ -59,14 +60,14 @@
       "name": "Mystic",
       "props": "Portal, Altar OR Standing Stone",
       "hue": "C",
-      "placement": "Rare. Prefers penisulas, islands, lakes proximity. Can spawn adjacent to or in PL."
+      "placement": "Rare. Prefers penisulas, islands, lakes proximity. Can spawn adjacent to or in PL. Version 8 also favours deep dense forest with an additional multiplier capped at 2."
     },
     {
       "kind": "abbey",
       "name": "Abbey",
       "props": "chapel style building, no religious marks",
       "hue": "W",
-      "placement": "Prefers farmlands and villages proximity. Can spawn adjacent to village or town. Cannot spawn in PL."
+      "placement": "Prefers farmlands and villages proximity. Can spawn adjacent to village or town. Cannot spawn in PL. Version 8 also favours whole islands of one to three hexes."
     },
     {
       "kind": "battlefield",
@@ -80,7 +81,7 @@
       "name": "Dungeon",
       "props": "mine gate OR dungeon gate",
       "hue": "C",
-      "placement": "Prefers mountains strongly. Mine when near settlements, dungeon when not."
+      "placement": "Prefers mountains strongly. Mine when near settlements, dungeon when not. Version 8 permits the mine subtype in settlement hexes."
     }
   ],
   "adjectives": [
@@ -129,11 +130,11 @@
       "modifiers": []
     },
     {
-      "word": "Sepulchral",
+      "word": "Forbidden",
       "modifiers": ["-PL", "-F"]
     },
     {
-      "word": "Waning",
+      "word": "Shattered",
       "modifiers": []
     },
     {
@@ -157,11 +158,11 @@
       "modifiers": []
     },
     {
-      "word": "Pale",
+      "word": "Timeless",
       "modifiers": []
     },
     {
-      "word": "Hushed",
+      "word": "Restless",
       "modifiers": []
     },
     {
@@ -181,15 +182,15 @@
       "modifiers": []
     },
     {
-      "word": "Twilit",
+      "word": "Crimson",
       "modifiers": []
     },
     {
-      "word": "Unhallowed",
+      "word": "Forsaken",
       "modifiers": ["-PL"]
     },
     {
-      "word": "Antediluvian",
+      "word": "Ancient",
       "modifiers": []
     },
     {
@@ -231,11 +232,11 @@
       "modifiers": ["DW", "-PL", "-F"]
     },
     {
-      "word": "Weald",
+      "word": "Woods",
       "modifiers": ["LW", "DW"]
     },
     {
-      "word": "Wold",
+      "word": "Plains",
       "modifiers": ["M", "-DW"]
     },
     {
@@ -247,7 +248,7 @@
       "modifiers": ["W", "-F"]
     },
     {
-      "word": "Fen",
+      "word": "Marsh",
       "modifiers": ["W"]
     },
     {
@@ -291,11 +292,11 @@
       "modifiers": ["-PL", "-F", "-LW", "-DW"]
     },
     {
-      "word": "Demesne",
+      "word": "Dominion",
       "modifiers": ["PL", "F"]
     },
     {
-      "word": "Fastness",
+      "word": "Haven",
       "modifiers": []
     },
     {
@@ -323,7 +324,7 @@
       "modifiers": []
     },
     {
-      "word": "Palimpsest",
+      "word": "Crossroads",
       "modifiers": []
     }
   ],
@@ -361,7 +362,7 @@
       "name": "Point of light",
       "hue": "W",
       "props": "buildings (numbers and density increasing with PL type — village, town, city)",
-      "placement": "Start with cities (0-1 per region), then towns (0-2 per region), then villages (0-5 per region). General rules: settlements prefer open water and rivers proximity, meadows or light woodland around, and elevation. Dislikes wetlands and high elevation changes around."
+      "placement": "Start with cities (0-1 per region), then towns (0-2 per region), then villages (0-5 per region). General rules: settlements prefer open water and rivers proximity, meadows or light woodland around, and elevation. Dislikes wetlands and high elevation changes around. Version 8 plans at most two cities/towns combined and four villages per region, reduces settlement rolls and footprint budgets on water-heavy regions, and allows rare elevation-3/steep sites plus village-only mountain slopes."
     },
     {
       "code": "F",
