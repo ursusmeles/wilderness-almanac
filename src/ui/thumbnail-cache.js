@@ -32,6 +32,7 @@ async function signature(campaign) {
       campaign.id,
       campaign.generatorVersion,
       campaign.seed,
+      campaign.preferences,
       campaign.variant,
       campaign.colors,
       Object.entries(campaign.hexEdits?.cells ?? {}).flatMap(
@@ -84,6 +85,7 @@ export async function loadThumbnails(campaign, { allowStale = false } = {}) {
                 signature: key,
                 seed: campaign.seed,
                 generatorVersion: campaign.generatorVersion,
+                preferences: campaign.preferences,
               },
             );
           legacy.onerror = () => reject(legacy.error);
@@ -98,7 +100,8 @@ export async function loadThumbnails(campaign, { allowStale = false } = {}) {
         !(
           allowStale &&
           record.seed === campaign.seed &&
-          record.generatorVersion === campaign.generatorVersion
+          record.generatorVersion === campaign.generatorVersion &&
+          JSON.stringify(record.preferences) === JSON.stringify(campaign.preferences)
         ))
     )
       return [];
@@ -117,6 +120,7 @@ export async function saveThumbnails(campaign, entries) {
       signature: key,
       seed: campaign.seed,
       generatorVersion: campaign.generatorVersion,
+      preferences: campaign.preferences,
       images,
       savedAt: Date.now(),
     };

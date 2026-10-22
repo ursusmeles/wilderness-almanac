@@ -9,13 +9,21 @@ import { generatePropDressing } from './props.js';
 import { prepareMountainRanges } from './mountain-surfaces.js';
 import { generatePointsOfLight } from './points-of-light.js';
 import { generatePointsOfInterest } from './points-of-interest.js';
+import { worldPreferences } from './world-preferences.js';
 
-export const GENERATOR_VERSION = 6;
+export const GENERATOR_VERSION = 7;
+export const SUPPORTED_GENERATOR_VERSIONS = [6, GENERATOR_VERSION];
 
-export function generateWorld(seed) {
+export function generateWorld(seed, { preferences, generatorVersion = GENERATOR_VERSION } = {}) {
+  if (!SUPPORTED_GENERATOR_VERSIONS.includes(generatorVersion))
+    throw new Error('This campaign uses an unsupported map generator version.');
+  const settings = worldPreferences(preferences);
+  if (generatorVersion === 6 && Object.values(settings).some(Boolean))
+    throw new Error('Version 6 maps do not support world preferences.');
   const world = {
     schemaVersion: 1,
-    generatorVersion: GENERATOR_VERSION,
+    generatorVersion,
+    ...(generatorVersion >= 7 ? { preferences: settings } : {}),
     seed: normalizeSeed(seed),
     ...createTopology(),
     scale: { hexSpacingKm: 18 },

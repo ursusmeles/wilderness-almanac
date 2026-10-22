@@ -1,4 +1,5 @@
-import { GENERATOR_VERSION } from '../generation/world.js';
+import { SUPPORTED_GENERATOR_VERSIONS } from '../generation/world.js';
+import { worldPreferences } from '../generation/world-preferences.js';
 import { validateHexEdits } from '../generation/hex-edits.js';
 import { campaignWorld, campaignDressing } from '../generation/campaign-world.js';
 
@@ -11,7 +12,7 @@ const validDate = (value) =>
 // Keep saves small: immutable worlds and dressing replay within a generator version.
 // Only explicit fields survive import; imported data never becomes render geometry.
 export function validateCampaign(value) {
-  if (value?.generatorVersion !== GENERATOR_VERSION)
+  if (!SUPPORTED_GENERATOR_VERSIONS.includes(value?.generatorVersion))
     throw new Error('This campaign uses an unsupported map generator version.');
   if (
     !text(value.id, 128) ||
@@ -29,7 +30,11 @@ export function validateCampaign(value) {
       (typeof value.iconKey !== 'string' || !/^-?\d{1,2},-?\d{1,2}$/.test(value.iconKey)))
   )
     throw new Error('The campaign file has missing or invalid campaign data.');
+  const preferences = worldPreferences(value.preferences);
+  if (value.generatorVersion === 6 && Object.values(preferences).some(Boolean))
+    throw new Error('Version 6 maps do not support world preferences.');
   return {
+    ...(value.preferences !== undefined ? { preferences } : {}),
     id: value.id,
     name: value.name.trim(),
     createdAt: new Date(value.createdAt).toISOString(),
@@ -51,6 +56,7 @@ export function createCampaign(world, colors, paletteName, variant = 0) {
     nameEdited: false,
     createdAt: new Date().toISOString(),
     generatorVersion: world.generatorVersion,
+    preferences: world.preferences,
     seed: world.seed,
     variant,
     colors,
@@ -97,6 +103,7 @@ export function replaceCampaignMap(campaign, world, previousWorldName) {
     nameEdited,
     seed: world.seed,
     generatorVersion: world.generatorVersion,
+    preferences: world.preferences,
     variant: 0,
     iconKey: chooseCampaignIcon(world),
   });
@@ -160,6 +167,9 @@ export function campaignStats(world) {
 
 export function findCampaignReplay(campaigns, state) {
   const matches = (campaign) =>
+    campaign.generatorVersion === (state.generatorVersion ?? campaign.generatorVersion) &&
+    JSON.stringify(worldPreferences(campaign.preferences)) ===
+      JSON.stringify(worldPreferences(state.preferences)) &&
     campaign.seed === state.seed &&
     campaign.variant === state.variant &&
     campaign.colors.every(

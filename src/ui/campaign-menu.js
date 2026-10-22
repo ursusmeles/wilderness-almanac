@@ -92,7 +92,7 @@ export function createCampaignMenu({
   recoveryNotice();
   if (store.missing) {
     if (previous.seed) {
-      const world = generateWorld(previous.seed);
+      const world = generateWorld(previous.seed, { generatorVersion: 6 });
       campaigns.push(
         createCampaign(world, previous.colors, previous.paletteName, previous.variant),
       );

@@ -22,7 +22,7 @@ Wilderness Almanac is actively developing. The Hex Inspector is functional; the 
 
 ## Getting started
 
-Open the app and choose **New campaign** to preview a map, choose a palette and name your campaign, then select **Create campaign**. You can also import a previously exported campaign JSON file. Click a hex to inspect and edit it. Drag to pan; use the zoom controls, mouse wheel or **+ / −** keys to look closer.
+Open the app and choose **New campaign** to preview a map, adjust open water, elevation, forests and settlements, choose a palette and name your campaign, then select **Create campaign**. Generate after changing the seed or world preferences, or choose **Keep current map** to restore the preview settings. You can also import a previously exported campaign JSON file. Click a hex to inspect and edit it. Drag to pan; use the zoom controls, mouse wheel or **+ / −** keys to look closer.
 
 Open **Palette manager** in the main menu to add palettes, edit their three colours, rename them or choose a default for new campaigns. Bundled palettes stay read-only. Deleting a custom palette keeps existing campaigns’ colours; deleting the default restores Forbidden Lands as the default. Palettes save in this browser alongside your settings.
 
@@ -38,7 +38,7 @@ Select connected town or city hexes to **Join town** or **Join city**. Villages 
 
 Campaigns save automatically **in your current browser**. There are no accounts or cloud sync. Export campaign JSON to back up your work or move it between computers; clearing browser storage can remove local campaigns.
 
-- **Share map** copies a link with the seed, dressing variant and palette. It recreates the generated map, but does **not** include your hex edits or visited status.
+- **Share map** copies a link with the seed, world preferences, generator version, dressing variant and palette. It recreates the generated map, but does **not** include your hex edits or visited status.
 - **Export campaign** downloads the complete campaign replay record, including edits and dressing locks. Import it on another device to continue working.
 
 If campaign saving fails, a persistent warning stays visible and the map offers **Download campaign**. Saved campaigns that this version cannot read are preserved; **Download recovery file** backs up the stored library. Keep recovery files for troubleshooting or a compatible app version; they are separate from individual campaign exports.

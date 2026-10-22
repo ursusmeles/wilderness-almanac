@@ -94,7 +94,13 @@ export function createCampaignSession({ persist }) {
       return { ok: false, error: error.message };
     }
   }
-  function open(campaign, baseWorld = generateWorld(campaign.seed)) {
+  function open(
+    campaign,
+    baseWorld = generateWorld(campaign.seed, {
+      preferences: campaign.preferences,
+      generatorVersion: campaign.generatorVersion,
+    }),
+  ) {
     const world = campaignWorld(campaign, baseWorld);
     const dressing = campaignDressing(campaign, world);
     const record = {
@@ -136,7 +142,7 @@ export function createCampaignSession({ persist }) {
     replace(seed, { confirmed = false } = {}) {
       if (!confirmed && Object.keys(state.campaign.hexEdits?.cells ?? {}).length)
         return { ok: false, requiresConfirmation: true };
-      const base = generateWorld(seed);
+      const base = generateWorld(seed, { preferences: state.campaign.preferences });
       const next = replaceCampaignMap(state.campaign, base, state.world.name);
       open(next, base);
       return result('open', 'New map created');

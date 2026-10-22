@@ -10,7 +10,6 @@ const preferenceLabels = {
   settlements: ['Wilderness', 'Mostly wild', 'Default', 'Settled', 'Densely settled'],
 };
 
-// Draft-only UI. World preferences do not enter the versioned generator or saves yet.
 export function createCampaignCreator({ library, loadMapView, freshSeed, onCreate }) {
   const dialog = document.getElementById('create-campaign-dialog');
   const discardDialog = document.getElementById('discard-campaign-draft-dialog');
@@ -173,8 +172,7 @@ export function createCampaignCreator({ library, loadMapView, freshSeed, onCreat
       const view = await loadMapView();
       if (current !== revision || !draft) return;
       const seed = seedInput.value.trim();
-      // Keep the existing seed pipeline intact during the UI phase.
-      const world = generateWorld(seed);
+      const world = generateWorld(seed, { preferences: preferences() });
       const layout = prepareMap(world, generateDressing(world, 0));
       paintPreview(view, world, layout);
       draft.world = world;

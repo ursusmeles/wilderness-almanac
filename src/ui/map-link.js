@@ -1,3 +1,5 @@
+import { worldPreferences, PREFERENCE_NAMES } from '../generation/world-preferences.js';
+import { GENERATOR_VERSION, SUPPORTED_GENERATOR_VERSIONS } from '../generation/world.js';
 import { hexAddress } from '../generation/hex.js';
 
 const validColors = (colors) =>
@@ -14,15 +16,40 @@ export function readMapLink(href) {
     .get('colors')
     ?.split('-')
     .map((color) => `#${color}`);
+  const version = params.has('generator') ? Number(params.get('generator')) : 6;
+  if (!SUPPORTED_GENERATOR_VERSIONS.includes(version)) return {};
+  let preferences;
+  if (params.has('world')) {
+    const values = params.get('world').split(',');
+    if (
+      version < 7 ||
+      values.length !== PREFERENCE_NAMES.length ||
+      values.some((value) => !/^-?[0-2]$/.test(value))
+    )
+      return {};
+    preferences = worldPreferences(
+      Object.fromEntries(PREFERENCE_NAMES.map((name, index) => [name, Number(values[index])])),
+    );
+  }
   return {
+    ...(params.has('generator') ? { generatorVersion: version } : {}),
+    ...(preferences ? { preferences } : {}),
     seed: seed && seed.length <= 128 ? seed : undefined,
     variant: Number.isSafeInteger(variant) ? variant : undefined,
     colors: validColors(colors) ? colors : undefined,
   };
 }
 
-export function mapLink(href, { seed, variant, colors }) {
+export function mapLink(href, { seed, variant, colors, generatorVersion, preferences }) {
   const url = new URL(href);
+  url.searchParams.delete('generator');
+  url.searchParams.delete('world');
+  if (generatorVersion !== undefined || preferences !== undefined)
+    url.searchParams.set('generator', String(generatorVersion ?? GENERATOR_VERSION));
+  if (preferences !== undefined && (generatorVersion ?? GENERATOR_VERSION) >= 7) {
+    const values = worldPreferences(preferences);
+    url.searchParams.set('world', PREFERENCE_NAMES.map((name) => values[name]).join(','));
+  }
   url.searchParams.set('seed', seed);
   url.searchParams.set('variant', String(variant));
   url.searchParams.set('colors', colors.map((color) => color.slice(1)).join('-'));

@@ -61,3 +61,17 @@ test('cache budgets whole campaigns rather than evicting after four galleries', 
   assert.deepEqual(await loadThumbnails({ ...campaign, id: 'gallery-0' }), []);
   assert.deepEqual(await loadThumbnails({ ...campaign, id: 'gallery-36' }), images);
 });
+
+test('different world preferences cannot reuse a same-seed preview, even while allowing stale colours', async () => {
+  const configured = {
+    ...campaign,
+    id: 'configured-gallery',
+    generatorVersion: 7,
+    preferences: { water: 1, elevation: 0, forests: 0, settlements: 0 },
+  };
+  await saveThumbnails(configured, images);
+  assert.deepEqual(await loadThumbnails(configured), images);
+  const changed = { ...configured, preferences: { ...configured.preferences, water: 2 } };
+  assert.deepEqual(await loadThumbnails(changed), []);
+  assert.deepEqual(await loadThumbnails(changed, { allowStale: true }), []);
+});

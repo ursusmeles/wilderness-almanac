@@ -17,7 +17,9 @@ function distances(starts, byKey, canVisit = () => true) {
 
 export function generateElevation(world) {
   const random = randomFor(world.seed, 'elevation');
-  const noise = smoothNoise(`${world.seed}:uplands`, 4);
+  const step = world.preferences?.elevation ?? 0;
+  const preferenceRandom = randomFor(world.seed, 'elevation-preferences');
+  const noise = smoothNoise(`${world.seed}:uplands`, step === 2 ? 2.3 : 4);
   const byKey = new Map(world.cells.map((cell) => [cell.key, cell]));
   const land = world.cells.filter((cell) => !cell.water);
   const waterDistance = distances(
@@ -46,7 +48,13 @@ export function generateElevation(world) {
 
   // Level four is placed FIRST, as elongated connected ranges. Only this pass
   // may assign level four; local hills and cliff accents stop at level three.
-  const desiredRanges = land.length > 260 ? 2 : 1;
+  const normalRanges = land.length > 260 ? 2 : 1;
+  const desiredRanges =
+    step < 0
+      ? preferenceRandom() < (step === -2 ? 0.12 : 0.55)
+        ? normalRanges
+        : 0
+      : normalRanges + (step === 2 ? 2 : step === 1 && preferenceRandom() < 0.75 ? 1 : 0);
   for (let index = 0; index < desiredRanges; index++) {
     const cliffRange = index > 0 && random() < 0.35;
     let eligible = land.filter(
@@ -72,7 +80,7 @@ export function generateElevation(world) {
     const allowed = new Set(eligible.map((cell) => cell.key));
     const group = [start];
     const angle = random() * Math.PI;
-    const target = 6 + Math.floor(random() * 7);
+    const target = step === 2 ? 10 + Math.floor(random() * 13) : 6 + Math.floor(random() * 7);
     while (group.length < target) {
       const frontier = edgeOf(group).filter((cell) => allowed.has(cell.key));
       if (!frontier.length) break;
@@ -107,7 +115,13 @@ export function generateElevation(world) {
     if (cell.mountainRangeId) continue;
     cell.elevation = Math.max(
       0,
-      Math.min(3, Math.round((clearance(cell) - 1) / 2.1 + (noise(cell.q, cell.r) - 0.5) * 1.15)),
+      Math.min(
+        3,
+        Math.round(
+          (clearance(cell) - 1) / [3.8, 2.6, 2.1, 1.7, 1.4][step + 2] +
+            (noise(cell.q, cell.r) - 0.5) * [0.55, 0.8, 1.15, 1.7, 2.5][step + 2],
+        ),
+      ),
     );
   }
   let changed = true;
@@ -144,7 +158,10 @@ export function generateElevation(world) {
       group,
       group.map(() => 1),
     );
-    const height = weightedChoice(islandRandom, [0, 1, 2, 3], [4, 4, 2, 1]);
+    const height = Math.min(
+      step === -2 ? 1 : step === -1 ? 2 : 3,
+      weightedChoice(islandRandom, [0, 1, 2, 3], [4, 4, 2, 1]),
+    );
     const islandKeys = new Set(group.map((cell) => cell.key));
     const localDistance = distances([summit], byKey, (cell) => islandKeys.has(cell.key));
     for (const cell of group) cell.elevation = Math.max(0, height - localDistance.get(cell.key));
@@ -160,7 +177,8 @@ export function generateElevation(world) {
 
   // A canyon is a dry, chordless path. Its entire rim is lifted, so it reads as
   // a cut through upland rather than a string of unrelated low hexes.
-  const canyonAttempts = random() < 0.65 ? (random() < 0.22 ? 2 : 1) : 0;
+  const canyonAttempts =
+    random() < [0, 0.25, 0.65, 0.85, 1][step + 2] ? (step === 2 ? 3 : random() < 0.22 ? 2 : 1) : 0;
   for (let attempt = 0; attempt < canyonAttempts; attempt++) {
     const eligible = land.filter(
       (cell) =>
@@ -203,7 +221,10 @@ export function generateElevation(world) {
     }
   }
 
-  const cliffAttempts = random() < 0.8 ? 1 + Math.floor(random() * 3) : 0;
+  const cliffAttempts =
+    random() < [0, 0.3, 0.8, 0.95, 1][step + 2]
+      ? 1 + Math.floor(random() * (step === 2 ? 7 : step === 1 ? 5 : 3))
+      : 0;
   for (let attempt = 0; attempt < cliffAttempts; attempt++) {
     const eligible = land.filter((cell) => !reserved.has(cell.key) && clearance(cell) === 1);
     if (!eligible.length) break;
@@ -219,7 +240,10 @@ export function generateElevation(world) {
     addFeature('cliff', group);
   }
 
-  const hillAttempts = random() < 0.8 ? 1 + Math.floor(random() * 3) : 0;
+  const hillAttempts =
+    random() < [0, 0.3, 0.8, 0.9, 1][step + 2]
+      ? 1 + Math.floor(random() * (step === 2 ? 5 : 3))
+      : 0;
   for (let attempt = 0; attempt < hillAttempts; attempt++) {
     const eligible = land.filter(
       (cell) => !reserved.has(cell.key) && !cell.edgeSides.length && cell.elevation <= 1,
@@ -242,6 +266,25 @@ export function generateElevation(world) {
     }
   }
 
+  // Gentle settings attenuate accents after placement, including island shores.
+  // Range cells retain their level-four identity and are always inland.
+  if (step < 0) {
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const cell of land) {
+        if (cell.mountainRangeId) continue;
+        const allowance = step === -2 ? 1 : 2;
+        const limit = Math.min(
+          ...neighbours(cell, byKey).map((next) => next.elevation + allowance),
+        );
+        if (cell.elevation > limit) {
+          cell.elevation = limit;
+          changed = true;
+        }
+      }
+    }
+  }
   world.elevation = { ranges, features };
   return world;
 }

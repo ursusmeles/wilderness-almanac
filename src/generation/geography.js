@@ -42,13 +42,53 @@ export function narrowPeninsulaChains(cells, byKey) {
   return chains;
 }
 
-export function generateGeography(world) {
+export function generateGeography(world, options) {
+  const water = world.preferences?.water ?? 0;
+  if (water && !options) {
+    const baseline = structuredClone(world);
+    baseline.preferences.water = 0;
+    generateGeography(baseline);
+    const random = randomFor(world.seed, 'water-preferences');
+    const normal = baseline.geography.coastEdges;
+    const ocean = baseline.cells.filter((cell) => cell.water === 'ocean').length;
+    const targetFraction =
+      water === -2
+        ? 0.095
+        : water === 2
+          ? 0.72 + randomFor(world.seed, 'water-target')() * 0.14
+          : Math.max(0, Math.min(0.85, ocean / world.cells.length + water * 0.1));
+    const count =
+      water === -2
+        ? 1
+        : water === 2
+          ? Math.min(6, normal.length + 2)
+          : water === -1
+            ? Math.max(0, normal.length - 1)
+            : Math.max(1, normal.length);
+    const edges = normal.slice(0, count);
+    while (edges.length < count) {
+      const candidates = [0, 1, 2, 3, 4, 5].filter((edge) => !edges.includes(edge));
+      edges.push(
+        weightedChoice(
+          random,
+          candidates,
+          candidates.map(
+            (edge) =>
+              1 +
+              5 * Number(edges.includes((edge + 1) % 6)) +
+              5 * Number(edges.includes((edge + 5) % 6)),
+          ),
+        ),
+      );
+    }
+    return generateGeography(world, { coastEdges: edges.sort(), targetFraction });
+  }
   const { cells, seed } = world;
   const random = randomFor(seed, 'geography');
   const noise = smoothNoise(`${seed}:coast`, 3.2);
   const detail = smoothNoise(`${seed}:bays`, 1.4);
   const byKey = new Map(cells.map((cell) => [cell.key, cell]));
-  const coastEdges = chooseCoastEdges(seed);
+  const coastEdges = options?.coastEdges ?? chooseCoastEdges(seed);
   const desiredCoastalWaterFraction = 0.2 + 0.6 * random();
   world.geography = { coastEdges, desiredCoastalWaterFraction, islands: [], archipelagos: [] };
   if (!coastEdges.length) return;
@@ -65,7 +105,7 @@ export function generateGeography(world) {
   const fieldScore = (cell) =>
     Math.min(...coastEdges.map((side, index) => limits[index] - projection(cell, side))) +
     (noise(cell.q, cell.r) - 0.5) * 5 +
-    (detail(cell.q, cell.r) - 0.5) * 1.8;
+    (detail(cell.q, cell.r) - 0.5) * (water === 2 ? 4 : 1.8);
   const scores = new Map(cells.map((cell) => [cell.key, fieldScore(cell)]));
   const regionSizes = new Map(world.regions.map((region) => [region.id, region.hexIds.length]));
   const frontier = new Set();
@@ -83,13 +123,19 @@ export function generateGeography(world) {
   const coastalRegionIds = new Set(forced.map((cell) => cell.regionId));
   // The 20–80% target is relative to coastal regions. A single coastal side
   // should not flood most of the world. Bays may still cross region boundaries.
-  const target = Math.max(
-    wet,
-    Math.round(
-      [...coastalRegionIds].reduce((sum, id) => sum + regionSizes.get(id), 0) *
-        desiredCoastalWaterFraction,
-    ),
-  );
+  const target = options
+    ? Math.min(
+        cells.length,
+        Math.round(cells.length * options.targetFraction) +
+          (water === 2 ? 20 : water === -2 ? 2 : 5),
+      )
+    : Math.max(
+        wet,
+        Math.round(
+          [...coastalRegionIds].reduce((sum, id) => sum + regionSizes.get(id), 0) *
+            desiredCoastalWaterFraction,
+        ),
+      );
   // Grow a connected water body through a continuous field, never independent rolls.
   while (wet < target && frontier.size) {
     const next = [...frontier]
@@ -97,7 +143,7 @@ export function generateGeography(world) {
       .find(
         (candidate) =>
           wetByRegion.get(candidate.regionId) <
-            Math.floor(regionSizes.get(candidate.regionId) * 0.8) &&
+            Math.floor(regionSizes.get(candidate.regionId) * (options ? 1 : 0.8)) &&
           components(
             cells.filter((cell) => !cell.water && cell !== candidate),
             byKey,
@@ -136,14 +182,25 @@ export function generateGeography(world) {
   }
   world.geography.maxNarrowPeninsulaLength = 2;
 
+  // Reserve an island land budget so extra archipelagos do not undo the
+  // high-water target. The flood's extra twenty cells pay for these islands.
+  let islandBudget =
+    water === 2 && options
+      ? Math.max(
+          0,
+          cells.filter((cell) => cell.water === 'ocean').length -
+            Math.round(cells.length * options.targetFraction),
+        )
+      : Infinity;
   const islandSize = () => weightedChoice(random, [1, 2, 3, 4, 5], [58, 23, 11, 5, 3]);
   const eligible = (cell, group) =>
+    islandBudget > 0 &&
     cell.water === 'ocean' &&
     !cell.edgeSides.length &&
     neighbours(cell, byKey).every((next) => next.water === 'ocean' || group.includes(next));
   function placeIsland(anchor) {
     const group = [anchor];
-    const size = islandSize();
+    const size = Math.min(islandSize(), islandBudget);
     while (group.length < size) {
       const candidates = [...new Set(group.flatMap((cell) => neighbours(cell, byKey)))].filter(
         (cell) => !group.includes(cell) && eligible(cell, group),
@@ -151,6 +208,7 @@ export function generateGeography(world) {
       if (!candidates.length) break;
       group.push(candidates[Math.floor(random() * candidates.length)]);
     }
+    islandBudget -= group.length;
     const id = `island-${world.geography.islands.length + 1}`;
     group.forEach((cell) => {
       cell.water = null;
@@ -159,13 +217,14 @@ export function generateGeography(world) {
     world.geography.islands.push({ id, hexKeys: group.map((cell) => cell.key) });
     return id;
   }
-  const attempts = random() < 0.72 ? 1 + Math.floor(random() * 3) : 0;
+  const attempts =
+    water === 2 ? 4 + Math.floor(random() * 4) : random() < 0.72 ? 1 + Math.floor(random() * 3) : 0;
   for (let index = 0; index < attempts; index++) {
     const candidates = cells.filter((cell) => eligible(cell, []));
     if (!candidates.length) break;
     const anchor = candidates[Math.floor(random() * candidates.length)];
     const islandIds = [placeIsland(anchor)];
-    if (random() < 0.38) {
+    if (random() < (water === 2 ? 0.7 : 0.38)) {
       for (let extra = 0; extra < 2 + Math.floor(random() * 2); extra++) {
         const nearby = cells.filter(
           (cell) => eligible(cell, []) && Math.hypot(cell.wx - anchor.wx, cell.wz - anchor.wz) < 6,
@@ -176,6 +235,7 @@ export function generateGeography(world) {
     }
     if (islandIds.length > 1) world.geography.archipelagos.push({ islandIds });
   }
+  if (options) world.geography.targetOpenWaterFraction = options.targetFraction;
   world.geography.waterFraction =
     cells.filter((cell) => cell.water === 'ocean').length / cells.length;
 }

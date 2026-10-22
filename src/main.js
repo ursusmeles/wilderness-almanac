@@ -667,6 +667,8 @@ const paletteManager = createPaletteManager({
 if (linked.seed) {
   const state = {
     seed: linked.seed,
+    generatorVersion: linked.generatorVersion ?? 6,
+    preferences: linked.preferences,
     variant: initialVariant,
     colors: initialColors,
     campaignId: saved.campaignId,
@@ -674,7 +676,10 @@ if (linked.seed) {
   let campaign = campaignMenu.findReplay(state);
   if (!campaign) {
     campaign = createCampaign(
-      generateWorld(linked.seed),
+      generateWorld(linked.seed, {
+        generatorVersion: linked.generatorVersion ?? 6,
+        preferences: linked.preferences,
+      }),
       initialColors,
       paletteLabel(initialColors),
       initialVariant,

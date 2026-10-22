@@ -9,3 +9,5 @@ export {
   lockHex,
   inspectDistances,
 } from './generation/campaign-world.js';
+
+export { worldPreferences, DEFAULT_WORLD_PREFERENCES } from './generation/world-preferences.js';

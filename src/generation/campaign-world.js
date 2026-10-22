@@ -14,7 +14,13 @@ const own = (value, key) => Object.hasOwn(value, key);
 const structural = ['terrain', 'elevation', 'settlement', 'settlementGroup', 'poi', 'crossing'];
 const openWater = (cell) => ['ocean', 'lake'].includes(cell.water);
 
-export function campaignWorld(campaign, base = generateWorld(campaign.seed)) {
+export function campaignWorld(
+  campaign,
+  base = generateWorld(campaign.seed, {
+    preferences: campaign.preferences,
+    generatorVersion: campaign.generatorVersion,
+  }),
+) {
   const edits = campaign.hexEdits?.cells ?? {};
   if (!Object.values(edits).some((edit) => structural.some((field) => own(edit, field))))
     return base;
@@ -424,7 +430,12 @@ export function updateHexes(campaign, patches, baseWorld) {
     // Cosmetic snapshots remain local until a structural edit changes their
     // shared forest/ridge context. Clear snapshots only in affected components.
     const affected = new Set(changed);
-    const base = baseWorld ?? generateWorld(campaign.seed);
+    const base =
+      baseWorld ??
+      generateWorld(campaign.seed, {
+        preferences: campaign.preferences,
+        generatorVersion: campaign.generatorVersion,
+      });
     for (const world of [campaignWorld(campaign, base), campaignWorld(next, base)]) {
       const byKey = new Map(world.cells.map((cell) => [cell.key, cell]));
       for (const key of changed) {

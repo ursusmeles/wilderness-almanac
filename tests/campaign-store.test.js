@@ -62,12 +62,25 @@ test('unreadable campaigns survive edits, deletion, creation and another reload 
 });
 
 test('a library containing only unsupported campaigns is not a first-run library', () => {
-  const raw = library([{ ...campaign, generatorVersion: GENERATOR_VERSION - 1 }]);
+  const raw = library([{ ...campaign, generatorVersion: 5 }]);
   const store = fixture(raw).load();
   assert.equal(store.missing, false);
   assert.deepEqual(store.campaigns, []);
   assert.equal(store.status().preservedCount, 1);
   assert.equal(store.recovery(), raw);
+});
+
+test('legacy and configured campaigns coexist without changing their replay versions', () => {
+  const legacy = { ...campaign, id: 'legacy', generatorVersion: 6 };
+  const configured = {
+    ...campaign,
+    preferences: { water: 2, elevation: 0, forests: -1, settlements: 1 },
+  };
+  const f = fixture(library([legacy, configured]));
+  const store = f.load();
+  assert.deepEqual(store.campaigns, [legacy, configured]);
+  assert.equal(store.save(store.campaigns), true);
+  assert.deepEqual(f.load().campaigns, [legacy, configured]);
 });
 
 test('malformed and unsupported library envelopes stay byte-for-byte intact', () => {

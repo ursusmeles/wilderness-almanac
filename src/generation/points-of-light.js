@@ -1,11 +1,14 @@
 import { distance, neighbours } from './hex.js';
 import { randomFor, weightedChoice } from './seed.js';
 import { clamp, distanceField } from './spatial.js';
+import { preferenceWeights } from './world-preferences.js';
 
 export const chooseCitySize = (random) => weightedChoice(random, [1, 2, 3], [50, 40, 10]);
 
 export function generatePointsOfLight(world) {
   const random = randomFor(world.seed, 'points-of-light');
+  const step = world.preferences?.settlements ?? 0;
+  const weights = preferenceWeights(world);
   const byKey = new Map(world.cells.map((cell) => [cell.key, cell]));
   const water = distanceField(world.cells, byKey, (cell) => !!cell.water);
   const settlements = [];
@@ -18,14 +21,29 @@ export function generatePointsOfLight(world) {
     occupied.every((other) => distance(cell, other) > 2);
   // Global size order: cities first across all regions, then towns, then villages.
   for (const [type, cap, chance] of [
-    ['city', 1, 0.42],
-    ['town', 2, 0.34],
+    ['city', step === -2 ? 0 : 1, 0.42],
+    ['town', step === -2 ? 1 : 2, 0.34],
     ['village', 5, 0.32],
   ]) {
     for (const region of world.regions) {
       for (let attempt = 0; attempt < cap; attempt++) {
-        if (random() >= clamp(chance * world.naming.weights.PL, 0.05, 0.95)) continue;
-        const size = type === 'city' ? chooseCitySize(random) : 1;
+        if (
+          step === -2 &&
+          (settlements.length >= 6 ||
+            settlements.filter((entry) => entry.type === type).length >= (type === 'town' ? 3 : 5))
+        )
+          break;
+        if (random() >= clamp(chance * weights.PL, 0.05, 0.95)) continue;
+        const size =
+          step === 2
+            ? type === 'city'
+              ? weightedChoice(random, [1, 2, 3, 4, 5, 6], [10, 20, 25, 20, 15, 10])
+              : type === 'town'
+                ? weightedChoice(random, [1, 2], [55, 45])
+                : 1
+            : type === 'city'
+              ? chooseCitySize(random)
+              : 1;
         const candidates = world.cells.filter(
           (cell) =>
             cell.regionId === region.id && eligible(cell) && (type !== 'city' || !cell.islandId),
