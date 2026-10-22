@@ -1383,6 +1383,9 @@
     grid-column: var(--panel-column, 1);
     grid-row: var(--panel-row, auto);
   }
+  .hp-inspector-panel {
+    container: inspector / inline-size;
+  }
   .hp-panel-bar {
     --cluster-gap: var(--space-8);
     flex-wrap: nowrap;
@@ -1432,14 +1435,26 @@
     padding-inline: var(--space-8);
   }
   .hp-party-overview {
+    --party-pin-size: calc(var(--icon-small) + var(--space-4));
     display: grid;
-    grid-template-columns: clamp(6.5rem, 36%, 10rem) minmax(0, 1fr);
-    align-items: center;
-    gap: var(--space-24);
+    grid-template-columns: calc(2 * var(--control-compact-size) + 3 * var(--space-4)) minmax(0, 1fr);
+    align-items: start;
+    gap: var(--space-4) var(--space-12);
     padding: var(--space-12);
     border-bottom: 1px solid var(--line);
     & .campaign-name-form {
       margin: 0;
+    }
+    & .hp-inspector-heading {
+      grid-column: 2;
+    }
+    & p {
+      margin: var(--space-4) 0;
+    }
+    & .hp-seed-action {
+      width: var(--party-pin-size);
+      height: var(--party-pin-size);
+      min-height: var(--party-pin-size);
     }
     & dd {
       min-width: 0;
@@ -1460,14 +1475,32 @@
     }
   }
   .hp-party-overview .hp-hex-distances {
+    grid-column: 2;
+    gap: 0;
+    margin: 0;
     & > div {
+      display: grid;
+      grid-template-columns: var(--party-pin-size) minmax(0, 1fr) minmax(0, 1fr);
+      gap: var(--space-4);
       align-items: center;
+      min-height: var(--party-pin-size);
+    }
+    & dt {
+      grid-column: 1 / span 2;
+      display: grid;
+      grid-template-columns: var(--party-pin-size) minmax(0, 1fr);
+      align-items: center;
+      gap: var(--space-4);
+      & span {
+        grid-column: 2;
+      }
     }
     & dd {
-      justify-content: flex-end;
+      grid-column: 3;
     }
   }
   .hp-party-portrait {
+    grid-row: 1 / span 2;
     position: relative;
     & > button {
       width: 100%;
@@ -1481,6 +1514,31 @@
       opacity: 1;
       visibility: visible;
       pointer-events: auto;
+    }
+  }
+  @container inspector (max-width: 420px) {
+    .hp-party-overview {
+      & .hp-inspector-heading {
+        display: contents;
+      }
+      & .campaign-name-form {
+        grid-column: 2;
+        align-self: center;
+      }
+      & p {
+        grid-column: 1 / -1;
+      }
+    }
+    .hp-party-portrait {
+      grid-row: 1;
+    }
+    .hp-party-overview .hp-hex-distances {
+      grid-column: 1 / -1;
+    }
+  }
+  @media (pointer: coarse) {
+    .hp-party-overview {
+      --party-pin-size: var(--control-compact-size);
     }
   }
   @media (hover: hover) {
