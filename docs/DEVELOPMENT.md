@@ -59,6 +59,8 @@ Inspect visual changes in a real browser at desktop and phone widths. Check map 
 
 Paths grouped after a full filename in the table are relative to the same directory.
 
+Mobile layout moves the existing coordinate/party select into `.hp-mobile-map-controls` at the map’s bottom left, with expand and zoom buttons in the same row on its right. Returning to desktop restores the select to `.hp-status`. The mobile status row is hidden; its separate screen-reader announcement remains available. This keeps one selection control and its listeners across responsive changes and expanded view.
+
 ## Fog of War
 
 See [FOG_OF_WAR.md](FOG_OF_WAR.md) for sight and water rules, masked display data, material variants, campaign persistence, editing restrictions and focused verification. Keep visibility independent of generation and use the same projection for map geometry, labels, proximity searches and Inspector previews.

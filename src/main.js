@@ -172,9 +172,11 @@ function syncMobileLayout() {
   if (mobileLayout.matches) {
     element('palette-form').insertBefore(seedRow, root.querySelector('.hp-map-navigation'));
     root.querySelector('.hp-map-stage').append(fog);
+    root.querySelector('.hp-mobile-map-controls').prepend(selection);
   } else {
     root.querySelector('.hp-heading').append(seedRow);
     root.querySelector('.hp-tools').prepend(fog);
+    root.querySelector('.hp-status').prepend(selection);
   }
   if (!mobileLayout.matches) setExpanded(false);
 }

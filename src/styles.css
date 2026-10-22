@@ -1880,32 +1880,25 @@
     .hp-mobile-map-controls {
       position: absolute;
       bottom: max(var(--space-12), env(safe-area-inset-bottom));
+      left: max(var(--space-12), env(safe-area-inset-left));
       right: max(var(--space-12), env(safe-area-inset-right));
       display: grid;
+      grid-template-columns: minmax(0, 1fr) repeat(3, var(--control-size));
+      align-items: center;
       gap: var(--space-8);
-      & button {
+      & :is(button, select) {
         box-shadow: 0 3px 16px #0003;
+      }
+      & select {
+        width: 100%;
+        min-width: 0;
+        color: var(--text);
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
     }
     .hp-status {
-      flex-shrink: 0;
-      grid-template-columns: minmax(0, 1fr) var(--compact-actions-width);
-      padding: var(--space-12) max(var(--space-8), env(safe-area-inset-right)) var(--space-8)
-        max(var(--space-8), env(safe-area-inset-left));
-      gap: var(--space-8);
-      & select {
-        grid-column: 1;
-      }
-      & output {
-        grid-column: 2;
-        max-width: var(--compact-actions-width);
-        font-size: var(--text-control);
-        white-space: normal;
-        overflow-wrap: anywhere;
-        &[data-kind='summary'] {
-          white-space: pre-line;
-        }
-      }
+      display: none;
     }
     .hp-map-options:not(.is-collapsed) {
       max-height: 46dvh;
