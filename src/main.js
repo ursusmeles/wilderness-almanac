@@ -493,7 +493,7 @@ listen(element('multi-edit'), 'click', () => {
     updateInspector();
     mapConsole.notify(
       session.snapshot().multiEdit
-        ? 'Multi edit on: Ctrl+click to add or remove hexes'
+        ? 'Multi edit on: Ctrl+click or Cmd+click to add or remove hexes'
         : 'Multi edit off',
     );
   };

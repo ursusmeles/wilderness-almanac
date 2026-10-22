@@ -217,7 +217,7 @@ export function createMapControls({
     pointers.delete(e.pointerId);
     if (wasLast && !pinched && start && Math.hypot(e.clientX - start.x, e.clientY - start.y) < 6) {
       const key = hit(e.clientX, e.clientY);
-      if (key) choose(key, { additive: e.ctrlKey });
+      if (key) choose(key, { additive: e.ctrlKey || e.metaKey });
     }
     last = null;
     start = null;
