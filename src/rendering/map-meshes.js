@@ -9,7 +9,13 @@ import { createPoiBuilder } from './poi-props.js';
 import { createSettlementBuilder, roofGeometry } from './settlement-props.js';
 
 // Own map geometry and prop batches; the material registry outlives rebuilds.
-export function createMapMeshes({ materials, propMaterial, treeDepth, waveDirection }) {
+export function createMapMeshes({
+  materials,
+  propMaterial,
+  treeDepth,
+  waveDirection,
+  fogMaterial = (material) => material,
+}) {
   const map = new THREE.Group();
   const cells = [];
   const makeTerrain = createTerrainBuilder({
@@ -60,6 +66,10 @@ export function createMapMeshes({ materials, propMaterial, treeDepth, waveDirect
           mesh.castShadow = false;
         }
       }
+      if (data.fogState)
+        g.traverse((object) => {
+          if (object.isMesh) object.material = fogMaterial(object.material, data.fogState);
+        });
       // Keep the existing component meshes, then bake static props by material.
       // Face ranges retain hex selection after merging across the whole map.
       propRoot.updateWorldMatrix(true, true);

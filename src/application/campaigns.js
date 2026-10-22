@@ -26,6 +26,7 @@ export function validateCampaign(value) {
     value.colors.length !== 3 ||
     !value.colors.every((color) => typeof color === 'string' && /^#[0-9a-f]{6}$/i.test(color)) ||
     !text(value.paletteName, 60) ||
+    (value.fogOfWar !== undefined && typeof value.fogOfWar !== 'boolean') ||
     (value.nameEdited !== undefined && typeof value.nameEdited !== 'boolean') ||
     (value.iconKey !== undefined &&
       (typeof value.iconKey !== 'string' || !/^-?\d{1,2},-?\d{1,2}$/.test(value.iconKey)))
@@ -36,6 +37,7 @@ export function validateCampaign(value) {
     throw new Error('Version 6 maps do not support world preferences.');
   return {
     ...(value.preferences !== undefined ? { preferences } : {}),
+    ...(value.fogOfWar !== undefined ? { fogOfWar: value.fogOfWar } : {}),
     id: value.id,
     name: value.name.trim(),
     createdAt: new Date(value.createdAt).toISOString(),

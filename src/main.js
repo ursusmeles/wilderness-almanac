@@ -6,6 +6,7 @@ import { readMapLink, mapLink, copyText, describeHex, shortCoordinates } from '.
 import { createMapConsole } from './ui/map-console.js';
 import { createSaveStatus } from './ui/save-status.js';
 import { createCampaign, campaignIconCandidates } from './application/campaigns.js';
+import { createFogView } from './application/fog-view.js';
 import { createCampaignSession } from './application/campaign-session.js';
 import { createCampaignMenu } from './ui/campaign-menu.js';
 import { createPaletteLibrary } from './ui/palette-library.js';
@@ -41,6 +42,9 @@ const initialColors = linked.colors ?? saved.colors ?? palettes[DEFAULT_PALETTE]
 const paletteLibrary = createPaletteLibrary(saved);
 const savedPalettes = paletteLibrary.custom;
 let layout;
+let displayView;
+let viewLayoutSource;
+let viewSignature;
 let inspector;
 let batchInspector;
 let partyInspector;
@@ -119,7 +123,7 @@ function setSettingsOpen(enabled) {
       control.disabled = !enabled;
     });
   element('motion').hidden = !enabled;
-  element('regenerate').hidden = !enabled;
+  element('regenerate').hidden = !enabled || Boolean(session.snapshot()?.campaign.fogOfWar);
 }
 setSettingsOpen(settingsOpen);
 listen(element('toggle-settings'), 'click', () => {
@@ -164,9 +168,14 @@ listen(document, 'keydown', (event) => {
 });
 function syncMobileLayout() {
   const seedRow = root.querySelector('.hp-seed');
-  if (mobileLayout.matches)
+  const fog = element('fog');
+  if (mobileLayout.matches) {
     element('palette-form').insertBefore(seedRow, root.querySelector('.hp-map-navigation'));
-  else root.querySelector('.hp-heading').append(seedRow);
+    root.querySelector('.hp-map-stage').append(fog);
+  } else {
+    root.querySelector('.hp-heading').append(seedRow);
+    root.querySelector('.hp-tools').prepend(fog);
+  }
   if (!mobileLayout.matches) setExpanded(false);
 }
 listen(mobileLayout, 'change', syncMobileLayout);
@@ -378,43 +387,67 @@ function handleAction(result) {
     return false;
   }
   if (result.scope === 'world') renderWorld();
-  else if (result.scope === 'palette') {
-    applyPalette();
+  else {
+    if (result.scope === 'palette') applyPalette();
+    refreshPresentation();
+    syncSelection();
     updateInspector();
-  } else updateInspector();
+  }
   syncParty();
-  scheduleCampaignIcons();
+  if (['world', 'palette', 'icon'].includes(result.scope)) scheduleCampaignIcons();
   if (result.notification) mapConsole.notify(result.notification);
   return true;
 }
 
-function renderWorld({ resetView = false } = {}) {
-  const { world, dressing, selected, campaign } = session.snapshot();
-  cellsByKey = new Map(world.cells.map((cell) => [cell.key, cell]));
-  const dressedCells = new Map(dressing.cells.map((cell) => [cell.key, cell]));
+function syncFogControls() {
+  const enabled = Boolean(session.snapshot()?.campaign.fogOfWar);
+  element('fog').setAttribute('aria-checked', String(enabled));
+  element('fog-state').textContent = enabled ? 'ON' : 'OFF';
+  root.dataset.fogOfWar = String(enabled);
+  element('share-map').disabled = enabled;
+  element('share-map').title = enabled
+    ? 'Turn off fog of war to copy the full-map seed link.'
+    : 'Copy seed link. Transfer hex edits with campaign JSON.';
+  element('regenerate').hidden = !settingsOpen || enabled;
+}
+
+function refreshPresentation({ resetView = false } = {}) {
+  const { world, campaign, visibility } = session.snapshot();
+  syncFogControls();
+  const signature = visibility ? world.cells.map((cell) => visibility.get(cell.key)).join(',') : '';
+  if (viewLayoutSource === layout && viewSignature === signature) return;
+  displayView = createFogView(world, layout, visibility);
+  viewLayoutSource = layout;
+  viewSignature = signature;
+  cellsByKey = new Map(displayView.world.cells.map((cell) => [cell.key, cell]));
   const partyOption = document.createElement('option');
   partyOption.value = PARTY_SELECTION;
   partyOption.textContent = campaign.partyToken.name ?? 'Adventurers';
   selection.replaceChildren(
     partyOption,
-    ...world.cells.map((cell) => {
+    ...displayView.layout.map((cell) => {
       const option = document.createElement('option');
       option.value = cell.key;
-      option.textContent = describeHex({ ...cell, forest: dressedCells.get(cell.key)?.forest });
-      option.dataset.elevation = String(cell.elevation);
-      option.dataset.terrain = cell.terrain;
-      option.dataset.settlement = cell.pointOfLight?.type ?? '';
-      option.dataset.poi =
-        cell.pointsOfInterest.map((poi) => poi.kind).join(',') || cell.crossing?.kind || '';
+      option.textContent = describeHex(cell);
+      if (cell.fogState !== 'undiscovered') {
+        option.dataset.elevation = String(cell.elevation);
+        option.dataset.terrain = cell.terrain;
+        option.dataset.settlement = cell.pointOfLight?.type ?? '';
+        option.dataset.poi =
+          cell.pointsOfInterest.map((poi) => poi.kind).join(',') || cell.crossing?.kind || '';
+      }
       return option;
     }),
   );
-  layout = prepareMap(world, dressing);
-  renderer?.setMap(layout, { resetView });
+  renderer?.setMap(displayView.layout, { resetView, preserveFraming: !resetView });
+  renderer?.select(session.snapshot().selected, { notify: false });
   syncParty();
-  renderer?.select(selected, { notify: false });
-  selection.value = selected;
-  root.dataset.selected = selected;
+}
+
+function renderWorld({ resetView = false } = {}) {
+  const { world, dressing, campaign } = session.snapshot();
+  layout = prepareMap(world, dressing);
+  refreshPresentation({ resetView });
   syncSelection();
   root.dataset.variant = String(campaign.variant);
   updateInspector();
@@ -570,6 +603,7 @@ listen(element('copy-seed'), 'click', async () => {
   }
 });
 listen(element('share-map'), 'click', async () => {
+  if (session.snapshot()?.campaign.fogOfWar) return;
   const url = mapLink(window.location.href, session.snapshot().campaign);
   try {
     await copyText(url);
@@ -589,13 +623,27 @@ listen(element('motion'), 'click', () => {
   renderer?.setMotion(movement);
   if (session.save().saved) mapConsole.notify(movement ? 'Wind turned on' : 'Wind turned off');
 });
+listen(element('fog'), 'click', (event) => {
+  if (mapAction.isBusy()) return;
+  const button = event.currentTarget;
+  const enabled = !session.snapshot().campaign.fogOfWar;
+  const change = () =>
+    mapAction.run(
+      button,
+      () => {
+        inspector.reset();
+        batchInspector.reset();
+        return handleAction(session.fogOfWar(enabled));
+      },
+      'Updating fog…',
+    );
+  if (activeInspector().beforeLeave(change)) change();
+});
 function syncSelection() {
   const state = session.snapshot();
   if (!state) return;
   renderer?.setSelection(state.partySelected ? [] : state.multiEdit ? state.selectedKeys : null);
   renderer?.setPartySelected(state.partySelected);
-  element('multi-edit').setAttribute('aria-checked', String(state.multiEdit));
-  element('multi-edit-state').textContent = state.multiEdit ? 'ON' : 'OFF';
   root.dataset.multiEdit = String(state.multiEdit);
   root.dataset.selectionCount = String(
     state.partySelected ? 0 : state.multiEdit ? state.selectedKeys.length : 1,
@@ -622,7 +670,6 @@ function toggleMultiEdit() {
   };
   if (!mapAction.isBusy() && activeInspector().beforeLeave(change)) change();
 }
-listen(element('multi-edit'), 'click', toggleMultiEdit);
 function returnToMenu() {
   if (activeInspector().beforeLeave(showMenu)) showMenu();
 }
@@ -692,17 +739,18 @@ listen(element('palette-name'), 'input', () => element('palette-name').setCustom
 function updateInspector() {
   const state = session.snapshot();
   if (!state) return;
-  const { world, dressing, selected, campaign, canUndo } = state;
+  const { dressing, selected, campaign, canUndo } = state;
   if (state.partySelected) {
-    partyInspector?.update(state);
+    partyInspector?.update({ ...state, visibleWorld: displayView.world });
     return;
   }
   if (state.multiEdit) {
     const keys = new Set(state.selectedKeys);
     batchInspector?.update({
-      cells: world.cells.filter((cell) => keys.has(cell.key)),
+      cells: displayView.world.cells.filter((cell) => keys.has(cell.key)),
+      fogOfWar: Boolean(campaign.fogOfWar),
       edits: campaign.hexEdits?.cells,
-      join: state.join,
+      join: campaign.fogOfWar ? null : state.join,
       canUndo,
     });
     return;
@@ -712,10 +760,11 @@ function updateInspector() {
   if (!cell || !dressing || !layout) return;
   const edit = campaign.hexEdits?.cells[selected];
   inspector?.update({
-    world,
+    world: displayView.world,
     cell,
-    dressed: dressing.cells.find((entry) => entry.key === selected),
-    tile: layout.find((entry) => entry.key === selected),
+    dressed: displayView.layout.find((entry) => entry.key === selected),
+    tile: displayView.layout.find((entry) => entry.key === selected),
+    fogOfWar: Boolean(campaign.fogOfWar),
     colors,
     visited: edit?.visited ?? false,
     locked: Boolean(edit?.lock),
@@ -760,7 +809,8 @@ inspector = createHexInspector(singleInspectorHost, {
   visible: panels.inspectorVisible,
   preview: (tile, colors) => mapView?.tilePreview(tile, colors, { fitContent: true }) ?? '',
   onApply: (patch, button) => mapAction.run(button, () => handleAction(session.apply(patch))),
-  onVisit: () => handleAction(session.visit()),
+  onVisit: (event) =>
+    mapAction.run(event.currentTarget, () => handleAction(session.visit()), 'Updating visit…'),
   onLock: () => handleAction(session.lock()),
   onRegenerate: (event) =>
     mapAction.run(
@@ -773,6 +823,7 @@ inspector = createHexInspector(singleInspectorHost, {
   onUndo: (event) =>
     mapAction.run(event.currentTarget, () => handleAction(session.undo()), 'Undoing…'),
   onSetIcon: () => handleAction(session.icon()),
+  onMultiEdit: toggleMultiEdit,
 });
 batchInspector = createBatchInspector(batchInspectorHost, {
   onApply: (patch, button) => mapAction.run(button, () => handleAction(session.applyBatch(patch))),

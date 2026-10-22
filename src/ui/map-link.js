@@ -78,6 +78,7 @@ export function shortCoordinates(cell) {
 }
 
 export function describeHex(cell) {
+  if (cell.fogState === 'undiscovered') return `${hexAddress(cell)} · Undiscovered hex`;
   const label =
     cell.pointOfLight?.type ??
     (cell.water === 'lake' ? 'lake' : (cell.forest?.name ?? cell.terrain));

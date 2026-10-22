@@ -1,10 +1,12 @@
 import * as THREE from 'three';
-import { palettes, DEFAULT_PALETTE } from '../palette.js';
+import { palettes, DEFAULT_PALETTE, paletteTheme } from '../palette.js';
 import { createMapPalette, materialRoles } from '../map-palette.js';
 import { installTreeSway, installWaveDrift } from './ambient-motion.js';
 
 export function createMapMaterials() {
   let color = createMapPalette(palettes[DEFAULT_PALETTE]);
+  let theme = paletteTheme(palettes[DEFAULT_PALETTE]);
+  const fogMaterials = new Map();
   const materials = {};
   Object.keys(materialRoles)
     .filter((key) => key !== 'hover' && key !== 'wave')
@@ -60,8 +62,33 @@ export function createMapMaterials() {
     }
     return tintedMaterials.get(key).material;
   }
+  function updateFogMaterial(base, material, state) {
+    material.color.copy(base.color);
+    if (state === 'unvisited') {
+      const gray = base.color.r * 0.2126 + base.color.g * 0.7152 + base.color.b * 0.0722;
+      material.color.setRGB(gray, gray, gray);
+    } else {
+      material.color.set(base === materials.bevel ? theme.line : theme.bg);
+      if (base === materials.side) material.color.multiplyScalar(0.55);
+    }
+  }
+  function fogMaterial(base, state) {
+    if (!state || state === 'visited') return base;
+    if (Array.isArray(base)) return base.map((material) => fogMaterial(material, state));
+    if (!fogMaterials.has(base)) fogMaterials.set(base, new Map());
+    const variants = fogMaterials.get(base);
+    if (!variants.has(state)) {
+      const material = base.clone();
+      if (base.userData.treeSway) installTreeSway(material, ambientTime);
+      if (base === materials.wave) installWaveDrift(material, ambientTime, waveDirection);
+      updateFogMaterial(base, material, state);
+      variants.set(state, material);
+    }
+    return variants.get(state);
+  }
   return {
     materials,
+    fogMaterial,
     propMaterial,
     treeDepth,
     ambientTime,
@@ -69,16 +96,21 @@ export function createMapMaterials() {
     background: () => color.background(),
     setPalette(seeds) {
       color = createMapPalette(seeds);
+      theme = paletteTheme(seeds);
       Object.keys(materialRoles).forEach((key) => materials[key].color.set(color.role(key)));
       for (const { material, role, temperature, colorTone } of tintedMaterials.values())
         material.color.set(color.role(role, temperature, colorTone));
       materials.line.color.set(color.role('active'));
       materials.hover.color.set(color.role('hover'));
       materials.wave.color.set(color.role('wave'));
+      for (const [base, variants] of fogMaterials)
+        for (const [state, material] of variants) updateFogMaterial(base, material, state);
     },
     dispose() {
       Object.values(materials).forEach((material) => material.dispose());
       for (const { material } of tintedMaterials.values()) material.dispose();
+      for (const variants of fogMaterials.values())
+        for (const material of variants.values()) material.dispose();
       treeDepth.dispose();
     },
   };

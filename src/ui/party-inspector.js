@@ -73,16 +73,17 @@ export function createPartyInspector(
   return {
     update(next) {
       state = next;
-      metadata = partyMetadata(next.world, next.campaign);
+      metadata = partyMetadata(next.world, next.campaign, { visibleWorld: next.visibleWorld });
+      const none = next.campaign.fogOfWar ? 'None discovered' : 'None on map';
       const steps = (value) => `${value} ${value === 1 ? 'hex' : 'hexes'}`;
       if (document.activeElement !== el('name'))
         el('name').value = next.campaign.partyToken.name ?? 'Adventurers';
       el('address').textContent = hexAddress(metadata.cell);
       el('settlement').textContent =
-        metadata.settlement === null ? 'None on map' : steps(metadata.settlement);
+        metadata.settlement === null ? none : steps(metadata.settlement);
       el('poi').textContent = metadata.poi
         ? `${metadata.poi.name}, ${steps(metadata.poi.distance)}`
-        : 'None on map';
+        : none;
       el('visited').textContent = `${metadata.visited} (${metadata.percent}%)`;
       el('locate-settlement').disabled = metadata.settlementKey === null;
       el('locate-poi').disabled = metadata.poi === null;

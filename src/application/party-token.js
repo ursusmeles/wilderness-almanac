@@ -37,15 +37,16 @@ export function validatePartyToken(value) {
   };
 }
 
-export function partyMetadata(world, campaign) {
+export function partyMetadata(world, campaign, { visibleWorld = world } = {}) {
   const party = campaign.partyToken,
     cell = world.cells.find((cell) => cell.key === party.key);
   const nearest = (cells) =>
     [...cells].sort(
       (a, b) => distance(cell, a) - distance(cell, b) || a.key.localeCompare(b.key),
     )[0];
-  const settlement = nearest(world.cells.filter((other) => other.pointOfLight));
-  const poiCell = nearest(world.cells.filter((other) => other.pointsOfInterest?.length));
+  const proximityWorld = campaign.fogOfWar ? visibleWorld : world;
+  const settlement = nearest(proximityWorld.cells.filter((other) => other.pointOfLight));
+  const poiCell = nearest(proximityWorld.cells.filter((other) => other.pointsOfInterest?.length));
   const poi = poiCell?.pointsOfInterest[0];
   const names = {
     cave: 'Cave lair',

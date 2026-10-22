@@ -521,18 +521,14 @@
           <div class="hp-tools cluster">
             <button
               type="button"
-              id="hp-multi-edit"
-              class="hp-motion"
+              id="hp-fog"
+              class="hp-motion hp-fog"
               role="switch"
               aria-checked="false"
-              aria-label="Multi edit"
-              aria-controls="hp-inspector-body"
-              title="Ctrl+click or Cmd+click to add or remove hexes"
+              aria-label="Fog of war"
             >
               <span class="hp-motion-light" aria-hidden="true"></span>
-              <span
-                >Multi edit is <span id="hp-multi-edit-state" aria-hidden="true">OFF</span></span
-              >
+              <span>Fog of war <span id="hp-fog-state" aria-hidden="true">OFF</span></span>
             </button>
             <span class="hp-zooms" role="group" aria-label="Map zoom">
               <button class="hp-zoom" id="hp-out" type="button" aria-label="Zoom out">
@@ -825,7 +821,7 @@
               title="Select and focus party hex"
             >
               <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <use href="/icons/pixelarticons.svg#map-pin"></use>
+                <use href="/icons/pixelarticons.svg#compass"></use>
               </svg>
             </button>
             <span id="hp-party-address"></span>
@@ -1012,6 +1008,14 @@
               Set as world icon
             </button>
           </div>
+          <div class="hp-inspector-actions">
+            <button type="button" id="hp-hex-multi-edit">
+              <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <use href="/icons/pixelarticons.svg#check-double"></use>
+              </svg>
+              Turn on multiselect
+            </button>
+          </div>
         </div>
       </form>
     </template>
@@ -1022,7 +1026,12 @@
         <div class="hp-inspector-edit-actions">
           <button type="button" id="hp-batch-all">Select all</button>
           <button type="button" id="hp-batch-clear">Clear selection</button>
-          <button type="button" id="hp-batch-off">Turn off multiselect</button>
+          <button type="button" id="hp-batch-off">
+            <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <use href="/icons/pixelarticons.svg#check-double"></use>
+            </svg>
+            Turn off multiselect
+          </button>
         </div>
       </div>
       <form id="hp-batch-form" class="hp-inspector-content" aria-labelledby="hp-batch-count">

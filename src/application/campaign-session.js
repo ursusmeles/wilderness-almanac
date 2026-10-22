@@ -1,3 +1,4 @@
+import { computeFogOfWar } from './fog-of-war.js';
 import { generateWorld } from '../generation/world.js';
 import {
   campaignWorld,
@@ -26,15 +27,31 @@ export function createCampaignSession({ persist }) {
   let multiEdit = false;
   let selectedKeys = new Set();
   let partySelected = false;
+  let fogCache;
+  function visibility() {
+    if (!state?.campaign.fogOfWar) return null;
+    const signature = state.world.cells
+      .map((cell) => (state.campaign.hexEdits?.cells[cell.key]?.visited ? '1' : '0'))
+      .join('');
+    if (fogCache?.world !== state.world || fogCache.signature !== signature)
+      fogCache = {
+        world: state.world,
+        signature,
+        states: computeFogOfWar(state.world, state.campaign.hexEdits),
+      };
+    return fogCache.states;
+  }
+  const fogError = () => ({ ok: false, error: 'Turn off fog of war to edit the map.' });
   const snapshot = () =>
     state && {
       ...state,
+      visibility: visibility(),
       selected,
       multiEdit,
       selectedKeys: [...selectedKeys],
       partySelected,
       join: multiEdit ? settlementJoin(state.world, selectedKeys) : null,
-      canUndo: history.length > 0,
+      canUndo: history.length > 0 && (!state.campaign.fogOfWar || history.at(-1).fogSafe),
     };
   function save() {
     if (!state) return { campaignSaved: true, preferencesSaved: true, saved: true };
@@ -49,19 +66,28 @@ export function createCampaignSession({ persist }) {
     return persistence;
   }
   const result = (scope, notification) => ({ ok: true, scope, notification, state: snapshot() });
-  function remember() {
+  function remember(fogSafe) {
     history.push({
       variant: state.campaign.variant,
       hexEdits: state.campaign.hexEdits,
       partyKey: state.campaign.partyToken.key,
+      fogSafe,
     });
     if (history.length > 20) history.shift();
   }
   function transition(
     next,
-    { scope = 'world', notification, relock = [], rerollKey, validateKeys = [selected] } = {},
+    {
+      scope = 'world',
+      notification,
+      relock = [],
+      rerollKey,
+      validateKeys = [selected],
+      fogSafe = false,
+    } = {},
   ) {
     try {
+      if (state.campaign.fogOfWar && !fogSafe) return fogError();
       const world = scope === 'tracking' ? state.world : campaignWorld(next, state.baseWorld);
       if (scope !== 'tracking')
         for (const key of validateKeys) {
@@ -98,7 +124,7 @@ export function createCampaignSession({ persist }) {
         }).cells[rerollKey];
       }
       for (const key of relock) next = lockHex(next, key, world, dressing);
-      remember();
+      remember(fogSafe);
       state = { ...state, campaign: next, world, dressing };
       save();
       return result(scope, notification);
@@ -135,6 +161,11 @@ export function createCampaignSession({ persist }) {
     snapshot,
     save,
     open,
+    fogOfWar(enabled) {
+      state = { ...state, campaign: { ...state.campaign, fogOfWar: Boolean(enabled) } };
+      save();
+      return result('view', enabled ? 'Fog of war on' : 'Fog of war off');
+    },
     selectParty() {
       partySelected = true;
       multiEdit = false;
@@ -157,7 +188,7 @@ export function createCampaignSession({ persist }) {
         key,
         { visited: true },
       );
-      return transition(next, { scope: 'tracking' });
+      return transition(next, { scope: 'tracking', fogSafe: true });
     },
     partyStyle(style) {
       if (!PARTY_STYLES.includes(style)) return { ok: false };
@@ -212,6 +243,7 @@ export function createCampaignSession({ persist }) {
       return result('palette', 'Palette changed');
     },
     icon() {
+      if (state.campaign.fogOfWar) return fogError();
       state = { ...state, campaign: { ...state.campaign, iconKey: selected } };
       save();
       return result('icon', 'World icon updated');
@@ -276,6 +308,7 @@ export function createCampaignSession({ persist }) {
         const trackingOnly = Object.keys(patch).every((field) => field === 'visited');
         return transition(updateHexes(state.campaign, patches, state.baseWorld), {
           scope: trackingOnly ? 'tracking' : 'world',
+          fogSafe: trackingOnly,
           relock,
           validateKeys: cells.map((cell) => cell.key),
           notification: `${cells.length} ${cells.length === 1 ? 'hex' : 'hexes'} updated`,
@@ -302,6 +335,7 @@ export function createCampaignSession({ persist }) {
       const visited = !state.campaign.hexEdits?.cells[selected]?.visited;
       return transition(updateHex(state.campaign, selected, { visited }), {
         scope: 'tracking',
+        fogSafe: true,
         notification: visited ? 'Hex marked visited' : 'Hex marked not visited',
       });
     },
@@ -367,18 +401,19 @@ export function createCampaignSession({ persist }) {
     },
     undo() {
       if (!history.length) return { ok: false };
-      const { partyKey, ...previous } = history.at(-1);
+      if (state.campaign.fogOfWar && !history.at(-1).fogSafe) return fogError();
+      const { partyKey, fogSafe, ...previous } = history.at(-1);
       const campaign = {
         ...state.campaign,
         ...previous,
         partyToken: { ...state.campaign.partyToken, key: partyKey },
       };
-      const world = campaignWorld(campaign, state.baseWorld);
-      const dressing = campaignDressing(campaign, world);
+      const world = fogSafe ? state.world : campaignWorld(campaign, state.baseWorld);
+      const dressing = fogSafe ? state.dressing : campaignDressing(campaign, world);
       history.pop();
       state = { ...state, campaign, world, dressing };
       save();
-      return result('world', 'Hex action undone');
+      return result(fogSafe ? 'tracking' : 'world', 'Hex action undone');
     },
   };
 }

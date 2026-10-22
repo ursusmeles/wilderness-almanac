@@ -8,7 +8,18 @@ import { hexAddress } from '../generation/hex.js';
 const title = (text) => (text ? text[0].toUpperCase() + text.slice(1) : 'None');
 export function createHexInspector(
   host,
-  { onApply, onVisit, onLock, onRegenerate, onReset, onUndo, onSetIcon, visible, preview },
+  {
+    onApply,
+    onVisit,
+    onLock,
+    onRegenerate,
+    onReset,
+    onUndo,
+    onSetIcon,
+    onMultiEdit,
+    visible,
+    preview,
+  },
 ) {
   const listeners = new AbortController();
   const listen = (target, event, handler) =>
@@ -76,6 +87,7 @@ export function createHexInspector(
     constraints();
   }
   function setEditing(enabled) {
+    enabled = enabled && !state?.fogOfWar;
     editing = enabled;
     dirty = false;
     el('fields').disabled = !enabled;
@@ -134,6 +146,7 @@ export function createHexInspector(
   listen(el('reset'), 'click', onReset);
   listen(el('undo'), 'click', onUndo);
   listen(el('icon'), 'click', onSetIcon);
+  listen(el('multi-edit'), 'click', onMultiEdit);
   listen(unsaved, 'click', async (event) => {
     const action = event.target.closest('[data-unsaved]')?.dataset.unsaved;
     if (!action) return;
@@ -177,6 +190,12 @@ export function createHexInspector(
   return {
     update(next) {
       const same = state?.cell.key === next.cell.key;
+      if (next.fogOfWar && state?.tile !== next.tile) {
+        cancelAnimationFrame(frame);
+        el('preview').removeAttribute('src');
+        el('preview').hidden = true;
+        previewTile = null;
+      }
       state = next;
       el('name').textContent = describeHex({ ...next.cell, forest: next.dressed?.forest })
         .split(' · ')
@@ -187,7 +206,11 @@ export function createHexInspector(
       const distances = inspectDistances(next.world, next.cell);
       for (const [name, value] of Object.entries(distances))
         el(`distance-${name}`).textContent =
-          value === null ? 'None on map' : `${value} ${value === 1 ? 'hex' : 'hexes'}`;
+          value === null
+            ? next.fogOfWar
+              ? 'None discovered'
+              : 'None on map'
+            : `${value} ${value === 1 ? 'hex' : 'hexes'}`;
       el('visited').setAttribute('aria-checked', String(next.visited));
       el('visited').title = next.visited ? 'Mark as not visited' : 'Mark as visited';
       el('lock-state').textContent = next.locked ? 'Unlock hex' : 'Lock hex';
@@ -199,6 +222,11 @@ export function createHexInspector(
         ? 'Unlock dressing to regenerate this hex'
         : 'Regenerate only this hex’s dressing';
       if (!editing || !same) setEditing(false);
+      const unknown = next.cell.fogState === 'undiscovered';
+      host.querySelector('.hp-hex-distances').hidden = unknown;
+      el('fields').hidden = unknown;
+      for (const name of ['edit', 'lock', 'regenerate', 'reset', 'icon'])
+        el(name).hidden = Boolean(next.fogOfWar) || (name === 'edit' && editing);
       refreshPreview();
     },
     beforeLeave,

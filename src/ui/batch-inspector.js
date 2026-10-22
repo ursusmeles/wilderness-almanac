@@ -186,7 +186,10 @@ export function createBatchInspector(
       el('clear').disabled = !next.cells.length;
       el('undo').disabled = !next.canUndo;
       el('reset').disabled = !next.cells.length;
-      el('join').hidden = !next.join;
+      el('join').hidden = next.fogOfWar || !next.join;
+      el('reset').hidden = Boolean(next.fogOfWar);
+      for (const label of el('fields').querySelectorAll('label'))
+        label.hidden = Boolean(next.fogOfWar) && !label.contains(el('visited'));
       el('join').disabled = next.join?.joined ?? false;
       el('join').textContent = next.join?.type === 'city' ? 'Join city' : 'Join town';
       for (const field of fields) {

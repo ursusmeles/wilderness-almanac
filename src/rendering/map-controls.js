@@ -327,7 +327,7 @@ export function createMapControls({
   observer.observe(host);
   return {
     camera,
-    refresh({ resetView = false, fitContent: fit = false } = {}) {
+    refresh({ resetView = false, fitContent: fit = false, preserveFraming = false } = {}) {
       fitContent = fit;
       hovered = null;
       onHover(null);
@@ -340,7 +340,8 @@ export function createMapControls({
       if (selected && cells.some((cell) => cell.key === selected))
         choose(selected, { notify: false });
       if (selectionKeys !== null) showSelection();
-      resize();
+      if (preserveFraming) draw();
+      else resize();
     },
     cancelInteraction() {
       cancelLongPress();

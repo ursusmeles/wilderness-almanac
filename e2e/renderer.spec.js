@@ -30,9 +30,7 @@ test('renderer controls preserve selection during pan/pinch, clamp zoom and resp
   await selection.focus();
   await page.keyboard.press('-');
   await expect(canvas).toHaveAttribute('data-zoom', '0.84');
-  await page
-    .locator(testInfo.project.name === 'mobile' ? '#hp-expand-map' : '#hp-multi-edit')
-    .focus();
+  await page.locator(testInfo.project.name === 'mobile' ? '#hp-expand-map' : '#hp-fog').focus();
   await page.keyboard.press('-');
   await expect(canvas).toHaveAttribute('data-zoom', '0.7');
 
