@@ -84,6 +84,9 @@
   }
   body {
     font: var(--text-body)/1.5 var(--font-body);
+    &:has(#campaign-menu:not([hidden])) {
+      background: var(--menu-page-bg, transparent);
+    }
   }
   main {
     padding: var(--panel-margin);
@@ -875,6 +878,11 @@
         padding-block: var(--space-4);
         white-space: normal;
       }
+    }
+  }
+  @media (max-width: 760px), (max-width: 1024px) and (max-height: 500px) {
+    #cc-close {
+      display: none;
     }
   }
   @media (min-width: 761px) and (max-height: 800px) {

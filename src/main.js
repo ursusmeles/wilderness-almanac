@@ -389,6 +389,21 @@ function updatePaletteOptions() {
   });
 }
 
+function applyMenuTheme() {
+  const palette = paletteLibrary.default();
+  const theme = palette.id === DEFAULT_PALETTE ? null : paletteTheme(palette.colors);
+  const menu = document.getElementById('campaign-menu');
+  const values = theme
+    ? { ...theme, surface: theme.bg, 'page-bg': theme.bg, focus: theme.text, gold: theme.text }
+    : {};
+  for (const role of ['surface', 'text', 'muted', 'line', 'page-bg', 'focus', 'gold']) {
+    if (values[role]) menu.style.setProperty(`--${role}`, values[role]);
+    else menu.style.removeProperty(`--${role}`);
+  }
+  if (theme) document.documentElement.style.setProperty('--menu-page-bg', theme.bg);
+  else document.documentElement.style.removeProperty('--menu-page-bg');
+}
+
 function applyPalette() {
   const colors = session.snapshot()?.campaign.colors ?? initialColors;
   renderer?.setPalette(colors);
@@ -634,6 +649,7 @@ batchInspector = createBatchInspector(batchInspectorHost, {
 });
 
 updatePaletteOptions();
+applyMenuTheme();
 applyPalette();
 previousMap.paletteName = paletteLabel(previousMap.colors);
 campaignMenu = createCampaignMenu({
@@ -659,6 +675,7 @@ const campaignCreator = createCampaignCreator({
 const paletteManager = createPaletteManager({
   library: paletteLibrary,
   onChange() {
+    applyMenuTheme();
     updatePaletteOptions();
     selectPalette(session.snapshot()?.campaign.colors ?? initialColors);
     return persistPreferences();
