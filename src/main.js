@@ -65,6 +65,7 @@ const selection = element('selection');
 const PARTY_SELECTION = '__party__';
 const movePartyDialog = element('move-party-dialog');
 let pendingPartyMove;
+let movePartyPressedButton = null;
 const preset = element('preset');
 const message = element('message');
 const saveStatus = createSaveStatus(({ campaigns, preferences, message }) => {
@@ -264,6 +265,7 @@ function presentCampaign({ resetView = false } = {}) {
           renderer.cancelInteraction();
           renderer.select(selected, { notify: false });
           syncSelection();
+          movePartyPressedButton = null;
           pendingPartyMove = { key, campaignId: session.snapshot().campaign.id };
           const name = session.snapshot().campaign.partyToken.name ?? 'Adventurers';
           element('move-party-question').textContent =
@@ -510,9 +512,33 @@ listen(selection, 'change', () => {
   if (selection.value === PARTY_SELECTION) selectParty();
   else renderer?.select(selection.value, { additive: session.snapshot()?.multiEdit });
 });
+listen(movePartyDialog, 'pointerdown', (event) => {
+  movePartyPressedButton = event.button === 0 ? event.target.closest('button') : null;
+});
+listen(movePartyDialog, 'pointercancel', () => {
+  movePartyPressedButton = null;
+});
+movePartyDialog.addEventListener(
+  'click',
+  (event) => {
+    const button = event.target.closest('button');
+    const pressed = movePartyPressedButton;
+    movePartyPressedButton = null;
+    const pointerClick =
+      event.detail > 0 || Boolean(event.pointerType) || event.sourceCapabilities?.firesTouchEvents;
+    // Opening on map pointerup can retarget that tap's synthetic click to a modal button.
+    // Pointer activation must begin on the button after the dialog opens.
+    if (button && pointerClick && button !== pressed) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
+  },
+  { capture: true, signal: listeners.signal },
+);
 function cancelPartyMove() {
   const target = pendingPartyMove;
   pendingPartyMove = undefined;
+  movePartyPressedButton = null;
   renderer?.cancelInteraction();
   movePartyDialog.close();
   if (target && target.campaignId === session.snapshot()?.campaign.id) renderer.select(target.key);
@@ -525,6 +551,7 @@ listen(movePartyDialog, 'cancel', (event) => {
 listen(element('move-party-confirm'), 'click', () => {
   const target = pendingPartyMove;
   pendingPartyMove = undefined;
+  movePartyPressedButton = null;
   renderer?.cancelInteraction();
   if (target && target.campaignId === session.snapshot()?.campaign.id && !mapAction.isBusy())
     handleAction(session.moveParty(target.key));

@@ -1,9 +1,7 @@
 name: Checks
 
 on:
-  push:
-    branches: [main]
-  pull_request:
+  # Automatic push/PR runs are temporarily paused. Run manually when needed.
   workflow_dispatch:
 
 permissions:
