@@ -142,11 +142,12 @@ export function createCampaignCreator({ library, loadMapView, freshSeed, onCreat
   }
 
   function paintPreview(view, world, layout) {
+    const initialView = !renderer;
     renderer ??= view.createMapRenderer(el('scene'), { motion: false });
     if (!renderer) throw new Error('The map preview needs WebGL. Try another browser.');
     renderer.setPalette(library.get(paletteInput.value).colors);
-    renderer.setMap(layout, { resetView: true });
-    renderer.zoom(1.6);
+    renderer.setMap(layout, { resetView: initialView });
+    if (initialView) renderer.zoom(1.6);
     el('scene')
       .querySelector('canvas')
       .setAttribute(
