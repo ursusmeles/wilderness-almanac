@@ -258,10 +258,17 @@ test('reset/new maps and structural edits clear dressing overrides without erasi
   assert.equal(replaceCampaignMap(locked, generateWorld('next'), base.name).hexEdits, undefined);
 });
 
-test('distances use nearest occupied hex, include self, and handle missing targets', () => {
+test('distances exclude the current settlement and handle missing targets', () => {
   const cell = base.cells.find((entry) => entry.pointOfLight);
   const distances = inspectDistances(base, cell);
-  assert.equal(distances.settlement, 0);
+  assert.equal(
+    distances.settlement,
+    Math.min(
+      ...base.cells
+        .filter((entry) => entry.pointOfLight && entry.pointOfLight.id !== cell.pointOfLight.id)
+        .map((entry) => distance(cell, entry)),
+    ),
+  );
   assert.equal(
     distances.river,
     Math.min(

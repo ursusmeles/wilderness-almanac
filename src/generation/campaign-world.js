@@ -458,7 +458,9 @@ export function inspectDistances(world, cell) {
     return values.length ? Math.min(...values) : null;
   };
   return {
-    settlement: nearest((other) => other.pointOfLight),
+    settlement: nearest(
+      (other) => other.pointOfLight && other.pointOfLight.id !== cell.pointOfLight?.id,
+    ),
     river: nearest((other) => other.water === 'river'),
     water: nearest(openWater),
   };

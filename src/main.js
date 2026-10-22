@@ -73,7 +73,7 @@ const panels = createPanels(root, saved, () => {
 });
 const mapConsole = createMapConsole({
   write(text, kind) {
-    message.textContent = text;
+    message.textContent = kind === 'summary' ? text.replace(' · ', '\n· ') : text;
     message.title = text;
     message.dataset.kind = kind;
   },

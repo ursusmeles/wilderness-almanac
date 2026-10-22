@@ -1766,6 +1766,9 @@
         font-size: var(--text-control);
         white-space: normal;
         overflow-wrap: anywhere;
+        &[data-kind='summary'] {
+          white-space: pre-line;
+        }
       }
     }
     .hp-map-options:not(.is-collapsed) {
