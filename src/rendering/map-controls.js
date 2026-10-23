@@ -136,6 +136,24 @@ export function createMapControls({
     camera.updateProjectionMatrix();
     draw();
   }
+  function pan(horizontal, vertical) {
+    if (pointers.size || partyPointer !== null) return false;
+    camera.updateMatrixWorld();
+    const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0);
+    const up = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1);
+    right.y = up.y = 0;
+    right.normalize();
+    up.normalize();
+    // Jump two centre-to-centre hex spacings on the ground, independent of zoom.
+    const step = 2 * Math.sqrt(3);
+    camera.position.addScaledVector(right, horizontal * step).addScaledVector(up, vertical * step);
+    camera.updateMatrixWorld();
+    hovered = null;
+    onHover(null);
+    hoverRing.visible = false;
+    draw();
+    return true;
+  }
   function focus(key) {
     const cell = cells.find((cell) => cell.key === key);
     if (!cell) return false;
@@ -361,6 +379,7 @@ export function createMapControls({
       draw();
     },
     zoom: changeZoom,
+    pan,
     dispose() {
       cancelLongPress();
       listeners.abort();

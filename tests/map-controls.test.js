@@ -123,6 +123,33 @@ test('modified drags, cancelled gestures and secondary clicks do not select hexe
   assert.deepEqual(selections, []);
 });
 
+test('arrow panning jumps two hex spacings at any zoom without changing selection or camera height', (t) => {
+  const { controls, selections, pointer } = fixture(t);
+  controls.select('1,0');
+  const before = controls.camera.position.clone();
+  const angle = controls.camera.quaternion.clone();
+  const expected = 2 * Math.sqrt(3);
+  for (const zoom of [0.7, 3, 12]) {
+    controls.zoom(zoom / controls.camera.zoom);
+    const beforeZoom = controls.camera.zoom;
+    assert.equal(controls.pan(1, 0), true);
+    assert.ok(Math.abs(controls.camera.position.distanceTo(before) - expected) < 1e-10);
+    controls.pan(-1, 0);
+    assert.ok(controls.camera.position.distanceTo(before) < 1e-10);
+    controls.pan(0, 1);
+    assert.ok(Math.abs(controls.camera.position.distanceTo(before) - expected) < 1e-10);
+    controls.pan(0, -1);
+    assert.equal(controls.camera.position.y, before.y);
+    assert.ok(controls.camera.quaternion.equals(angle));
+    assert.equal(controls.camera.zoom, beforeZoom);
+  }
+  assert.deepEqual(selections, [{ key: '1,0', additive: false }]);
+  pointer('pointerdown');
+  assert.equal(controls.pan(1, 0), false, 'an active map gesture blocks keyboard panning');
+  assert.ok(controls.camera.position.distanceTo(before) < 1e-10);
+  pointer('pointercancel');
+});
+
 test('explicit focus centres an elevated hex and zooms closer without changing selection or camera angle', (t) => {
   const { controls, mesh, selections } = fixture(t);
   mesh.position.set(7, 0, -3);

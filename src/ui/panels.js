@@ -21,6 +21,7 @@ export function createPanels(root, preferences, onChange) {
   const activeCollapsed = () => (mobile.matches ? mobileCollapsed : collapsed);
   const panels = {};
   let inspectorMode = 'hex';
+  let multiEdit = false;
   for (const [id, name] of [
     ['tracker', 'Sandbox tools'],
     ['inspector', 'Hex Inspector'],
@@ -45,8 +46,9 @@ export function createPanels(root, preferences, onChange) {
       'click',
       (event) => {
         const button = event.target.closest('button');
-        if (!button) return;
+        if (!button || button.disabled) return;
         if (button.hasAttribute('data-collapse')) {
+          if (id === 'tracker' && multiEdit) return;
           const current = activeCollapsed();
           current[id] = !current[id];
         } else if (button.hasAttribute('data-horizontal')) horizontal[id] = !horizontal[id];
@@ -68,7 +70,8 @@ export function createPanels(root, preferences, onChange) {
     );
   }
   function render() {
-    const current = activeCollapsed();
+    const preferred = activeCollapsed();
+    const current = { ...preferred, tracker: multiEdit || preferred.tracker };
     const railIds = mobile.matches ? [] : order.filter((id) => horizontal[id]);
     const stackedIds = order.filter((id) => !railIds.includes(id));
     root.dataset.panelRails = String(railIds.length);
@@ -108,6 +111,8 @@ export function createPanels(root, preferences, onChange) {
       panel.querySelector('.hp-move-up').disabled = index === 0;
       panel.querySelector('.hp-move-down').disabled = index === 1;
       const toggle = panel.querySelector('[data-collapse]');
+      const unavailable = id === 'tracker' && multiEdit;
+      toggle.disabled = unavailable;
       const name =
         id === 'tracker'
           ? 'Sandbox tools'
@@ -122,7 +127,9 @@ export function createPanels(root, preferences, onChange) {
         );
       toggle.setAttribute('aria-expanded', String(!current[id]));
       toggle.setAttribute('aria-label', `${current[id] ? 'Expand' : 'Minimise'} ${name}`);
-      toggle.title = `${current[id] ? 'Expand' : 'Minimise'} panel`;
+      toggle.title = unavailable
+        ? 'Turn off multiselect to expand Sandbox tools'
+        : `${current[id] ? 'Expand' : 'Minimise'} panel`;
       toggle
         .querySelector('use')
         .setAttribute('href', `/icons/pixelarticons.svg#${current[id] ? 'expand' : 'collapse'}`);
@@ -172,6 +179,12 @@ export function createPanels(root, preferences, onChange) {
   render();
   return {
     inspector: panels.inspector.querySelector('.hp-panel-body'),
+    setMultiEdit(enabled) {
+      enabled = Boolean(enabled);
+      if (multiEdit === enabled) return;
+      multiEdit = enabled;
+      render();
+    },
     setInspectorMode(mode) {
       if (inspectorMode === mode) return;
       inspectorMode = mode;

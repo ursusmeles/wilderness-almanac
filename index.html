@@ -481,8 +481,8 @@
         <header class="hp-top cluster">
           <button
             type="button"
-            id="hp-mobile-menu"
-            class="hp-mobile-only hp-mobile-menu"
+            id="hp-back-menu"
+            class="hp-back-menu"
             aria-label="Return to campaign menu"
             title="Return to campaign menu"
           >
@@ -492,31 +492,6 @@
           </button>
           <hgroup class="hp-heading">
             <h1 class="hp-title">The quiet frontier</h1>
-            <p class="hp-seed">
-              Seed <output id="hp-current-seed"></output>
-              <button
-                type="button"
-                class="hp-seed-action"
-                id="hp-copy-seed"
-                aria-label="Copy seed"
-                title="Copy seed"
-              >
-                <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
-                  <use href="/icons/pixelarticons.svg#copy"></use>
-                </svg>
-              </button>
-              <button
-                type="button"
-                class="hp-seed-action"
-                id="hp-share-map"
-                aria-label="Share map"
-                title="Copy seed link. Transfer hex edits with campaign JSON."
-              >
-                <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
-                  <use href="/icons/pixelarticons.svg#link"></use>
-                </svg>
-              </button>
-            </p>
           </hgroup>
           <div class="hp-tools cluster">
             <button
@@ -579,10 +554,10 @@
               </svg>
             </button>
           </div>
-        </div>
-        <div class="hp-status">
-          <select id="hp-selection" aria-label="Selected hex or party"></select>
-          <output id="hp-message" aria-live="off"></output>
+          <div class="hp-status">
+            <select id="hp-selection" aria-label="Selected hex or party"></select>
+            <output id="hp-message" aria-live="off"></output>
+          </div>
         </div>
         <span
           id="hp-announcement"
@@ -690,17 +665,6 @@
                   <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                     <use href="/icons/pixelarticons.svg#collapse"></use>
                   </svg>
-                </button>
-                <button
-                  type="button"
-                  id="hp-return-menu"
-                  aria-label="Return to menu"
-                  title="Return to menu"
-                >
-                  <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
-                    <use href="/icons/pixelarticons.svg#arrow-left"></use>
-                  </svg>
-                  <span class="hp-return-label">Return to menu</span>
                 </button>
               </div>
             </div>
@@ -1011,7 +975,7 @@
           <div class="hp-inspector-actions">
             <button type="button" id="hp-hex-multi-edit">
               <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <use href="/icons/pixelarticons.svg#check-double"></use>
+                <use href="/icons/pixelarticons.svg#grid-2x2-2"></use>
               </svg>
               Turn on multiselect
             </button>
@@ -1028,7 +992,7 @@
           <button type="button" id="hp-batch-clear">Clear selection</button>
           <button type="button" id="hp-batch-off">
             <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <use href="/icons/pixelarticons.svg#check-double"></use>
+              <use href="/icons/pixelarticons.svg#grid-2x2-2"></use>
             </svg>
             Turn off multiselect
           </button>

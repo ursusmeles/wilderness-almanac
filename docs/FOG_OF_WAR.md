@@ -1,6 +1,6 @@
 # Fog of War
 
-Fog of War is a local presentation mode for showing the campaign map to players. The switch in the desktop map header or mobile map’s top-right corner remembers its state per campaign and defaults to off for new and older campaigns. It does not create a separate player link or remove information from campaign backups. Share map is disabled in this mode because seed links recreate the full generated world without its visited flags.
+Fog of War is a local presentation mode for showing the campaign map to players. The switch in the desktop map header or mobile map’s top-right corner remembers its state per campaign and defaults to off for new and older campaigns. It does not create a separate player link or remove information from campaign backups. Seed copying and sharing are available only in the campaign list; those links recreate the full generated world without its visited flags.
 
 ## Discovery and sight
 

@@ -24,11 +24,11 @@ The party marker starts at the settlement nearest the map centre and saves its p
 
 ## Getting started
 
-Open the app and choose **New campaign** to preview a map, adjust open water, elevation, forests and settlements, choose a palette and name your campaign, then select **Create campaign**. Generate after changing the seed or world preferences, or choose **Keep current map** to restore the preview settings. You can also import a previously exported campaign JSON file. Click a hex to inspect and edit it. Drag to pan; use the zoom controls, mouse wheel or **+ / −** keys to look closer.
+Open the app and choose **New campaign** to preview a map, adjust open water, elevation, forests and settlements, choose a palette and name your campaign, then select **Create campaign**. Generate after changing the seed or world preferences, or choose **Keep current map** to restore the preview settings. You can also import a previously exported campaign JSON file. Click a hex to inspect and edit it. Drag to pan, or press an **arrow key** to jump the view two hexes. Use the zoom controls, mouse wheel or **+ / −** keys to look closer.
 
 Open **Palette manager** in the main menu to add palettes, edit their three colours, rename them or choose a default for new campaigns. Choosing a different default also colours the main menu; Forbidden Lands keeps the original menu theme. Bundled palettes stay read-only. Deleting a custom palette keeps existing campaigns’ colours; deleting the default restores Forbidden Lands as the default. Palettes save in this browser alongside your settings.
 
-Choose **Turn on multiselect** in the third button row of the Hex Inspector to edit several hexes together. You can also **Ctrl+click** (**Cmd+click on Mac**) a map hex to turn multi-edit on, keeping the inspected hex selected and adding the clicked hex. Hold **Ctrl** or **Cmd** while clicking to add or remove hexes; a plain click or tap replaces the selection with that hex. On mobile, hold an unselected hex to add it to your selection and turn multi-edit on. The coordinate selector toggles hexes while multi-edit is on, and the Inspector offers **Select all** and **Clear selection**. Choose only the fields you want to change, then apply to the selection. One **Undo** restores the entire batch. Open water removes settlements and POIs; incompatible edits leave the whole batch unapplied. Choose **Turn off multiselect** beside Clear selection to return to the single-hex Inspector.
+Choose **Turn on multiselect** in the third button row of the Hex Inspector to edit several hexes together. You can also **Ctrl+click** (**Cmd+click on Mac**) a map hex to turn multi-edit on, keeping the inspected hex selected and adding the clicked hex. Hold **Ctrl** or **Cmd** while clicking to add or remove hexes; a plain click or tap replaces the selection with that hex. On mobile, hold an unselected hex to add it to your selection and turn multi-edit on. The coordinate selector toggles hexes while multi-edit is on, and the Inspector offers **Select all** and **Clear selection**. Choose only the fields you want to change, then apply to the selection. One **Undo** restores the entire batch. Open water removes settlements and POIs; incompatible edits leave the whole batch unapplied. Choose **Turn off multiselect** beside Clear selection to return to the single-hex Inspector. Sandbox tools stays closed while multiselect is on; its expand button becomes available again when you turn multiselect off.
 
 Select connected town or city hexes to **Join town** or **Join city**. Villages always occupy one hex each.
 
@@ -42,13 +42,15 @@ Turn **Fog of war ON** in the map header (top-right of the map on mobile) to sho
 
 Move the party or mark hexes visited to uncover the map. You can also mark visited hexes as unvisited, including in multi-edit; this can hide areas again. Fog remembers its setting per campaign. Turn it off to edit terrain, features or dressing. Undo remains available for visits and party moves.
 
-Fog is for presenting the current screen. **Share map** is disabled while it is on because seed links recreate the full map. Campaign exports remain complete GM backups, including edits and visited flags.
+Fog is for presenting the current screen. Seed links from the campaign list recreate the full map; campaign exports remain complete GM backups, including edits and visited flags.
 
 ### Saving and sharing
 
+Use the back arrow beside the map title to return to your campaigns. Seeds, seed copying and map sharing are available in the campaign list.
+
 Campaigns save automatically **in your current browser**. There are no accounts or cloud sync. Export campaign JSON to back up your work or move it between computers; clearing browser storage can remove local campaigns.
 
-- **Share map** copies a link with the seed, world preferences, generator version, dressing variant and palette. It recreates the generated map, but does **not** include your hex edits or visited status.
+- **Share map** in the campaign list copies a link with the seed, world preferences, generator version, dressing variant and palette. It recreates the generated map, but does **not** include your hex edits or visited status.
 - **Export campaign** downloads the complete campaign replay record, including edits and dressing locks. Import it on another device to continue working.
 
 If campaign saving fails, a persistent warning stays visible and the map offers **Download campaign**. Saved campaigns that this version cannot read are preserved; **Download recovery file** backs up the stored library. Keep recovery files for troubleshooting or a compatible app version; they are separate from individual campaign exports.

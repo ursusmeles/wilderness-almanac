@@ -40,7 +40,7 @@ export function createMapRenderer(
   renderer.domElement.setAttribute('role', 'img');
   renderer.domElement.setAttribute(
     'aria-label',
-    'Interactive isometric hex map with forests, wetlands, farms, settlements, mountains and rivers. Drag to pan, scroll or pinch to zoom. Select a hex using the list below.',
+    'Interactive isometric hex map with forests, wetlands, farms, settlements, mountains and rivers. Drag to pan, or use arrow keys to jump two hexes. Scroll or pinch to zoom. Select a hex using the map dropdown.',
   );
   const scene = new THREE.Scene();
   const ambient = new THREE.HemisphereLight(0xffffff, 0x777777, 1.8);
@@ -127,6 +127,7 @@ export function createMapRenderer(
       controls.refresh({ resetView: true, fitContent: true });
     },
     zoom: controls.zoom,
+    pan: controls.pan,
     snapshot() {
       draw();
       return renderer.domElement.toDataURL('image/png');

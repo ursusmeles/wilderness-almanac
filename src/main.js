@@ -2,7 +2,7 @@ import { generateWorld } from './generation/world.js';
 import { prepareMap } from './generation/presentation.js';
 import { palettes, paletteNames, paletteTheme, DEFAULT_PALETTE } from './palette.js';
 import { readPreferences, savePreferences } from './ui/storage.js';
-import { readMapLink, mapLink, copyText, describeHex, shortCoordinates } from './ui/map-link.js';
+import { readMapLink, mapLink, describeHex, shortCoordinates } from './ui/map-link.js';
 import { createMapConsole } from './ui/map-console.js';
 import { createSaveStatus } from './ui/save-status.js';
 import { createCampaign, campaignIconCandidates } from './application/campaigns.js';
@@ -160,6 +160,17 @@ listen(document, 'keydown', (event) => {
     )
   )
     return;
+  const pan = {
+    ArrowLeft: [-1, 0],
+    ArrowRight: [1, 0],
+    ArrowUp: [0, 1],
+    ArrowDown: [0, -1],
+  }[event.key];
+  if (pan) {
+    event.preventDefault();
+    if (!event.repeat && !mapAction.isBusy()) renderer?.pan(...pan);
+    return;
+  }
   const factor = event.key === '+' || event.key === '=' ? 1.2 : event.key === '-' ? 1 / 1.2 : 0;
   if (factor) {
     event.preventDefault();
@@ -167,14 +178,11 @@ listen(document, 'keydown', (event) => {
   }
 });
 function syncMobileLayout() {
-  const seedRow = root.querySelector('.hp-seed');
   const fog = element('fog');
   if (mobileLayout.matches) {
-    element('palette-form').insertBefore(seedRow, root.querySelector('.hp-map-navigation'));
     root.querySelector('.hp-map-stage').append(fog);
     root.querySelector('.hp-mobile-map-controls').prepend(selection);
   } else {
-    root.querySelector('.hp-heading').append(seedRow);
     root.querySelector('.hp-tools').prepend(fog);
     root.querySelector('.hp-status').prepend(selection);
   }
@@ -320,8 +328,6 @@ function presentCampaign({ resetView = false } = {}) {
   applyPalette();
   renderWorld({ resetView });
   if (resetView) renderer?.zoom(mobileLayout.matches ? 1.6 : 1.4 * 1.2);
-  element('current-seed').textContent = campaign.seed;
-  element('current-seed').title = campaign.seed;
   root.querySelector('.hp-title').textContent = campaign.name;
   document.title = `${campaign.name} · Wilderness Almanac`;
   root.dataset.mapName = world.name;
@@ -406,10 +412,6 @@ function syncFogControls() {
   element('fog').setAttribute('aria-checked', String(enabled));
   element('fog-state').textContent = enabled ? 'ON' : 'OFF';
   root.dataset.fogOfWar = String(enabled);
-  element('share-map').disabled = enabled;
-  element('share-map').title = enabled
-    ? 'Turn off fog of war to copy the full-map seed link.'
-    : 'Copy seed link. Transfer hex edits with campaign JSON.';
   element('regenerate').hidden = !settingsOpen || enabled;
 }
 
@@ -596,24 +598,6 @@ listen(element('in'), 'click', () => renderer?.zoom(1.2));
 listen(element('out'), 'click', () => renderer?.zoom(1 / 1.2));
 listen(element('mobile-in'), 'click', () => renderer?.zoom(1.2));
 listen(element('mobile-out'), 'click', () => renderer?.zoom(1 / 1.2));
-listen(element('copy-seed'), 'click', async () => {
-  try {
-    await copyText(session.snapshot().campaign.seed);
-    mapConsole.notify('Seed copied');
-  } catch {
-    mapConsole.error('Could not copy the seed. Select the seed text to copy it.');
-  }
-});
-listen(element('share-map'), 'click', async () => {
-  if (session.snapshot()?.campaign.fogOfWar) return;
-  const url = mapLink(window.location.href, session.snapshot().campaign);
-  try {
-    await copyText(url);
-    mapConsole.notify('Seed link copied');
-  } catch {
-    mapConsole.error('Could not share. Copy the URL from the address bar.');
-  }
-});
 function updateMovementToggle() {
   element('motion').setAttribute('aria-checked', String(movement));
   element('motion-state').textContent = movement ? 'ON' : 'OFF';
@@ -655,6 +639,7 @@ function syncSelection() {
   singleInspectorHost.hidden = state.partySelected || state.multiEdit;
   batchInspectorHost.hidden = state.partySelected || !state.multiEdit;
   partyInspectorHost.hidden = !state.partySelected;
+  panels.setMultiEdit(state.multiEdit);
   panels.setInspectorMode(state.partySelected ? 'party' : 'hex');
 }
 function toggleMultiEdit() {
@@ -691,8 +676,7 @@ async function showMenu() {
     campaignMenu.show();
   });
 }
-listen(element('return-menu'), 'click', returnToMenu);
-listen(element('mobile-menu'), 'click', returnToMenu);
+listen(element('back-menu'), 'click', returnToMenu);
 listen(element('download-unsaved'), 'click', () =>
   campaignMenu.download(session.snapshot().campaign),
 );

@@ -1129,11 +1129,34 @@
   }
   .hp-top {
     --cluster-gap: var(--space-8);
-    padding: var(--space-8) var(--space-12) var(--space-8);
+    padding: var(--space-8) var(--space-12);
+    height: var(--panel-bar-size);
+    min-height: var(--panel-bar-size);
+    flex-shrink: 0;
+    flex-wrap: nowrap;
     justify-content: space-between;
+    border-bottom: 1px solid var(--line);
+    & .hp-tools {
+      flex-wrap: nowrap;
+    }
+  }
+  .hp-back-menu {
+    display: grid;
+    place-items: center;
+    width: var(--control-size);
+    flex-shrink: 0;
+    padding: 0;
+    border-color: transparent;
+  }
+  .hp-heading {
+    flex: 1;
+    min-width: 0;
   }
   .hp-title {
     margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     font: 400 var(--text-title)/1.25 var(--font-pixel);
     letter-spacing: 0.02em;
   }
@@ -1185,13 +1208,21 @@
     color: var(--muted);
   }
   .hp-status {
+    position: absolute;
+    bottom: var(--space-12);
+    left: var(--space-12);
+    right: var(--space-12);
     display: grid;
     grid-template-columns: var(--palette-columns);
-    align-items: center;
+    align-items: end;
     gap: var(--palette-gap);
-    padding: var(--space-16) var(--space-12) var(--space-8);
+    pointer-events: none;
     color: var(--muted);
     font-size: var(--text-control);
+    & :is(select, output) {
+      pointer-events: auto;
+      box-shadow: 0 3px 16px #0003;
+    }
     & select {
       color: var(--text);
       grid-column: 1 / 3;
@@ -1204,11 +1235,19 @@
       font-family: var(--font-pixel);
       min-height: 1.4em;
       min-width: 0;
-      max-width: 20rem;
+      max-width: min(20rem, 100%);
+      padding: var(--space-4) var(--space-8);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      color: var(--text);
+      background: var(--surface);
       text-align: right;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      &:empty {
+        display: none;
+      }
     }
   }
   .hp-map-options {
@@ -1277,24 +1316,6 @@
       max-width: 100%;
     }
   }
-  .hp-seed {
-    display: flex;
-    align-items: center;
-    gap: 0;
-    color: var(--muted);
-    font-size: var(--text-control);
-    margin: var(--space-8) 0 0;
-    overflow-wrap: anywhere;
-    & output {
-      margin-inline: var(--space-8) calc((var(--control-compact-size) - var(--icon-small)) / 2);
-      font-family: var(--font-pixel);
-      max-width: min(32ch, 100%);
-      min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-  }
   .hp-seed-action {
     display: inline-grid;
     place-items: center;
@@ -1343,12 +1364,10 @@
   }
   .hp-panel-actions {
     display: grid;
-    grid-template-columns: var(--control-compact-size) minmax(0, 1fr);
+    grid-template-columns: var(--control-compact-size);
+    justify-content: end;
     align-items: center;
     gap: var(--space-8);
-  }
-  #hp-return-menu {
-    white-space: nowrap;
   }
   @container (max-width: 360px) {
     .hp-palette {
@@ -1771,6 +1790,22 @@
       padding-block: var(--space-8);
     }
   }
+  .hp-map-options.is-collapsed {
+    & .hp-map-modes {
+      display: none;
+    }
+    & .hp-palette {
+      height: var(--panel-bar-size);
+      min-height: var(--panel-bar-size);
+      grid-template-columns: auto minmax(0, 1fr) var(--control-compact-size);
+      grid-template-rows: minmax(0, 1fr);
+      padding-block: var(--space-8);
+    }
+    & .hp-map-navigation {
+      align-self: center;
+      width: var(--control-compact-size);
+    }
+  }
   .is-side-collapsed {
     & .hp-panel-bar {
       height: 100%;
@@ -1827,8 +1862,7 @@
     .hp-top {
       flex-shrink: 0;
       gap: var(--space-8) var(--space-8);
-      padding: max(var(--space-4), env(safe-area-inset-top))
-        max(var(--space-8), env(safe-area-inset-right)) var(--space-4)
+      padding: var(--space-8) max(var(--space-8), env(safe-area-inset-right)) var(--space-8)
         max(var(--space-8), env(safe-area-inset-left));
       & > .hp-tools {
         display: none;
@@ -1837,30 +1871,11 @@
         display: none;
       }
     }
-    .hp-mobile-menu {
-      display: grid;
-      place-items: center;
-      width: var(--control-size);
-      padding: 0;
-      border-color: transparent;
-    }
-    .hp-heading {
-      flex: 1;
-      min-width: 0;
-    }
     .hp-title {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
       font-size: var(--text-heading);
-    }
-    .hp-seed {
-      display: none;
-    }
-    .hp-palette > .hp-seed {
-      display: flex;
-      grid-column: 1 / -1;
-      margin: 0;
     }
     :is(.hp-map-stage, .hp-scene) {
       min-height: 0;
@@ -1883,13 +1898,21 @@
       left: max(var(--space-12), env(safe-area-inset-left));
       right: max(var(--space-12), env(safe-area-inset-right));
       display: grid;
-      grid-template-columns: minmax(0, 1fr) repeat(3, var(--control-size));
-      align-items: center;
+      grid-template-columns: minmax(0, 1fr) var(--control-size);
+      grid-template-rows: repeat(3, var(--control-size));
+      align-items: end;
+      pointer-events: none;
       gap: var(--space-8);
       & :is(button, select) {
+        pointer-events: auto;
         box-shadow: 0 3px 16px #0003;
       }
+      & button {
+        grid-column: 2;
+      }
       & select {
+        grid-column: 1;
+        grid-row: 3;
         width: 100%;
         min-width: 0;
         color: var(--text);
@@ -1929,16 +1952,10 @@
     .hp-panel-actions {
       grid-template-columns: var(--control-compact-size);
     }
-    #hp-return-menu {
-      display: none;
-    }
-    .hp-map-options.is-collapsed .hp-map-modes,
-    .hp-map-options.is-collapsed .hp-seed {
-      display: none;
-    }
     .hp-map-options.is-collapsed {
       & .hp-palette {
-        grid-template-columns: 4.375rem minmax(0, 1fr) var(--compact-actions-width);
+        grid-template-columns: 4.375rem minmax(0, 1fr) var(--control-compact-size);
+        padding-block: var(--space-8);
         gap: var(--space-8);
       }
       & .hp-colors {
