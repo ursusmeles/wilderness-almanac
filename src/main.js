@@ -64,6 +64,7 @@ let mapViewLoading;
 let disposed = false;
 let iconCacheRevision = 0;
 let iconCacheTimer;
+let partyButtonSignature = '';
 const session = createCampaignSession({ persist: persistCampaign });
 const initialVariant =
   linked.variant ?? (linked.seed && linked.seed !== saved.seed ? 0 : (saved.variant ?? 0));
@@ -542,6 +543,18 @@ function syncParty() {
     renderer?.setParty(campaign.partyToken, campaign.colors);
     const option = selection.querySelector(`option[value="${PARTY_SELECTION}"]`);
     if (option) option.textContent = campaign.partyToken.name ?? 'Adventurers';
+    const color = campaign.partyToken.color ?? mapView.partyColor(campaign.colors);
+    const signature = JSON.stringify([campaign.partyToken.style, color, campaign.colors]);
+    if (signature !== partyButtonSignature) {
+      const src = mapView.partyPreview(campaign.partyToken, campaign.colors, color);
+      if (src) {
+        const image = element('find-party-preview');
+        image.src = src;
+        image.hidden = false;
+        element('find-party').querySelector('svg').setAttribute('hidden', '');
+        partyButtonSignature = signature;
+      }
+    }
   }
 }
 
@@ -562,13 +575,14 @@ function paletteLabel(candidate) {
     : (savedPalettes.find((palette) => same(palette.colors))?.name ?? 'Custom');
 }
 
-function selectParty() {
+function selectParty(afterSelect = () => {}) {
   if (mapAction.isBusy()) {
     syncSelection();
     return false;
   }
   if (session.snapshot().partySelected) {
     element('scene').querySelector('canvas')?.focus({ preventScroll: true });
+    afterSelect();
     return true;
   }
   const change = () => {
@@ -579,6 +593,7 @@ function selectParty() {
     syncSelection();
     updateInspector();
     element('scene').querySelector('canvas')?.focus({ preventScroll: true });
+    afterSelect();
   };
   if (!activeInspector().beforeLeave(change)) {
     syncSelection();
@@ -587,6 +602,13 @@ function selectParty() {
   change();
   return true;
 }
+listen(element('find-party'), 'click', () => {
+  selectParty(() => {
+    const party = session.snapshot().campaign.partyToken;
+    renderer.focus(party.key, { hexesWide: 9 / 1.2 ** 3 });
+    mapConsole.notify(`Showing ${party.name ?? 'Adventurers'} token`);
+  });
+});
 listen(selection, 'change', () => {
   if (selection.value === PARTY_SELECTION) selectParty();
   else renderer?.select(selection.value, { additive: session.snapshot()?.multiEdit });
@@ -640,8 +662,6 @@ listen(element('move-party-confirm'), 'click', () => {
 });
 listen(element('in'), 'click', () => renderer?.zoom(1.2));
 listen(element('out'), 'click', () => renderer?.zoom(1 / 1.2));
-listen(element('mobile-in'), 'click', () => renderer?.zoom(1.2));
-listen(element('mobile-out'), 'click', () => renderer?.zoom(1 / 1.2));
 function updateMovementToggle() {
   element('motion').setAttribute('aria-checked', String(movement));
   element('motion-state').textContent = movement ? 'ON' : 'OFF';

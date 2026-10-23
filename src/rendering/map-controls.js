@@ -154,7 +154,7 @@ export function createMapControls({
     draw();
     return true;
   }
-  function focus(key) {
+  function focus(key, { hexesWide } = {}) {
     const cell = cells.find((cell) => cell.key === key);
     if (!cell) return false;
     camera.updateMatrixWorld();
@@ -163,8 +163,16 @@ export function createMapControls({
     const target = new THREE.Vector3(cell.g.position.x, cell.top, cell.g.position.z);
     const delta = target.sub(camera.position);
     camera.position.addScaledVector(right, delta.dot(right)).addScaledVector(up, delta.dot(up));
-    // Show roughly six mesh units vertically; retain an already closer view.
-    zoom = Math.min(12, Math.max(zoom, (camera.top - camera.bottom) / 6));
+    // Find party frames a fixed horizontal span; Inspector pins retain a closer view.
+    zoom = Math.min(
+      12,
+      Math.max(
+        0.7,
+        hexesWide
+          ? (camera.right - camera.left) / (hexesWide * 2)
+          : Math.max(zoom, (camera.top - camera.bottom) / 6),
+      ),
+    );
     camera.zoom = zoom;
     camera.updateProjectionMatrix();
     camera.updateMatrixWorld();

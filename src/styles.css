@@ -1184,14 +1184,33 @@
     letter-spacing: 0.02em;
   }
   .hp-zooms {
+    position: absolute;
+    top: max(var(--space-12), env(safe-area-inset-top));
+    right: max(var(--space-12), env(safe-area-inset-right));
     display: flex;
+    flex-direction: column;
     gap: var(--space-8);
+    --icon-size: var(--icon-small);
+    & button {
+      box-shadow: 0 3px 16px #0003;
+    }
   }
   .hp-zoom {
     display: grid;
     place-items: center;
-    width: var(--control-size);
+    width: var(--control-compact-size);
+    height: var(--control-compact-size);
+    min-height: var(--control-compact-size);
     padding: 0;
+  }
+  #hp-find-party {
+    white-space: nowrap;
+    & img {
+      width: var(--icon-size);
+      height: var(--icon-size);
+      object-fit: contain;
+      border-radius: var(--space-4);
+    }
   }
   .hp-map-stage {
     position: relative;
@@ -1972,12 +1991,6 @@
       gap: var(--space-8) var(--space-8);
       padding: var(--space-8) max(var(--space-8), env(safe-area-inset-right)) var(--space-8)
         max(var(--space-8), env(safe-area-inset-left));
-      & > .hp-tools {
-        display: none;
-      }
-      & .hp-zooms {
-        display: none;
-      }
     }
     .hp-title {
       overflow: hidden;
@@ -1997,7 +2010,10 @@
     .hp-map-stage > .hp-fog {
       position: absolute;
       top: max(var(--space-12), env(safe-area-inset-top));
-      right: max(var(--space-12), env(safe-area-inset-right));
+      right: calc(
+        max(var(--space-12), env(safe-area-inset-right)) + var(--control-compact-size) +
+          var(--space-8)
+      );
       box-shadow: 0 3px 16px #0003;
     }
     .hp-mobile-map-controls {
@@ -2007,7 +2023,7 @@
       right: max(var(--space-12), env(safe-area-inset-right));
       display: grid;
       grid-template-columns: minmax(0, 1fr) var(--control-size);
-      grid-template-rows: repeat(3, var(--control-size));
+      grid-template-rows: var(--control-size);
       align-items: end;
       pointer-events: none;
       gap: var(--space-8);
@@ -2020,7 +2036,7 @@
       }
       & select {
         grid-column: 1;
-        grid-row: 3;
+        grid-row: 1;
         width: 100%;
         min-width: 0;
         color: var(--text);

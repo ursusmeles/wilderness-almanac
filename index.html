@@ -515,36 +515,47 @@
               <span class="hp-motion-light" aria-hidden="true"></span>
               <span>Fog of war <span id="hp-fog-state" aria-hidden="true">OFF</span></span>
             </button>
-            <span class="hp-zooms" role="group" aria-label="Map zoom">
-              <button
-                class="hp-zoom"
-                id="hp-out"
-                type="button"
-                aria-label="Zoom out"
-                data-tooltip="Zoom out"
-              >
-                <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
-                  <use href="/icons/pixelarticons.svg#minus"></use>
-                </svg>
-              </button>
-              <button
-                class="hp-zoom"
-                id="hp-in"
-                type="button"
-                aria-label="Zoom in"
-                data-tooltip="Zoom in"
-              >
-                <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
-                  <use href="/icons/pixelarticons.svg#plus"></use>
-                </svg>
-              </button>
-            </span>
+            <button
+              type="button"
+              id="hp-find-party"
+              data-tooltip="Select and zoom in on the party token"
+            >
+              <img id="hp-find-party-preview" width="24" height="24" alt="" hidden />
+              <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <use href="/icons/pixelarticons.svg#user"></use>
+              </svg>
+              <span>Find party</span>
+            </button>
           </div>
         </header>
         <div class="hp-map-stage">
           <div class="hp-scene" id="hp-scene">
             <div class="hp-fallback" id="hp-loading">Preparing the landscape…</div>
           </div>
+          <span class="hp-zooms" role="group" aria-label="Map zoom">
+            <button
+              class="hp-zoom"
+              id="hp-in"
+              type="button"
+              aria-label="Zoom in"
+              data-tooltip="Zoom in"
+            >
+              <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <use href="/icons/pixelarticons.svg#plus"></use>
+              </svg>
+            </button>
+            <button
+              class="hp-zoom"
+              id="hp-out"
+              type="button"
+              aria-label="Zoom out"
+              data-tooltip="Zoom out"
+            >
+              <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <use href="/icons/pixelarticons.svg#minus"></use>
+              </svg>
+            </button>
+          </span>
           <div
             class="hp-mobile-only hp-mobile-map-controls"
             role="group"
@@ -563,28 +574,6 @@
               </svg>
               <svg class="ui-icon hp-collapse-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <use href="/icons/pixelarticons.svg#close"></use>
-              </svg>
-            </button>
-            <button
-              class="hp-zoom"
-              id="hp-mobile-in"
-              type="button"
-              aria-label="Zoom in"
-              data-tooltip="Zoom in"
-            >
-              <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <use href="/icons/pixelarticons.svg#plus"></use>
-              </svg>
-            </button>
-            <button
-              class="hp-zoom"
-              id="hp-mobile-out"
-              type="button"
-              aria-label="Zoom out"
-              data-tooltip="Zoom out"
-            >
-              <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <use href="/icons/pixelarticons.svg#minus"></use>
               </svg>
             </button>
           </div>
