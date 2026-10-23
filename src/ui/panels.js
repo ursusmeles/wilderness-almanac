@@ -126,20 +126,19 @@ export function createPanels(root, preferences, onChange) {
           `Move ${name} ${button.dataset.direction === '-1' ? 'up' : 'down'}`,
         );
       toggle.setAttribute('aria-expanded', String(!current[id]));
-      toggle.setAttribute('aria-label', `${current[id] ? 'Expand' : 'Minimise'} ${name}`);
-      toggle.title = unavailable
-        ? 'Turn off multiselect to expand Sandbox tools'
-        : `${current[id] ? 'Expand' : 'Minimise'} panel`;
+      toggle.setAttribute('aria-label', `${current[id] ? 'Open' : 'Close'} ${name}`);
+      toggle.dataset.tooltip = unavailable
+        ? 'Turn off multiselect to open panel'
+        : current[id]
+          ? 'Open panel'
+          : 'Close panel';
       toggle
         .querySelector('use')
         .setAttribute('href', `/icons/pixelarticons.svg#${current[id] ? 'expand' : 'collapse'}`);
       const sideways = panel.querySelector('[data-horizontal]');
       sideways.setAttribute('aria-expanded', String(!rail));
-      sideways.setAttribute(
-        'aria-label',
-        `${rail ? 'Restore' : 'Collapse'} ${name} ${rail ? 'from' : 'to'} vertical bar`,
-      );
-      sideways.title = rail ? 'Restore panel width' : 'Collapse panel to vertical bar';
+      sideways.setAttribute('aria-label', rail ? `Expand ${name}` : `Collapse ${name} to the side`);
+      sideways.dataset.tooltip = rail ? 'Expand panel' : 'Collapse panel to the side';
       sideways
         .querySelector('use')
         .setAttribute(

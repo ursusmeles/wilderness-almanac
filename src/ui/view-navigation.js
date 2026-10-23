@@ -51,10 +51,12 @@ export function createViewNavigation(menu, workspace) {
         if (!disposed) {
           if (!committed) incoming.hidden = true;
           clear();
-          if (committed)
-            incoming
-              .querySelector(forward ? '#hp-new-map' : '#new-campaign')
-              ?.focus({ preventScroll: true });
+          if (committed) {
+            const target =
+              incoming.querySelector(forward ? '#hp-scene canvas' : '#new-campaign') ||
+              incoming.querySelector('#hp-back-menu');
+            target?.focus({ preventScroll: true });
+          }
         }
       }
     },

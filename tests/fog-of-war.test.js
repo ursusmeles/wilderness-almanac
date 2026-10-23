@@ -39,7 +39,7 @@ test('empty/all visited states, radius bonuses and reversible visibility', () =>
   for (const [elevation, poi, range] of [
     [1, null, 1],
     [3, null, 2],
-    [4, null, 2],
+    [4, null, 3],
     [2, 'stronghold', 2],
     [3, 'watchtower', 3],
   ]) {

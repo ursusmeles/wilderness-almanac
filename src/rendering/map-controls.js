@@ -345,6 +345,7 @@ export function createMapControls({
   observer.observe(host);
   return {
     camera,
+    isInteracting: () => pointers.size > 0 || partyPointer !== null,
     refresh({ resetView = false, fitContent: fit = false, preserveFraming = false } = {}) {
       fitContent = fit;
       hovered = null;

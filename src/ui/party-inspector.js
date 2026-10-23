@@ -1,6 +1,11 @@
 import { cloneTemplate } from './templates.js';
 import { hexAddress } from '../generation/hex.js';
-import { partyMetadata, PARTY_COLORS, PARTY_STYLES } from '../application/party-token.js';
+import {
+  partyMetadata,
+  PARTY_COLORS,
+  PARTY_COLOR_NAMES,
+  PARTY_STYLES,
+} from '../application/party-token.js';
 
 export function createPartyInspector(
   host,
@@ -88,6 +93,18 @@ export function createPartyInspector(
       el('locate-settlement').disabled = metadata.settlementKey === null;
       el('locate-poi').disabled = metadata.poi === null;
       el('locate-visited').disabled = metadata.visited === 0;
+      el('locate-settlement').dataset.tooltip =
+        metadata.settlementKey === null ? '' : 'Show nearest settlement';
+      el('locate-poi').dataset.tooltip =
+        metadata.poi === null ? '' : 'Show nearest point of interest';
+      el('locate-visited').dataset.tooltip = metadata.visited ? 'Select all visited hexes' : '';
+      const color = next.campaign.partyToken.color ?? colorFor(next.campaign.colors);
+      const nextColor = PARTY_COLORS[(PARTY_COLORS.indexOf(color) + 1) % PARTY_COLORS.length];
+      el('color').dataset.tooltip = `Change colour to ${PARTY_COLOR_NAMES[nextColor]}`;
+      const style = next.campaign.partyToken.style;
+      const nextStyle = PARTY_STYLES[(PARTY_STYLES.indexOf(style) + 1) % PARTY_STYLES.length];
+      el('type').dataset.tooltip =
+        `Change shape to ${nextStyle[0].toUpperCase() + nextStyle.slice(1)}`;
       el('days').textContent = `${metadata.days} ${metadata.days === 1 ? 'day' : 'days'}`;
       el('sessions').textContent = String(metadata.sessions);
       el('preview').alt =

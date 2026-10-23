@@ -2,6 +2,7 @@ import { distance } from '../generation/hex.js';
 
 export const PARTY_STYLES = ['cairn', 'warden', 'waystone'];
 export const PARTY_COLORS = ['#ef365c', '#13d9f2', '#c4f532'];
+export const PARTY_COLOR_NAMES = { '#ef365c': 'rose', '#13d9f2': 'cyan', '#c4f532': 'lime' };
 export function validatePartyToken(value) {
   if (
     !value ||

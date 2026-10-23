@@ -1,3 +1,4 @@
+import { openDialog } from './dialog-focus.js';
 import { generateWorld, generateDressing } from '../generation/world.js';
 import { prepareMap } from '../generation/presentation.js';
 import { createCampaign } from '../application/campaigns.js';
@@ -34,7 +35,7 @@ export function createCampaignCreator({ library, loadMapView, freshSeed, onCreat
   const seedValid = () => Boolean(seedInput.value.trim()) && seedInput.value.length <= 128;
 
   function feedback(text, error = false) {
-    status.textContent = text;
+    if (status.textContent !== text) status.textContent = text;
     status.dataset.kind = error ? 'error' : 'status';
   }
 
@@ -43,11 +44,10 @@ export function createCampaignCreator({ library, loadMapView, freshSeed, onCreat
     const { busy, creating, needsGeneration, world } = draft;
     nameInput.disabled = seedInput.disabled = paletteInput.disabled = busy;
     el('random-seed').disabled = busy;
-    el('save-seed').disabled = busy || !seedValid() || seedInput.value.trim() === draft.seed;
     for (const name of preferenceNames) el(name).disabled = busy;
     el('reset-preferences').disabled =
       busy || preferenceNames.every((name) => Number(el(name).value) === 0);
-    generateButton.disabled = busy || !seedValid();
+    generateButton.disabled = busy || !seedValid() || (!needsGeneration && Boolean(world));
     createButton.disabled =
       busy || needsGeneration || !world || !seedValid() || !nameInput.value.trim();
     generateButton.classList.toggle('cc-primary', needsGeneration);
@@ -57,7 +57,16 @@ export function createCampaignCreator({ library, loadMapView, freshSeed, onCreat
     generateButton.classList.toggle('hp-working', busy && !creating);
     createButton.classList.toggle('hp-working', creating);
     generateButton.querySelector('span').textContent =
-      busy && !creating ? 'Generating…' : 'Generate new map';
+      busy && !creating ? 'Generating…' : 'Generate preview';
+    delete generateButton.dataset.tooltip;
+    delete createButton.dataset.tooltip;
+    if (!busy && !seedValid()) generateButton.dataset.tooltip = 'Enter a seed';
+    else if (!busy && !needsGeneration && world)
+      generateButton.dataset.tooltip = 'Preview is up to date';
+    if (!busy && needsGeneration) createButton.dataset.tooltip = 'Generate preview first';
+    else if (!busy && !nameInput.value.trim())
+      createButton.dataset.tooltip = 'Enter a campaign name';
+    createButton.setAttribute('aria-describedby', 'cc-preview-status');
     createButton.textContent = creating ? 'Creating campaign…' : 'Create campaign';
     for (const [button, working] of [
       [generateButton, busy && !creating],
@@ -72,8 +81,13 @@ export function createCampaignCreator({ library, loadMapView, freshSeed, onCreat
   }
 
   function changedGeneration() {
-    draft.needsGeneration = true;
-    feedback('Generate to update preview or Keep to discard last changes');
+    draft.needsGeneration =
+      !draft.generatedSettings ||
+      seedInput.value.trim() !== draft.generatedSettings.seed ||
+      preferenceNames.some(
+        (name) => Number(el(name).value) !== draft.generatedSettings.preferences[name],
+      );
+    feedback(draft.needsGeneration ? 'Preview needs updating.' : 'Preview ready.');
     sync();
   }
 
@@ -93,7 +107,7 @@ export function createCampaignCreator({ library, loadMapView, freshSeed, onCreat
     el('expand').setAttribute('aria-pressed', String(enabled));
     const label = enabled ? 'Exit expanded preview' : 'Expand map preview';
     el('expand').setAttribute('aria-label', label);
-    el('expand').title = label;
+    el('expand').dataset.tooltip = enabled ? 'Exit expanded preview (Esc)' : 'Expand preview';
     el('expand')
       .querySelector('use')
       .setAttribute('href', `/icons/pixelarticons.svg#${enabled ? 'close' : 'scale'}`);
@@ -116,7 +130,7 @@ export function createCampaignCreator({ library, loadMapView, freshSeed, onCreat
   function requestClose() {
     if (!draft || draft.creating) return;
     if (snapshot() !== draft.initial) {
-      if (!discardDialog.open) discardDialog.showModal();
+      if (!discardDialog.open) openDialog(discardDialog);
     } else close();
   }
 
@@ -152,7 +166,7 @@ export function createCampaignCreator({ library, loadMapView, freshSeed, onCreat
       .querySelector('canvas')
       .setAttribute(
         'aria-label',
-        'Map preview. Drag to pan, scroll or pinch to zoom, and click a hex to select it.',
+        'Map preview. Drag to pan or use arrow keys to jump two hexes. Scroll or pinch to zoom; + and − also zoom.',
       );
     el('scene').dataset.seed = world.seed;
   }
@@ -185,7 +199,7 @@ export function createCampaignCreator({ library, loadMapView, freshSeed, onCreat
       if (!draft.nameEdited) nameInput.value = world.name;
       draft.needsGeneration = false;
       if (initial) draft.initial = snapshot();
-      feedback('');
+      feedback('Preview ready.');
     } catch (error) {
       if (current === revision && draft) {
         draft.needsGeneration = true;
@@ -220,15 +234,6 @@ export function createCampaignCreator({ library, loadMapView, freshSeed, onCreat
     seedInput.value = draft.seed;
     changedGeneration();
   });
-  listen(el('save-seed'), 'click', () => {
-    if (!seedValid()) {
-      seedInput.reportValidity();
-      return;
-    }
-    draft.seed = seedInput.value.trim();
-    seedInput.value = draft.seed;
-    changedGeneration();
-  });
   for (const name of preferenceNames)
     listen(el(name), 'input', () => {
       updateSliders();
@@ -238,6 +243,7 @@ export function createCampaignCreator({ library, loadMapView, freshSeed, onCreat
     for (const name of preferenceNames) el(name).value = '0';
     updateSliders();
     changedGeneration();
+    feedback('Preferences reset.');
   });
   listen(paletteInput, 'change', () => {
     renderer?.setPalette(library.get(paletteInput.value).colors);
@@ -250,7 +256,7 @@ export function createCampaignCreator({ library, loadMapView, freshSeed, onCreat
     for (const name of preferenceNames) el(name).value = String(settings.preferences[name]);
     updateSliders();
     draft.needsGeneration = false;
-    feedback('');
+    feedback('Preview settings restored.');
     sync();
   });
   listen(el('zoom-in'), 'click', () => renderer?.zoom(1.2));
@@ -262,10 +268,19 @@ export function createCampaignCreator({ library, loadMapView, freshSeed, onCreat
       event.ctrlKey ||
       event.metaKey ||
       event.altKey ||
+      discardDialog.open ||
       event.target.closest('input, select, textarea') ||
       draft?.busy
     )
       return;
+    const pan = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] }[
+      event.key
+    ];
+    if (pan) {
+      event.preventDefault();
+      if (!event.repeat) renderer?.pan(...pan);
+      return;
+    }
     const factor = event.key === '+' || event.key === '=' ? 1.2 : event.key === '-' ? 1 / 1.2 : 0;
     if (factor) {
       event.preventDefault();
@@ -289,7 +304,7 @@ export function createCampaignCreator({ library, loadMapView, freshSeed, onCreat
       close();
     } catch (error) {
       if (!draft || listeners.signal.aborted) return;
-      dialog.showModal();
+      openDialog(dialog);
       paintPreview(draft.view, draft.world, draft.layout);
       feedback(`Could not open the campaign. ${error.message}`, true);
     } finally {
@@ -326,7 +341,7 @@ export function createCampaignCreator({ library, loadMapView, freshSeed, onCreat
       };
       expand(false);
       sync();
-      dialog.showModal();
+      openDialog(dialog);
       void generate(true);
     },
     dispose() {

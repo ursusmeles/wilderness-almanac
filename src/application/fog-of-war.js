@@ -5,9 +5,12 @@ export const isOpenWater = (cell) =>
 export const visibleUnvisitedPoi = (poi) =>
   ['watchtower', 'abbey', 'ruins', 'stronghold'].includes(poi.kind);
 export function sightRange(cell) {
+  const base =
+    cell.terrain === 'mountains' || cell.elevation >= 4 ? 3 : cell.elevation >= 3 ? 2 : 1;
   return (
-    (cell.elevation >= 3 ? 2 : 1) +
-    Number(cell.pointsOfInterest.some((poi) => ['watchtower', 'stronghold'].includes(poi.kind)))
+    base +
+    Number(cell.pointsOfInterest.some((poi) => ['watchtower', 'stronghold'].includes(poi.kind))) +
+    Number(['town', 'city'].includes(cell.pointOfLight?.type))
   );
 }
 

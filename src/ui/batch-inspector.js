@@ -1,6 +1,8 @@
+import { openDialog } from './dialog-focus.js';
 import { TERRAIN_TYPES } from '../generation/terrain-types.js';
 import { POI_TYPES, SETTLEMENT_TYPES, variantsFor } from '../generation/hex-edits.js';
 import { cloneTemplate } from './templates.js';
+import { explainDisabled } from './control-help.js';
 
 const KEEP = '__keep__';
 const title = (value) => (value ? value[0].toUpperCase() + value.slice(1) : 'None');
@@ -8,7 +10,16 @@ const fields = ['terrain', 'settlement', 'poi', 'elevation', 'crossing', 'visite
 
 export function createBatchInspector(
   host,
-  { onApply, onJoin, onUndo, onResetSelected, onSelectAll, onClear, onTurnOff },
+  {
+    onApply,
+    onJoin,
+    onUndo,
+    onResetSelected,
+    onSelectAll,
+    onClear,
+    onTurnOff,
+    onNotify = () => {},
+  },
 ) {
   host.replaceChildren(cloneTemplate('batch-inspector-template'));
   const el = (name) => host.querySelector(`#hp-batch-${name}`);
@@ -52,16 +63,23 @@ export function createBatchInspector(
   function constraints() {
     const terrain = el('terrain').value;
     const water = ['river', 'open water'].includes(terrain);
-    for (const [field, disabled] of Object.entries({
-      elevation: water || terrain === 'mountains',
-      settlement: water,
-      poi: terrain === 'open water',
-      crossing: terrain !== KEEP && terrain !== 'river',
+    for (const [field, reason] of Object.entries({
+      elevation: water
+        ? 'Water elevation is fixed'
+        : terrain === 'mountains'
+          ? 'Mountain elevation is fixed'
+          : '',
+      settlement: water ? 'Land hexes only' : '',
+      poi: terrain === 'open water' ? 'Land or river hexes only' : '',
+      crossing: terrain !== KEEP && terrain !== 'river' ? 'River hexes only' : '',
     })) {
-      el(field).disabled = disabled;
-      if (disabled) el(field).value = KEEP;
+      explainDisabled(el(field), reason);
+      if (reason) el(field).value = KEEP;
     }
-    el('subtype').disabled = el('poi').value === KEEP || !el('poi').value;
+    explainDisabled(
+      el('subtype'),
+      el('poi').value === KEEP || !el('poi').value ? 'Choose a point of interest first' : '',
+    );
     el('note').textContent =
       terrain === 'open water'
         ? 'This removes settlements, points of interest and crossings.'
@@ -71,13 +89,19 @@ export function createBatchInspector(
     el('note').hidden = !el('note').textContent;
     el('apply').textContent =
       `Apply to ${state?.cells.length ?? 0} ${(state?.cells.length ?? 0) === 1 ? 'hex' : 'hexes'}`;
-    el('apply').disabled = !state?.cells.length || !dirty();
-    el('cancel').disabled = !dirty();
+    explainDisabled(
+      el('apply'),
+      !state?.cells.length ? 'Select a hex first' : !dirty() ? 'Choose changes to apply' : '',
+    );
+    explainDisabled(el('cancel'), !dirty() ? 'No changes to discard' : '');
   }
   function reset() {
     for (const field of fields) el(field).value = KEEP;
     el('subtype').replaceChildren();
     el('feedback').textContent = '';
+    el('fields')
+      .querySelectorAll('select')
+      .forEach((control) => control.removeAttribute('aria-invalid'));
     constraints();
   }
   function patch() {
@@ -113,7 +137,7 @@ export function createBatchInspector(
   function beforeLeave(action) {
     if (!dirty()) return true;
     pending = action;
-    if (!unsaved.open) unsaved.showModal();
+    if (!unsaved.open) openDialog(unsaved);
     return false;
   }
   const guarded = (action) => {
@@ -121,6 +145,7 @@ export function createBatchInspector(
   };
   listen(el('fields'), 'change', (event) => {
     el('feedback').textContent = '';
+    event.target.removeAttribute('aria-invalid');
     if (event.target === el('poi')) {
       const kind = el('poi').value;
       el('subtype').replaceChildren(
@@ -135,14 +160,20 @@ export function createBatchInspector(
     event.preventDefault();
     apply();
   });
-  listen(el('cancel'), 'click', reset);
+  listen(el('cancel'), 'click', () => {
+    reset();
+    el('count').focus({ preventScroll: true });
+    onNotify('Batch draft discarded.');
+  });
   listen(el('undo'), 'click', () => guarded(() => onUndo(el('undo'))));
   listen(el('reset'), 'click', () => {
     const count = state?.cells.length ?? 0;
     if (!count) return;
     resetDialog.querySelector('[data-reset-count]').textContent =
-      `Restore ${count === 1 ? 'this hex' : `these ${count} hexes`} to the seed’s generated defaults? This clears their edits, visited status and dressing locks. You can undo this.`;
-    resetDialog.showModal();
+      `Restore ${count === 1 ? 'this hex' : `these ${count} hexes`} to the seed’s generated defaults? This clears their edits, visited status and appearance locks.${dirty() ? ' Pending batch changes will also be discarded.' : ''} You can undo the saved changes.`;
+    resetDialog.querySelector('[data-reset-selected="confirm"]').textContent =
+      `Reset ${count} ${count === 1 ? 'hex' : 'hexes'}`;
+    openDialog(resetDialog);
   });
   listen(resetDialog, 'click', async (event) => {
     const button = event.target.closest('[data-reset-selected]');
@@ -153,6 +184,7 @@ export function createBatchInspector(
     }
     if ((await onResetSelected(button)) === false) {
       resetDialog.close();
+      focusError();
       return;
     }
     reset();
@@ -169,13 +201,14 @@ export function createBatchInspector(
     pending = null;
     if (action === 'apply' && !(await apply(event.target.closest('button')))) {
       unsaved.close();
+      focusError();
       return;
     }
     unsaved.close();
     if (action !== 'keep') {
       reset();
       next?.();
-    }
+    } else el('count').focus({ preventScroll: true });
   });
   return {
     update(next) {
@@ -184,14 +217,22 @@ export function createBatchInspector(
         `${next.cells.length} ${next.cells.length === 1 ? 'hex' : 'hexes'} selected`;
       el('fields').disabled = !next.cells.length;
       el('clear').disabled = !next.cells.length;
-      el('undo').disabled = !next.canUndo;
+      explainDisabled(el('undo'), next.undoReason || '', `Undo ${next.undoLabel || 'last action'}`);
+      el('undo').setAttribute('aria-label', `Undo ${next.undoLabel || 'last action'}`);
       el('reset').disabled = !next.cells.length;
       el('join').hidden = next.fogOfWar || !next.join;
       el('reset').hidden = Boolean(next.fogOfWar);
       for (const label of el('fields').querySelectorAll('label'))
         label.hidden = Boolean(next.fogOfWar) && !label.contains(el('visited'));
       el('join').disabled = next.join?.joined ?? false;
-      el('join').textContent = next.join?.type === 'city' ? 'Join city' : 'Join town';
+      el('join').textContent = next.join?.joined
+        ? 'Already one settlement'
+        : next.join?.type === 'city'
+          ? 'Join city'
+          : 'Join town';
+      el('join').dataset.tooltip = next.join?.joined
+        ? 'Already one settlement'
+        : 'Combine into one settlement';
       for (const field of fields) {
         const values = next.cells.map((cell) =>
           field === 'settlement'
@@ -219,6 +260,20 @@ export function createBatchInspector(
     beforeLeave,
     error(message) {
       el('feedback').textContent = message;
+      const field = /crossing|banks/i.test(message)
+        ? 'crossing'
+        : /elevation/i.test(message)
+          ? 'elevation'
+          : /settlement/i.test(message)
+            ? 'settlement'
+            : /point of interest/i.test(message)
+              ? 'poi'
+              : null;
+      if (field && !el(field).disabled) {
+        el(field).setAttribute('aria-invalid', 'true');
+        el(field).setAttribute('aria-describedby', 'hp-batch-note hp-batch-feedback');
+      }
+      if (!unsaved.open && !resetDialog.open) focusError();
     },
     reset() {
       unsaved.close();
@@ -232,4 +287,9 @@ export function createBatchInspector(
       resetDialog.remove();
     },
   };
+  function focusError() {
+    (el('fields').querySelector('[aria-invalid="true"]:not(:disabled)') || el('feedback')).focus({
+      preventScroll: true,
+    });
+  }
 }

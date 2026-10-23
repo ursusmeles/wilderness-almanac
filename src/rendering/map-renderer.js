@@ -6,6 +6,7 @@ import { createAmbientLoop } from './ambient-motion.js';
 import { createPartyToken } from './party-token.js';
 import { createPartyPiece } from './party-piece.js';
 import { PARTY_STYLES } from '../application/party-token.js';
+import { createPartyKeyHints } from './party-key-hints.js';
 
 export function createMapRenderer(
   host,
@@ -38,9 +39,10 @@ export function createMapRenderer(
   renderer.autoClear = false;
   host.append(renderer.domElement);
   renderer.domElement.setAttribute('role', 'img');
+  renderer.domElement.tabIndex = 0;
   renderer.domElement.setAttribute(
     'aria-label',
-    'Interactive isometric hex map with forests, wetlands, farms, settlements, mountains and rivers. Drag to pan, or use arrow keys to jump two hexes. Scroll or pinch to zoom. Select a hex using the map dropdown.',
+    'Interactive isometric hex map. Arrow keys jump two hexes; + and − zoom. Select a hex or the party with the map dropdown. With the party selected, Q W E and A S D move it to adjacent hexes. Drag to pan or move the party; scroll or pinch to zoom.',
   );
   const scene = new THREE.Scene();
   const ambient = new THREE.HemisphereLight(0xffffff, 0x777777, 1.8);
@@ -75,6 +77,9 @@ export function createMapRenderer(
   const party = onPartyMove
     ? createPartyToken({ host, draw, onMove: onPartyMove, onSelect: onPartySelect })
     : null;
+  const keyHints = onPartyMove ? createPartyKeyHints(host) : null;
+  let partyKey,
+    showPartyKeys = false;
   let previewPiece;
   const controls = createMapControls({
     host,
@@ -94,6 +99,7 @@ export function createMapRenderer(
     renderer.clear();
     renderer.render(scene, controls.camera);
     party?.render(renderer, controls.camera);
+    keyHints?.render(controls.camera);
   }
   const ambientLoop = createAmbientLoop({
     renderer,
@@ -116,7 +122,18 @@ export function createMapRenderer(
     select: controls.select,
     focus: controls.focus,
     setSelection: controls.setSelection,
-    setParty: (token, seeds) => party?.set(token, meshes.cells, seeds),
+    setParty(token, seeds) {
+      partyKey = token.key;
+      keyHints?.set(partyKey, meshes.cells, showPartyKeys);
+      party?.set(token, meshes.cells, seeds);
+    },
+    setPartyKeys(visible) {
+      if (showPartyKeys === visible) return;
+      showPartyKeys = visible;
+      keyHints?.set(partyKey, meshes.cells, visible);
+      draw();
+    },
+    isInteracting: controls.isInteracting,
     setPartySelected: (selected) => party?.setSelected(selected),
     setPartyPiece(style, color) {
       previewPiece?.group.removeFromParent();
@@ -140,6 +157,7 @@ export function createMapRenderer(
     dispose() {
       ambientLoop.dispose();
       party?.dispose();
+      keyHints?.dispose();
       previewPiece?.group.removeFromParent();
       previewPiece?.dispose();
       controls.dispose();

@@ -50,7 +50,11 @@
                 </svg>
                 Palette manager
               </button>
-              <button type="button" id="import-campaign">
+              <button
+                type="button"
+                id="import-campaign"
+                data-tooltip="Upload a JSON file with previously exported campaign"
+              >
                 <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                   <use href="/icons/pixelarticons.svg#upload"></use>
                 </svg>
@@ -118,7 +122,13 @@
             aria-label="Palettes"
             aria-multiselectable="false"
           ></ul>
-          <p id="palette-manager-message" role="status" aria-live="polite" hidden></p>
+          <p
+            id="palette-manager-message"
+            class="sr-only"
+            role="status"
+            aria-live="polite"
+            hidden
+          ></p>
           <footer class="palette-manager-actions">
             <button type="button" id="add-palette">
               <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -132,7 +142,14 @@
               </svg>
               Delete palette
             </button>
-            <button type="button" id="default-palette" disabled>Set as default</button>
+            <button
+              type="button"
+              id="default-palette"
+              disabled
+              data-tooltip="Choose default palette for new campaign and main menu"
+            >
+              Set as default
+            </button>
           </footer>
         </dialog>
         <dialog id="create-campaign-dialog" aria-labelledby="create-campaign-title">
@@ -145,7 +162,7 @@
               type="button"
               id="cc-dismiss"
               class="menu-icon-button"
-              aria-label="Close new campaign settings"
+              aria-label="Close new campaign"
             >
               <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <use href="/icons/pixelarticons.svg#close"></use>
@@ -158,36 +175,25 @@
               <output id="cc-preview-status" class="cc-preview-status" aria-live="polite"
                 >Preparing preview…</output
               >
-              <div class="cc-map-controls">
-                <button
-                  type="button"
-                  id="cc-zoom-in"
-                  aria-label="Zoom in on preview"
-                  title="Zoom in"
-                >
-                  <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
-                    <use href="/icons/pixelarticons.svg#plus"></use>
-                  </svg>
-                </button>
-                <button
-                  type="button"
-                  id="cc-zoom-out"
-                  aria-label="Zoom out on preview"
-                  title="Zoom out"
-                >
-                  <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
-                    <use href="/icons/pixelarticons.svg#minus"></use>
-                  </svg>
-                </button>
+              <div class="cc-map-controls" role="group" aria-label="Preview controls">
                 <button
                   type="button"
                   id="cc-expand"
                   aria-label="Expand map preview"
-                  title="Expand map preview"
                   aria-pressed="false"
                 >
                   <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                     <use href="/icons/pixelarticons.svg#scale"></use>
+                  </svg>
+                </button>
+                <button type="button" id="cc-zoom-in" aria-label="Zoom in on preview">
+                  <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <use href="/icons/pixelarticons.svg#plus"></use>
+                  </svg>
+                </button>
+                <button type="button" id="cc-zoom-out" aria-label="Zoom out on preview">
+                  <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <use href="/icons/pixelarticons.svg#minus"></use>
                   </svg>
                 </button>
               </div>
@@ -220,19 +226,20 @@
                       <use href="/icons/pixelarticons.svg#refresh"></use></svg
                     >Random seed
                   </button>
-                  <button type="button" id="cc-save-seed" disabled>Save seed</button>
                 </div>
               </div>
               <section class="cc-preferences" aria-labelledby="cc-preferences-title">
                 <header class="cc-section-header">
                   <h3 id="cc-preferences-title">World preferences</h3>
-                  <button type="button" id="cc-reset-preferences">Reset to default</button>
+                  <button type="button" id="cc-reset-preferences">Reset preferences</button>
                 </header>
                 <div class="cc-sliders">
                   <label class="cc-slider"
                     ><span
                       >Open water ·
-                      <output id="cc-water-value" for="cc-water">Default</output></span
+                      <output id="cc-water-value" for="cc-water" aria-live="off"
+                        >Default</output
+                      ></span
                     ><input
                       id="cc-water"
                       aria-label="Open water"
@@ -247,7 +254,9 @@
                   <label class="cc-slider"
                     ><span
                       >Elevation ·
-                      <output id="cc-elevation-value" for="cc-elevation">Default</output></span
+                      <output id="cc-elevation-value" for="cc-elevation" aria-live="off"
+                        >Default</output
+                      ></span
                     ><input
                       id="cc-elevation"
                       aria-label="Elevation"
@@ -262,7 +271,9 @@
                   <label class="cc-slider"
                     ><span
                       >Forests ·
-                      <output id="cc-forests-value" for="cc-forests">Default</output></span
+                      <output id="cc-forests-value" for="cc-forests" aria-live="off"
+                        >Default</output
+                      ></span
                     ><input
                       id="cc-forests"
                       aria-label="Forests"
@@ -277,7 +288,9 @@
                   <label class="cc-slider"
                     ><span
                       >Settlements ·
-                      <output id="cc-settlements-value" for="cc-settlements">Default</output></span
+                      <output id="cc-settlements-value" for="cc-settlements" aria-live="off"
+                        >Default</output
+                      ></span
                     ><input
                       id="cc-settlements"
                       aria-label="Settlements"
@@ -305,14 +318,12 @@
             </section>
           </div>
           <footer class="palette-manager-actions cc-footer">
-            <button type="button" id="cc-close">Close</button>
-            <button type="button" id="cc-restore" title="Discard seed and slider changes" hidden>
-              Keep current map
-            </button>
+            <button type="button" id="cc-close" aria-label="Close new campaign">Close</button>
+            <button type="button" id="cc-restore" hidden>Keep current map</button>
             <button type="button" id="cc-generate">
               <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <use href="/icons/pixelarticons.svg#refresh"></use></svg
-              ><span>Generate new map</span>
+              ><span>Generate preview</span>
             </button>
             <button type="button" id="cc-create" class="cc-primary" disabled>
               Create campaign
@@ -321,7 +332,6 @@
         </dialog>
         <dialog id="discard-campaign-draft-dialog" aria-labelledby="discard-campaign-draft-title">
           <h2 id="discard-campaign-draft-title">Discard campaign setup?</h2>
-          <p>Your changes will be lost.</p>
           <div class="dialog-actions cluster">
             <button type="button" id="cc-keep-editing" autofocus>Keep editing</button
             ><button type="button" id="cc-discard" class="menu-danger">Discard changes</button>
@@ -348,7 +358,7 @@
       <template id="palette-row-template">
         <li class="palette-row" role="row" tabindex="-1" aria-selected="false">
           <div class="palette-name-wrap" role="gridcell">
-            <span class="palette-default" hidden>(Default palette)</span>
+            <span class="palette-default" hidden>Default palette</span>
           </div>
           <div class="palette-swatches" role="gridcell"></div>
         </li>
@@ -371,7 +381,6 @@
               class="menu-icon-button campaign-icon-refresh"
               data-action="shuffle"
               aria-label="Next campaign icon"
-              title="Next cached world icon"
             >
               <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <use href="/icons/pixelarticons.svg#refresh"></use>
@@ -420,8 +429,8 @@
                 type="button"
                 class="menu-icon-button"
                 data-action="copy"
+                data-tooltip="Copy seed"
                 aria-label="Copy seed"
-                title="Copy seed"
               >
                 <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                   <use href="/icons/pixelarticons.svg#copy"></use>
@@ -431,8 +440,8 @@
                 type="button"
                 class="menu-icon-button"
                 data-action="share"
+                data-tooltip="Copy shareable URL with original seed"
                 aria-label="Share map"
-                title="Share map"
               >
                 <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                   <use href="/icons/pixelarticons.svg#link"></use>
@@ -446,18 +455,18 @@
               class="menu-icon-button campaign-enter"
               data-action="enter"
               aria-label="Enter campaign"
-              title="Enter campaign"
             >
               <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <use href="/icons/pixelarticons.svg#login"></use>
               </svg>
+              <span>Enter</span>
             </button>
             <button
               type="button"
               class="menu-icon-button"
               data-action="download"
+              data-tooltip="Export this campaign to a JSON file"
               aria-label="Download campaign JSON"
-              title="Download campaign JSON"
             >
               <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <use href="/icons/pixelarticons.svg#download"></use>
@@ -467,8 +476,8 @@
               type="button"
               class="menu-icon-button campaign-delete"
               data-action="delete"
+              data-tooltip="Delete campaign"
               aria-label="Delete campaign"
-              title="Delete campaign"
             >
               <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <use href="/icons/pixelarticons.svg#trash"></use>
@@ -483,8 +492,8 @@
             type="button"
             id="hp-back-menu"
             class="hp-back-menu"
-            aria-label="Return to campaign menu"
-            title="Return to campaign menu"
+            aria-label="Return to main menu"
+            data-tooltip="Return to main menu"
           >
             <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
               <use href="/icons/pixelarticons.svg#arrow-left"></use>
@@ -501,17 +510,30 @@
               role="switch"
               aria-checked="false"
               aria-label="Fog of war"
+              data-tooltip="Turn fog of war on"
             >
               <span class="hp-motion-light" aria-hidden="true"></span>
               <span>Fog of war <span id="hp-fog-state" aria-hidden="true">OFF</span></span>
             </button>
             <span class="hp-zooms" role="group" aria-label="Map zoom">
-              <button class="hp-zoom" id="hp-out" type="button" aria-label="Zoom out">
+              <button
+                class="hp-zoom"
+                id="hp-out"
+                type="button"
+                aria-label="Zoom out"
+                data-tooltip="Zoom out"
+              >
                 <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                   <use href="/icons/pixelarticons.svg#minus"></use>
                 </svg>
               </button>
-              <button class="hp-zoom" id="hp-in" type="button" aria-label="Zoom in">
+              <button
+                class="hp-zoom"
+                id="hp-in"
+                type="button"
+                aria-label="Zoom in"
+                data-tooltip="Zoom in"
+              >
                 <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                   <use href="/icons/pixelarticons.svg#plus"></use>
                 </svg>
@@ -534,7 +556,7 @@
               class="hp-mobile-only hp-expand-map"
               aria-label="Expand map to viewport"
               aria-pressed="false"
-              title="Expand map to viewport"
+              data-tooltip="Expand map"
             >
               <svg class="ui-icon hp-expand-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <use href="/icons/pixelarticons.svg#scale"></use>
@@ -543,19 +565,32 @@
                 <use href="/icons/pixelarticons.svg#close"></use>
               </svg>
             </button>
-            <button class="hp-zoom" id="hp-mobile-in" type="button" aria-label="Zoom in">
+            <button
+              class="hp-zoom"
+              id="hp-mobile-in"
+              type="button"
+              aria-label="Zoom in"
+              data-tooltip="Zoom in"
+            >
               <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <use href="/icons/pixelarticons.svg#plus"></use>
               </svg>
             </button>
-            <button class="hp-zoom" id="hp-mobile-out" type="button" aria-label="Zoom out">
+            <button
+              class="hp-zoom"
+              id="hp-mobile-out"
+              type="button"
+              aria-label="Zoom out"
+              data-tooltip="Zoom out"
+            >
               <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <use href="/icons/pixelarticons.svg#minus"></use>
               </svg>
             </button>
           </div>
+          <output id="hp-mobile-notice" class="hp-mobile-notice" hidden aria-live="off"></output>
           <div class="hp-status">
-            <select id="hp-selection" aria-label="Selected hex or party"></select>
+            <select id="hp-selection" aria-label="Select hex or party"></select>
             <output id="hp-message" aria-live="off"></output>
           </div>
         </div>
@@ -575,23 +610,13 @@
             <div class="hp-colors stack">
               <label class="hp-color">
                 <span class="hp-swatch">
-                  <input
-                    type="color"
-                    id="hp-ground"
-                    value="#cdab8f"
-                    aria-label="Ground seed colour"
-                  />
+                  <input type="color" id="hp-ground" value="#cdab8f" aria-label="Ground colour" />
                 </span>
                 <span>Ground<code class="hp-hex-code" id="hp-ground-value">#CDAB8F</code></span>
               </label>
               <label class="hp-color">
                 <span class="hp-swatch">
-                  <input
-                    type="color"
-                    id="hp-water"
-                    value="#0b365e"
-                    aria-label="Water seed colour"
-                  />
+                  <input type="color" id="hp-water" value="#0b365e" aria-label="Water colour" />
                 </span>
                 <span>Water<code class="hp-hex-code" id="hp-water-value">#0B365E</code></span>
               </label>
@@ -601,14 +626,14 @@
                     type="color"
                     id="hp-elements"
                     value="#11b329"
-                    aria-label="Elements seed colour"
+                    aria-label="Elements colour"
                   />
                 </span>
                 <span>Elements<code class="hp-hex-code" id="hp-elements-value">#11B329</code></span>
               </label>
             </div>
             <div class="hp-palette-controls stack">
-              <select id="hp-preset" aria-label="Colour palette">
+              <select id="hp-preset" aria-label="Colour palette" data-tooltip="Choose palette">
                 <option value="forbidden">Forbidden Lands</option>
                 <option value="dusk">Dusk &amp; gold</option>
                 <option value="ember">Ember coast</option>
@@ -630,16 +655,26 @@
                   placeholder="New palette name"
                   autocomplete="off"
                 />
-                <button type="submit">Save palette</button>
+                <button
+                  type="submit"
+                  id="hp-save-palette"
+                  data-tooltip="Save these colours as a new custom palette."
+                >
+                  Save new palette
+                </button>
               </div>
             </div>
             <div class="hp-map-navigation stack">
               <div class="hp-map-modes stack">
-                <button type="button" id="hp-regenerate">
+                <button
+                  type="button"
+                  id="hp-regenerate"
+                  data-tooltip="Change props and decorations placement on the map"
+                >
                   <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                     <use href="/icons/pixelarticons.svg#refresh"></use>
                   </svg>
-                  Regenerate
+                  Regenerate map
                 </button>
                 <button
                   type="button"
@@ -648,19 +683,20 @@
                   role="switch"
                   aria-checked="true"
                   aria-label="Wind"
+                  data-tooltip="Turn wind animation off"
                 >
                   <span class="hp-motion-light" aria-hidden="true"></span>
-                  <span>Wind is <span id="hp-motion-state" aria-hidden="true">ON</span></span>
+                  <span>Wind <span id="hp-motion-state" aria-hidden="true">ON</span></span>
                 </button>
               </div>
               <div class="hp-panel-actions">
                 <button
                   type="button"
                   id="hp-toggle-settings"
-                  aria-label="Collapse palette and settings"
-                  title="Collapse palette and settings"
+                  aria-label="Close palette and settings"
                   aria-expanded="true"
                   aria-controls="hp-palette-form"
+                  data-tooltip="Close panel"
                 >
                   <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                     <use href="/icons/pixelarticons.svg#collapse"></use>
@@ -674,10 +710,14 @@
           id="hp-move-party-dialog"
           class="hp-inspector-dialog"
           aria-labelledby="hp-move-party-question"
+          aria-describedby="hp-move-party-description"
         >
           <h2 id="hp-move-party-question"></h2>
+          <p id="hp-move-party-description">
+            Moving marks this hex visited. Cancel inspects it instead.
+          </p>
           <div class="hp-tools cluster">
-            <button type="button" id="hp-move-party-cancel" autofocus>Cancel</button>
+            <button type="button" id="hp-move-party-cancel" autofocus>Cancel move</button>
             <button type="button" id="hp-move-party-confirm">Move token</button>
           </div>
         </dialog>
@@ -693,7 +733,7 @@
               type="button"
               class="hp-panel-order hp-move-up"
               data-direction="-1"
-              title="Move panel up"
+              data-tooltip="Move panel up"
             >
               <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <use href="/icons/pixelarticons.svg#arrow-bar-up"></use>
@@ -703,7 +743,7 @@
               type="button"
               class="hp-panel-order hp-move-down"
               data-direction="1"
-              title="Move panel down"
+              data-tooltip="Move panel down"
             >
               <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <use href="/icons/pixelarticons.svg#arrow-bar-down"></use>
@@ -730,9 +770,10 @@
           <button
             type="button"
             id="hp-party-reveal"
-            aria-label="Party token appearance"
+            aria-label="Change token appearance"
             aria-controls="hp-party-appearance"
             aria-expanded="false"
+            data-tooltip="Change token appearance"
           >
             <img id="hp-party-preview" alt="Party token" />
           </button>
@@ -740,8 +781,8 @@
             <button
               type="button"
               id="hp-party-color"
-              aria-label="Cycle party token color"
-              title="Cycle token color"
+              aria-label="Change token colour"
+              data-tooltip="Cycle token color"
             >
               <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <use href="/icons/pixelarticons.svg#colors-swatch"></use>
@@ -750,8 +791,8 @@
             <button
               type="button"
               id="hp-party-type"
-              aria-label="Cycle party token type"
-              title="Cycle token type"
+              aria-label="Change token shape"
+              data-tooltip="Cycle token type"
             >
               <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <use href="/icons/pixelarticons.svg#user"></use>
@@ -782,7 +823,7 @@
               id="hp-party-locate-position"
               class="hp-seed-action"
               aria-label="Locate party hex"
-              title="Select and focus party hex"
+              data-tooltip="Show party location"
             >
               <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <use href="/icons/pixelarticons.svg#compass"></use>
@@ -798,7 +839,7 @@
                   id="hp-party-locate-settlement"
                   class="hp-seed-action"
                   aria-label="Locate nearest settlement"
-                  title="Select and focus nearest settlement"
+                  data-tooltip="Show nearest settlement"
                 >
                   <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                     <use href="/icons/pixelarticons.svg#map-pin"></use>
@@ -815,7 +856,7 @@
                   id="hp-party-locate-poi"
                   class="hp-seed-action"
                   aria-label="Locate nearest point of interest"
-                  title="Select and focus nearest point of interest"
+                  data-tooltip="Show nearest point of interest"
                 >
                   <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                     <use href="/icons/pixelarticons.svg#map-pin"></use>
@@ -831,11 +872,11 @@
                   type="button"
                   id="hp-party-locate-visited"
                   class="hp-seed-action"
-                  aria-label="Select visited land hexes"
-                  title="Select all visited land hexes"
+                  aria-label="Select visited hexes"
+                  data-tooltip="Select all visited hexes"
                 >
                   <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
-                    <use href="/icons/pixelarticons.svg#map-pin"></use>
+                    <use href="/icons/pixelarticons.svg#grid-2x2-2"></use>
                   </svg>
                 </button>
                 <span>Hexes visited</span>
@@ -851,6 +892,7 @@
               <dd id="hp-party-sessions"></dd>
             </div>
           </dl>
+          <p id="hp-party-keyboard-help" class="hp-field-note">Move: Q/W/E · A/S/D</p>
         </div>
       </div>
     </template>
@@ -867,11 +909,12 @@
               class="hp-motion hp-hex-visited"
               role="switch"
               aria-label="Visited"
+              data-tooltip="Mark as visited"
             >
               <span class="hp-motion-light" aria-hidden="true"></span>
               <span id="hp-hex-visited-state">Visited</span>
             </button>
-            <h3 id="hp-hex-name"></h3>
+            <h3 id="hp-hex-name" tabindex="-1"></h3>
           </div>
           <span id="hp-hex-address" class="hp-pixel"></span>
           <dl class="hp-hex-distances" aria-label="Distances in hex steps">
@@ -891,7 +934,12 @@
         </div>
       </div>
       <form id="hp-hex-form" class="hp-inspector-content" aria-labelledby="hp-hex-name">
-        <fieldset id="hp-hex-fields" class="hp-hex-fields grid-pair" disabled>
+        <fieldset
+          id="hp-hex-fields"
+          class="hp-hex-fields grid-pair"
+          aria-describedby="hp-hex-constraint"
+          disabled
+        >
           <label>
             Terrain
             <select id="hp-hex-terrain" aria-label="Terrain"></select>
@@ -928,7 +976,7 @@
           </label>
           <p id="hp-hex-constraint" class="hp-field-note" hidden></p>
         </fieldset>
-        <output id="hp-hex-feedback" class="hp-hex-feedback" role="alert"></output>
+        <output id="hp-hex-feedback" class="hp-hex-feedback" role="alert" tabindex="-1"></output>
         <div class="hp-inspector-action-cluster">
           <div class="hp-inspector-edit-actions">
             <button type="button" id="hp-hex-edit">
@@ -945,7 +993,11 @@
               </svg>
               Undo
             </button>
-            <button type="button" id="hp-hex-reset">
+            <button
+              type="button"
+              id="hp-hex-reset"
+              data-tooltip="Restore generated hex; keep visited status"
+            >
               <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <use href="/icons/pixelarticons.svg#close"></use>
               </svg>
@@ -953,13 +1005,23 @@
             </button>
           </div>
           <div class="hp-inspector-actions">
-            <button type="button" id="hp-hex-regenerate">
+            <button
+              type="button"
+              id="hp-hex-regenerate"
+              data-tooltip="Change props and decorations placement in this hex"
+            >
               <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <use href="/icons/pixelarticons.svg#refresh"></use>
               </svg>
               Regenerate hex
             </button>
-            <button type="button" id="hp-hex-lock" role="switch" aria-label="Lock hex dressing">
+            <button
+              type="button"
+              id="hp-hex-lock"
+              role="switch"
+              aria-label="Lock appearance"
+              data-tooltip="Keep appearance when regenerating"
+            >
               <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <use href="/icons/pixelarticons.svg#lock"></use>
               </svg>
@@ -969,7 +1031,7 @@
               <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <use href="/icons/pixelarticons.svg#image"></use>
               </svg>
-              Set as world icon
+              Use as campaign icon
             </button>
           </div>
           <div class="hp-inspector-actions">
@@ -985,8 +1047,7 @@
     </template>
     <template id="batch-inspector-template">
       <div class="hp-batch-overview">
-        <h3 id="hp-batch-count" class="hp-pixel" role="status"></h3>
-        <p class="hp-field-note">Select hexes on the map.</p>
+        <h3 id="hp-batch-count" tabindex="-1" class="hp-pixel" role="status"></h3>
         <div class="hp-inspector-edit-actions">
           <button type="button" id="hp-batch-all">Select all</button>
           <button type="button" id="hp-batch-clear">Clear selection</button>
@@ -999,7 +1060,11 @@
         </div>
       </div>
       <form id="hp-batch-form" class="hp-inspector-content" aria-labelledby="hp-batch-count">
-        <fieldset id="hp-batch-fields" class="hp-hex-fields grid-pair">
+        <fieldset
+          id="hp-batch-fields"
+          class="hp-hex-fields grid-pair"
+          aria-describedby="hp-batch-note"
+        >
           <label>Terrain<select id="hp-batch-terrain" aria-label="Terrain"></select></label>
           <label
             >Settlement<select id="hp-batch-settlement" aria-label="Settlement"></select
@@ -1016,44 +1081,66 @@
           <button type="button" id="hp-batch-join" hidden>Join town</button>
         </fieldset>
         <p id="hp-batch-note" class="hp-field-note"></p>
-        <output id="hp-batch-feedback" class="hp-hex-feedback" role="alert"></output>
+        <output id="hp-batch-feedback" class="hp-hex-feedback" role="alert" tabindex="-1"></output>
         <div class="hp-inspector-action-cluster">
           <div class="hp-inspector-edit-actions">
             <button type="submit" id="hp-batch-apply">Apply to selected hexes</button>
             <button type="button" id="hp-batch-cancel">Discard changes</button>
             <button type="button" id="hp-batch-undo">Undo</button>
-            <button type="button" id="hp-batch-reset">Reset selected</button>
+            <button
+              type="button"
+              id="hp-batch-reset"
+              data-tooltip="Reset hexes, including visited status"
+            >
+              Reset selected
+            </button>
           </div>
         </div>
       </form>
     </template>
     <template id="reset-selected-dialog-template">
-      <dialog class="hp-inspector-dialog" aria-labelledby="hp-reset-selected-title">
+      <dialog
+        class="hp-inspector-dialog"
+        aria-labelledby="hp-reset-selected-title"
+        aria-describedby="hp-reset-selected-description"
+      >
         <h2 id="hp-reset-selected-title">Reset selected hexes?</h2>
-        <p data-reset-count></p>
+        <p id="hp-reset-selected-description" data-reset-count></p>
         <div class="hp-tools cluster">
-          <button type="button" data-reset-selected="cancel" autofocus>Keep changes</button>
+          <button type="button" data-reset-selected="cancel" autofocus>Cancel</button>
           <button type="button" data-reset-selected="confirm">Reset selected</button>
         </div>
       </dialog>
     </template>
     <template id="unsaved-batch-dialog-template">
-      <dialog class="hp-inspector-dialog" aria-labelledby="hp-unsaved-batch-title">
+      <dialog
+        class="hp-inspector-dialog"
+        aria-labelledby="hp-unsaved-batch-title"
+        aria-describedby="hp-unsaved-batch-description"
+      >
         <h2 id="hp-unsaved-batch-title">Unsaved edits</h2>
-        <p>Apply these edits before continuing?</p>
+        <p id="hp-unsaved-batch-description">
+          Apply these edits before continuing? Discard changes keeps the saved hexes unchanged.
+        </p>
         <div class="hp-tools cluster">
-          <button type="button" data-unsaved="keep">Keep editing</button>
+          <button type="button" data-unsaved="keep" autofocus>Keep editing</button>
           <button type="button" data-unsaved="discard">Discard changes</button>
           <button type="button" data-unsaved="apply">Apply changes</button>
         </div>
       </dialog>
     </template>
     <template id="unsaved-hex-dialog-template">
-      <dialog class="hp-inspector-dialog" aria-labelledby="hp-unsaved-title">
+      <dialog
+        class="hp-inspector-dialog"
+        aria-labelledby="hp-unsaved-title"
+        aria-describedby="hp-unsaved-hex-description"
+      >
         <h2 id="hp-unsaved-title">Unsaved edits</h2>
-        <p>Apply these edits before continuing?</p>
+        <p id="hp-unsaved-hex-description">
+          Apply these edits before continuing? Discard changes keeps the saved hexes unchanged.
+        </p>
         <div class="hp-tools cluster">
-          <button type="button" data-unsaved="keep">Keep editing</button>
+          <button type="button" data-unsaved="keep" autofocus>Keep editing</button>
           <button type="button" data-unsaved="discard">Discard changes</button>
           <button type="button" data-unsaved="apply">Apply changes</button>
         </div>

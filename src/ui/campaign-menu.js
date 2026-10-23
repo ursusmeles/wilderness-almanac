@@ -1,3 +1,4 @@
+import { openDialog } from './dialog-focus.js';
 import { generateWorld } from '../generation/world.js';
 import { campaignWorld } from '../generation/campaign-world.js';
 import { cloneTemplate } from './templates.js';
@@ -44,13 +45,18 @@ export function createCampaignMenu({
   let storageAvailable = true;
   let pendingDeleteId;
   let opening = false;
+  let importing = false;
   let releaseBusy = () => {};
+
+  function revealIconControls(icon, revealed) {
+    icon.classList.toggle('is-revealed', revealed);
+    icon.querySelector('.campaign-icon-toggle').setAttribute('aria-expanded', String(revealed));
+  }
 
   function hideIconControls(except) {
     list.querySelectorAll('.campaign-icon.is-revealed').forEach((icon) => {
       if (icon === except) return;
-      icon.classList.remove('is-revealed');
-      icon.querySelector('.campaign-icon-toggle').setAttribute('aria-expanded', 'false');
+      revealIconControls(icon, false);
     });
   }
 
@@ -127,13 +133,7 @@ export function createCampaignMenu({
     const images = ready ?? (await loadThumbnails(campaign, { allowStale: true }));
     if (!card.isConnected || card.iconRequest !== request) return;
     card.iconEntries = images;
-    shuffle.disabled = opening || images.length < 2;
-    shuffle.title =
-      images.length === 0
-        ? 'Open this campaign to prepare icon previews'
-        : images.length === 1
-          ? 'No other icon previews available'
-          : 'Next cached world icon';
+    shuffle.disabled = opening || importing || images.length < 2;
     const img = card.querySelector('.campaign-icon img');
     const placeholder = card.querySelector('.campaign-icon-placeholder');
     const previous =
@@ -156,14 +156,22 @@ export function createCampaignMenu({
   }
 
   function labelActions(card, campaign) {
-    card.querySelector('[data-action="share"]').title =
-      'Copy seed link. Transfer hex edits with campaign JSON.';
+    const helps = {
+      share: 'Copy shareable URL with original seed',
+      copy: 'Copy seed',
+      download: 'Export this campaign to a JSON file',
+      delete: 'Delete campaign',
+    };
+    for (const [action, text] of Object.entries(helps))
+      card.querySelector(`[data-action="${action}"]`).dataset.tooltip = text;
     for (const [action, label] of [
       ['enter', 'Enter'],
-      ['download', 'Download JSON for'],
+      ['copy', 'Copy seed for'],
+      ['share', 'Share seed for'],
+      ['download', 'Export'],
       ['delete', 'Delete'],
       ['shuffle', 'Next icon for'],
-      ['icon-controls', 'Show icon controls for'],
+      ['icon-controls', 'Change icon for'],
     ])
       card
         .querySelector(`[data-action="${action}"]`)
@@ -182,7 +190,6 @@ export function createCampaignMenu({
       const name = card.querySelector('.campaign-name');
       name.value = campaign.name;
       name.setAttribute('aria-label', `Campaign name: ${campaign.name}`);
-      name.title = 'Edit campaign name';
 
       card.querySelector('.campaign-date').dateTime = campaign.createdAt;
       card.querySelector('.campaign-date').textContent = new Intl.DateTimeFormat(undefined, {
@@ -196,9 +203,7 @@ export function createCampaignMenu({
       const ratio = card.querySelector('.campaign-ratio');
       ratio.querySelector('dd').textContent =
         `${data.stats.waterPercent}% / ${data.stats.landPercent}%`;
-      ratio.title = `${data.stats.openWater} ocean/lake hexes : ${data.stats.land} land hexes (river channels excluded)`;
       card.querySelector('.campaign-seed').textContent = campaign.seed;
-      card.querySelector('.campaign-seed').title = campaign.seed;
       labelActions(card, campaign);
       cards.push(card);
       void paintIcon(card, campaign);
@@ -213,7 +218,7 @@ export function createCampaignMenu({
   }
 
   async function enter(campaign, button = newButton) {
-    if (opening || menu.hidden || listeners.signal.aborted) return false;
+    if (opening || importing || menu.hidden || listeners.signal.aborted) return false;
     opening = true;
     const creating = !campaign;
     const controls = [...menu.querySelectorAll('button, input')].map((control) => [
@@ -223,12 +228,15 @@ export function createCampaignMenu({
     const label = button.getAttribute('aria-label');
     const title = newButton.querySelector('strong');
     const originalTitle = title.textContent;
+    const enterText = button.querySelector('span');
+    const originalEnterText = enterText?.textContent;
     releaseBusy = () => {
       for (const [control, disabled] of controls) control.disabled = disabled;
       button.removeAttribute('aria-busy');
       if (label === null) button.removeAttribute('aria-label');
       else button.setAttribute('aria-label', label);
       title.textContent = originalTitle;
+      if (button !== newButton && enterText) enterText.textContent = originalEnterText;
       opening = false;
       releaseBusy = () => {};
     };
@@ -236,7 +244,10 @@ export function createCampaignMenu({
     button.setAttribute('aria-busy', 'true');
     if (button === newButton)
       title.textContent = creating ? 'Creating campaign…' : 'Opening campaign…';
-    else button.setAttribute('aria-label', `Opening ${campaign.name}…`);
+    else {
+      button.setAttribute('aria-label', `Opening ${campaign.name}…`);
+      if (enterText) enterText.textContent = 'Opening…';
+    }
     expireUndo();
     setMessage(creating ? 'Creating your campaign…' : 'Opening campaign…');
     try {
@@ -280,18 +291,17 @@ export function createCampaignMenu({
   function download(campaign) {
     const date = new Date();
     downloadFile(exportCampaign(campaign, date), campaignFilename(campaign, date));
-    setMessage(`Downloaded “${campaign.name}”`);
+    setMessage(`Campaign export started: “${campaign.name}”`);
   }
 
   listen(document.getElementById('download-campaign-recovery'), 'click', () => {
     const source = store.recovery();
     if (source == null) return;
     downloadFile(source, campaignFilename({ name: 'recovery' }));
-    setMessage('Recovery file downloaded. Keep it with your campaign backups.');
+    setMessage('Recovery export started. Keep it with your campaign backups.');
   });
 
   function rename(input) {
-    expireUndo();
     const campaign = campaigns.find(
       (item) => item.id === input.closest('.campaign-card').dataset.id,
     );
@@ -300,7 +310,12 @@ export function createCampaignMenu({
       input.value = campaign.name;
       return;
     }
-    if (name !== campaign.name) campaign.nameEdited = true;
+    if (name === campaign.name) {
+      input.value = name;
+      return;
+    }
+    expireUndo();
+    campaign.nameEdited = true;
     campaign.name = name;
     input.value = name;
     input.setAttribute('aria-label', `Campaign name: ${name}`);
@@ -330,9 +345,26 @@ export function createCampaignMenu({
       event.target.blur();
     }
   });
+  for (const type of ['pointerover', 'focusin'])
+    listen(list, type, (event) => {
+      if (
+        type === 'pointerover'
+          ? event.pointerType !== 'mouse'
+          : !event.target.matches(':focus-visible')
+      )
+        return;
+      const icon = event.target.closest('.campaign-icon');
+      if (icon) revealIconControls(icon, true);
+    });
+  for (const type of ['pointerout', 'focusout'])
+    listen(list, type, (event) => {
+      const icon = event.target.closest('.campaign-icon');
+      if (icon && !icon.contains(event.relatedTarget) && !icon.contains(document.activeElement))
+        revealIconControls(icon, false);
+    });
   listen(list, 'click', async (event) => {
     const button = event.target.closest('[data-action]');
-    if (!button || opening || menu.hidden) return;
+    if (!button || opening || importing || menu.hidden) return;
     const campaign = campaigns.find(
       (item) => item.id === button.closest('.campaign-card').dataset.id,
     );
@@ -341,8 +373,10 @@ export function createCampaignMenu({
     if (action === 'icon-controls') {
       const icon = button.closest('.campaign-icon');
       hideIconControls(icon);
-      const revealed = icon.classList.toggle('is-revealed');
-      button.setAttribute('aria-expanded', String(revealed));
+      revealIconControls(
+        icon,
+        event.pointerType === 'mouse' || !icon.classList.contains('is-revealed'),
+      );
       return;
     }
     if (action === 'enter') return enter(campaign, button);
@@ -362,10 +396,14 @@ export function createCampaignMenu({
       pendingDeleteId = campaign.id;
       document.getElementById('delete-campaign-name').textContent = campaign.name;
       deleteDialog.returnValue = 'cancel';
-      deleteDialog.showModal();
+      openDialog(deleteDialog);
       return;
     }
     try {
+      button.disabled = true;
+      button.setAttribute('aria-busy', 'true');
+      button.classList.add('hp-working');
+      setMessage(action === 'copy' ? 'Copying seed…' : 'Copying map link…');
       await copyText(action === 'copy' ? campaign.seed : mapLink(window.location.href, campaign));
       setMessage(action === 'copy' ? 'Seed copied' : 'Map link copied');
     } catch {
@@ -375,6 +413,10 @@ export function createCampaignMenu({
           : 'Could not copy a link. Enter the campaign and copy the URL from the address bar.',
         true,
       );
+    } finally {
+      button.disabled = opening || importing;
+      button.removeAttribute('aria-busy');
+      button.classList.remove('hp-working');
     }
   });
   listen(document, 'click', (event) => {
@@ -406,12 +448,27 @@ export function createCampaignMenu({
   });
   listen(newButton, 'click', () => (onNewCampaign ? onNewCampaign() : enter()));
   listen(document.getElementById('import-campaign'), 'click', () => {
+    if (opening || importing) return;
     expireUndo();
     fileInput.click();
   });
   listen(fileInput, 'change', async () => {
     const file = fileInput.files[0];
-    if (!file) return;
+    if (!file || importing || opening) return;
+    importing = true;
+    const importButton = document.getElementById('import-campaign');
+    const original = importButton.innerHTML;
+    const controls = [...menu.querySelectorAll('button, input')].map((control) => [
+      control,
+      control.disabled,
+    ]);
+    controls.forEach(([control]) => {
+      control.disabled = true;
+    });
+    importButton.textContent = 'Importing…';
+    importButton.setAttribute('aria-busy', 'true');
+    importButton.classList.add('hp-working');
+    setMessage('Reading and validating campaign…');
     try {
       if (file.size > MAX_CAMPAIGN_BYTES)
         throw new Error('Choose a campaign JSON file smaller than 4 MB.');
@@ -425,6 +482,18 @@ export function createCampaignMenu({
       setMessage(error.message, true);
     } finally {
       fileInput.value = '';
+      importing = false;
+      if (!listeners.signal.aborted) {
+        controls.forEach(([control, disabled]) => {
+          if (control.isConnected) control.disabled = disabled;
+        });
+        importButton.innerHTML = original;
+        importButton.removeAttribute('aria-busy');
+        importButton.classList.remove('hp-working');
+        list.querySelectorAll('[data-action="shuffle"]').forEach((button) => {
+          button.disabled = (button.closest('.campaign-card').iconEntries?.length ?? 0) < 2;
+        });
+      }
     }
   });
 

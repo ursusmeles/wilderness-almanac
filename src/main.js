@@ -1,3 +1,4 @@
+import { openDialog } from './ui/dialog-focus.js';
 import { generateWorld } from './generation/world.js';
 import { prepareMap } from './generation/presentation.js';
 import { palettes, paletteNames, paletteTheme, DEFAULT_PALETTE } from './palette.js';
@@ -19,6 +20,8 @@ import { createBatchInspector } from './ui/batch-inspector.js';
 import { createMapAction } from './ui/map-action.js';
 import { loadThumbnails, saveThumbnails } from './ui/thumbnail-cache.js';
 import { createViewNavigation } from './ui/view-navigation.js';
+import { createControlTooltips } from './ui/control-help.js';
+import { PARTY_KEYS, partyDestinations } from './application/party-navigation.js';
 
 const root = document.getElementById('campaign-workspace');
 const navigation = createViewNavigation(document.getElementById('campaign-menu'), root);
@@ -92,6 +95,10 @@ const mapConsole = createMapConsole({
     message.textContent = kind === 'summary' ? text.replace(' · ', '\n· ') : text;
     message.title = text;
     message.dataset.kind = kind;
+    const notice = element('mobile-notice');
+    notice.textContent = text;
+    notice.dataset.kind = kind;
+    notice.hidden = !['action', 'error'].includes(kind) || !text;
   },
   announce(text) {
     element('announcement').textContent = text;
@@ -104,15 +111,17 @@ const mapOptions = element('map-options');
 const expandMap = element('expand-map');
 let settingsOpen = saved.settingsOpen ?? !mobileLayout.matches;
 let expanded = false;
+let keyboardNavigation = false;
+const controlTooltips = createControlTooltips();
 
 function setSettingsOpen(enabled) {
   settingsOpen = enabled;
   mapOptions.classList.toggle('is-collapsed', !enabled);
   const button = element('toggle-settings');
-  const label = `${enabled ? 'Collapse' : 'Open'} palette and settings`;
+  const label = `${enabled ? 'Close' : 'Open'} palette and settings`;
   button.setAttribute('aria-expanded', String(enabled));
   button.setAttribute('aria-label', label);
-  button.title = label;
+  button.dataset.tooltip = enabled ? 'Close panel' : 'Open panel';
   button
     .querySelector('use')
     .setAttribute('href', `/icons/pixelarticons.svg#${enabled ? 'collapse' : 'expand'}`);
@@ -138,12 +147,20 @@ function setExpanded(enabled) {
   const label = enabled ? 'Exit expanded map' : 'Expand map to viewport';
   expandMap.setAttribute('aria-label', label);
   expandMap.setAttribute('aria-pressed', String(enabled));
-  expandMap.title = label;
+  expandMap.dataset.tooltip = enabled ? 'Exit expanded map' : 'Expand map';
   if (!enabled) inspector?.refreshPreview();
 }
 
 listen(expandMap, 'click', () => setExpanded(!expanded));
+listen(document, 'pointerdown', () => {
+  keyboardNavigation = false;
+  renderer?.setPartyKeys(false);
+});
 listen(document, 'keydown', (event) => {
+  if (event.key === 'Tab' && !root.hidden && !document.querySelector('dialog[open]')) {
+    keyboardNavigation = true;
+    renderer?.setPartyKeys(Boolean(session.snapshot()?.partySelected));
+  }
   if (event.key === 'Escape' && expanded) {
     event.preventDefault();
     setExpanded(false);
@@ -160,6 +177,22 @@ listen(document, 'keydown', (event) => {
     )
   )
     return;
+  if (event.key === 'Tab' || Object.hasOwn(PARTY_KEYS, event.key.toLowerCase())) {
+    keyboardNavigation = true;
+    renderer?.setPartyKeys(Boolean(session.snapshot()?.partySelected));
+  }
+  const shortcut = event.key.toLowerCase();
+  if (session.snapshot()?.partySelected && Object.hasOwn(PARTY_KEYS, shortcut)) {
+    event.preventDefault();
+    if (event.repeat || mapAction.isBusy() || renderer?.isInteracting()) return;
+    const target = partyDestinations(
+      session.snapshot().campaign.partyToken.key,
+      displayView.layout,
+    ).find((entry) => entry.shortcut === shortcut);
+    if (target) handleAction(session.moveParty(target.key));
+    else mapConsole.notify('Map edge: no adjacent hex in that direction.');
+    return;
+  }
   const pan = {
     ArrowLeft: [-1, 0],
     ArrowRight: [1, 0],
@@ -174,7 +207,7 @@ listen(document, 'keydown', (event) => {
   const factor = event.key === '+' || event.key === '=' ? 1.2 : event.key === '-' ? 1 / 1.2 : 0;
   if (factor) {
     event.preventDefault();
-    renderer?.zoom(factor);
+    if (!mapAction.isBusy()) renderer?.zoom(factor);
   }
 });
 function syncMobileLayout() {
@@ -289,7 +322,7 @@ function presentCampaign({ resetView = false } = {}) {
           const name = session.snapshot().campaign.partyToken.name ?? 'Adventurers';
           element('move-party-question').textContent =
             `Move ${name} token to ${selection.querySelector(`option[value="${key}"]`).textContent}?`;
-          if (!movePartyDialog.open) movePartyDialog.showModal();
+          if (!movePartyDialog.open) openDialog(movePartyDialog);
           return;
         }
         const enableMultiEdit = additive && !multiEdit;
@@ -312,7 +345,6 @@ function presentCampaign({ resetView = false } = {}) {
           inspector.reset();
           batchInspector.reset();
         }
-        if (multiEdit && !additive) session.clearSelection();
         if (!enableMultiEdit || key !== selected) session.select(key);
         selection.value = key;
         root.dataset.selected = key;
@@ -391,7 +423,10 @@ async function cacheCampaignIcons(revision) {
 
 function handleAction(result) {
   if (!result.ok) {
-    if (result.error) activeInspector().error(result.error);
+    if (result.error) {
+      activeInspector().error(result.error);
+      mapConsole.error(result.error);
+    }
     return false;
   }
   if (result.scope === 'world') renderWorld();
@@ -411,6 +446,7 @@ function syncFogControls() {
   const enabled = Boolean(session.snapshot()?.campaign.fogOfWar);
   element('fog').setAttribute('aria-checked', String(enabled));
   element('fog-state').textContent = enabled ? 'ON' : 'OFF';
+  element('fog').dataset.tooltip = enabled ? 'Turn fog of war off' : 'Turn fog of war on';
   root.dataset.fogOfWar = String(enabled);
   element('regenerate').hidden = !settingsOpen || enabled;
 }
@@ -494,6 +530,8 @@ function applyPalette() {
     element(name).value = colors[index];
     element(name).closest('.hp-swatch').style.setProperty('--swatch-color', colors[index]);
     element(`${name}-value`).textContent = colors[index].toUpperCase();
+    element(name).dataset.tooltip =
+      `${name[0].toUpperCase() + name.slice(1)} · ${colors[index].toUpperCase()}`;
   });
   selectPalette(colors);
 }
@@ -529,7 +567,10 @@ function selectParty() {
     syncSelection();
     return false;
   }
-  if (session.snapshot().partySelected) return true;
+  if (session.snapshot().partySelected) {
+    element('scene').querySelector('canvas')?.focus({ preventScroll: true });
+    return true;
+  }
   const change = () => {
     session.selectParty();
     inspector.reset();
@@ -537,6 +578,7 @@ function selectParty() {
     partyInspector.reset();
     syncSelection();
     updateInspector();
+    element('scene').querySelector('canvas')?.focus({ preventScroll: true });
   };
   if (!activeInspector().beforeLeave(change)) {
     syncSelection();
@@ -579,6 +621,7 @@ function cancelPartyMove() {
   renderer?.cancelInteraction();
   movePartyDialog.close();
   if (target && target.campaignId === session.snapshot()?.campaign.id) renderer.select(target.key);
+  element('scene').querySelector('canvas')?.focus({ preventScroll: true });
 }
 listen(element('move-party-cancel'), 'click', cancelPartyMove);
 listen(movePartyDialog, 'cancel', (event) => {
@@ -593,6 +636,7 @@ listen(element('move-party-confirm'), 'click', () => {
   if (target && target.campaignId === session.snapshot()?.campaign.id && !mapAction.isBusy())
     handleAction(session.moveParty(target.key));
   movePartyDialog.close();
+  element('scene').querySelector('canvas')?.focus({ preventScroll: true });
 });
 listen(element('in'), 'click', () => renderer?.zoom(1.2));
 listen(element('out'), 'click', () => renderer?.zoom(1 / 1.2));
@@ -601,6 +645,9 @@ listen(element('mobile-out'), 'click', () => renderer?.zoom(1 / 1.2));
 function updateMovementToggle() {
   element('motion').setAttribute('aria-checked', String(movement));
   element('motion-state').textContent = movement ? 'ON' : 'OFF';
+  element('motion').dataset.tooltip = movement
+    ? 'Turn wind animation off'
+    : 'Turn wind animation on';
 }
 updateMovementToggle();
 listen(element('motion'), 'click', () => {
@@ -636,6 +683,11 @@ function syncSelection() {
   );
   root.dataset.selected = state.partySelected ? '' : state.selected;
   selection.value = state.partySelected ? PARTY_SELECTION : state.selected;
+  selection.setAttribute(
+    'aria-label',
+    state.multiEdit ? 'Add or remove a hex' : 'Select hex or party',
+  );
+  renderer?.setPartyKeys(state.partySelected && keyboardNavigation);
   singleInspectorHost.hidden = state.partySelected || state.multiEdit;
   batchInspectorHost.hidden = state.partySelected || !state.multiEdit;
   partyInspectorHost.hidden = !state.partySelected;
@@ -649,11 +701,11 @@ function toggleMultiEdit() {
     batchInspector.reset();
     syncSelection();
     updateInspector();
-    mapConsole.notify(
-      session.snapshot().multiEdit
-        ? 'Multi edit on: Ctrl+click or Cmd+click to add or remove hexes'
-        : 'Multi edit off',
+    mapConsole.notify(session.snapshot().multiEdit ? 'Multiselect on' : 'Multiselect off');
+    const focus = root.querySelector(
+      session.snapshot().multiEdit ? '#hp-batch-count' : '#hp-hex-edit',
     );
+    if (panels.inspectorVisible()) focus?.focus({ preventScroll: true });
   };
   if (!mapAction.isBusy() && activeInspector().beforeLeave(change)) change();
 }
@@ -694,9 +746,25 @@ listen(preset, 'change', () => {
   listen(element(name), 'input', (event) => {
     const colors = session.snapshot().campaign.colors.slice();
     colors[index] = event.target.value;
-    handleAction(session.palette(colors, 'Custom'));
+    handleAction({ ...session.palette(colors, 'Custom'), notification: undefined });
   }),
 );
+for (const name of ['ground', 'water', 'elements'])
+  listen(element(name), 'change', () =>
+    mapConsole.notify(
+      `${name[0].toUpperCase() + name.slice(1)} colour saved: ${element(name).value.toUpperCase()}`,
+    ),
+  );
+function syncPaletteSaveLabel() {
+  const name = element('palette-name').value.trim();
+  const existing = savedPalettes.find(
+    (palette) => palette.name.toLowerCase() === name.toLowerCase(),
+  );
+  element('save-palette').textContent = existing ? `Update ${existing.name}` : 'Save new palette';
+  element('save-palette').dataset.tooltip = existing
+    ? `Replace the saved colours in “${existing.name}”; other campaigns keep their colours.`
+    : 'Save these colours as a new custom palette.';
+}
 listen(element('palette-form'), 'submit', (event) => {
   event.preventDefault();
   const input = element('palette-name');
@@ -719,8 +787,12 @@ listen(element('palette-form'), 'submit', (event) => {
     notification: index < 0 ? 'Palette created' : 'Palette updated',
   });
   input.value = '';
+  syncPaletteSaveLabel();
 });
-listen(element('palette-name'), 'input', () => element('palette-name').setCustomValidity(''));
+listen(element('palette-name'), 'input', () => {
+  element('palette-name').setCustomValidity('');
+  syncPaletteSaveLabel();
+});
 
 function updateInspector() {
   const state = session.snapshot();
@@ -738,6 +810,8 @@ function updateInspector() {
       edits: campaign.hexEdits?.cells,
       join: campaign.fogOfWar ? null : state.join,
       canUndo,
+      undoLabel: state.undoLabel,
+      undoReason: state.undoReason,
     });
     return;
   }
@@ -755,6 +829,8 @@ function updateInspector() {
     visited: edit?.visited ?? false,
     locked: Boolean(edit?.lock),
     canUndo,
+    undoLabel: state.undoLabel,
+    undoReason: state.undoReason,
     isIcon: campaign.iconKey === selected,
   });
 }
@@ -771,7 +847,10 @@ partyInspector = createPartyInspector(partyInspectorHost, {
     if (mapAction.isBusy()) return;
     renderer.select(key);
     const state = session.snapshot();
-    if (!state.partySelected && !state.multiEdit && state.selected === key) renderer.focus(key);
+    if (!state.partySelected && !state.multiEdit && state.selected === key) {
+      renderer.focus(key);
+      mapConsole.notify(`Showing ${hexAddress(cellsByKey.get(key))}`);
+    }
   },
   onSelectVisited: (button) =>
     mapAction.run(
@@ -810,8 +889,10 @@ inspector = createHexInspector(singleInspectorHost, {
     mapAction.run(event.currentTarget, () => handleAction(session.undo()), 'Undoing…'),
   onSetIcon: () => handleAction(session.icon()),
   onMultiEdit: toggleMultiEdit,
+  onNotify: (text) => mapConsole.notify(text),
 });
 batchInspector = createBatchInspector(batchInspectorHost, {
+  onNotify: (text) => mapConsole.notify(text),
   onApply: (patch, button) => mapAction.run(button, () => handleAction(session.applyBatch(patch))),
   onJoin: (button) =>
     mapAction.run(button, () => handleAction(session.joinSelection()), 'Joining…'),
@@ -829,6 +910,7 @@ batchInspector = createBatchInspector(batchInspectorHost, {
         session.selectAll();
         syncSelection();
         updateInspector();
+        mapConsole.notify(`${session.snapshot().selectedKeys.length} hexes selected`);
       },
       'Selecting…',
     ),
@@ -840,6 +922,7 @@ batchInspector = createBatchInspector(batchInspectorHost, {
         session.clearSelection();
         syncSelection();
         updateInspector();
+        mapConsole.notify('Selection cleared');
       },
       'Clearing…',
     ),
@@ -912,6 +995,7 @@ if (import.meta.hot)
     listeners.abort();
     mapAction.dispose();
     mapConsole.dispose();
+    controlTooltips.dispose();
     renderer?.dispose();
     campaignMenu.dispose();
     campaignCreator.dispose();

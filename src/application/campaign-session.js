@@ -15,6 +15,7 @@ import {
   initialPartyToken,
   partyMetadata,
   PARTY_STYLES,
+  PARTY_COLOR_NAMES,
   validatePartyToken,
 } from './party-token.js';
 
@@ -52,6 +53,12 @@ export function createCampaignSession({ persist }) {
       partySelected,
       join: multiEdit ? settlementJoin(state.world, selectedKeys) : null,
       canUndo: history.length > 0 && (!state.campaign.fogOfWar || history.at(-1).fogSafe),
+      undoLabel: history.at(-1)?.action,
+      undoReason: !history.length
+        ? 'Nothing to undo'
+        : state.campaign.fogOfWar && !history.at(-1).fogSafe
+          ? 'Turn fog of war off to undo'
+          : '',
     };
   function save() {
     if (!state) return { campaignSaved: true, preferencesSaved: true, saved: true };
@@ -66,12 +73,13 @@ export function createCampaignSession({ persist }) {
     return persistence;
   }
   const result = (scope, notification) => ({ ok: true, scope, notification, state: snapshot() });
-  function remember(fogSafe) {
+  function remember(fogSafe, action) {
     history.push({
       variant: state.campaign.variant,
       hexEdits: state.campaign.hexEdits,
       partyKey: state.campaign.partyToken.key,
       fogSafe,
+      action,
     });
     if (history.length > 20) history.shift();
   }
@@ -84,6 +92,7 @@ export function createCampaignSession({ persist }) {
       rerollKey,
       validateKeys = [selected],
       fogSafe = false,
+      action = 'map change',
     } = {},
   ) {
     try {
@@ -124,7 +133,7 @@ export function createCampaignSession({ persist }) {
         }).cells[rerollKey];
       }
       for (const key of relock) next = lockHex(next, key, world, dressing);
-      remember(fogSafe);
+      remember(fogSafe, action);
       state = { ...state, campaign: next, world, dressing };
       save();
       return result(scope, notification);
@@ -176,7 +185,15 @@ export function createCampaignSession({ persist }) {
         const partyToken = validatePartyToken({ ...state.campaign.partyToken, ...patch });
         state = { ...state, campaign: { ...state.campaign, partyToken } };
         save();
-        return result('tracking');
+        const notification =
+          patch.name !== undefined
+            ? `Party renamed to “${partyToken.name}”`
+            : patch.color !== undefined
+              ? `Token colour: ${PARTY_COLOR_NAMES[partyToken.color]}`
+              : patch.style !== undefined
+                ? `Token shape: ${partyToken.style[0].toUpperCase() + partyToken.style.slice(1)}`
+                : 'Party details saved';
+        return result('tracking', notification);
       } catch (error) {
         return { ok: false, error: error.message };
       }
@@ -188,7 +205,14 @@ export function createCampaignSession({ persist }) {
         key,
         { visited: true },
       );
-      return transition(next, { scope: 'tracking', fogSafe: true });
+      if (key === state.campaign.partyToken.key && state.campaign.hexEdits?.cells[key]?.visited)
+        return result('tracking');
+      return transition(next, {
+        scope: 'tracking',
+        fogSafe: true,
+        action: 'party move',
+        notification: `${next.partyToken.name ?? 'Adventurers'} moved to ${hexAddress(state.world.cells.find((cell) => cell.key === key))}; hex marked visited`,
+      });
     },
     partyStyle(style) {
       if (!PARTY_STYLES.includes(style)) return { ok: false };
@@ -197,7 +221,7 @@ export function createCampaignSession({ persist }) {
         campaign: { ...state.campaign, partyToken: { ...state.campaign.partyToken, style } },
       };
       save();
-      return result('tracking');
+      return result('tracking', `Token shape: ${style[0].toUpperCase() + style.slice(1)}`);
     },
     select(key) {
       if (!state?.world.cells.some((cell) => cell.key === key)) return false;
@@ -246,13 +270,14 @@ export function createCampaignSession({ persist }) {
       if (state.campaign.fogOfWar) return fogError();
       state = { ...state, campaign: { ...state.campaign, iconKey: selected } };
       save();
-      return result('icon', 'World icon updated');
+      return result('icon', 'Campaign icon updated');
     },
     apply(patch) {
       try {
         const relock = state.campaign.hexEdits?.cells[selected]?.lock ? [selected] : [];
         return transition(updateHex(state.campaign, selected, patch), {
           relock,
+          action: 'hex update',
           notification: relock.length ? 'Hex updated and dressing relocked' : 'Hex updated',
         });
       } catch (error) {
@@ -312,6 +337,7 @@ export function createCampaignSession({ persist }) {
           relock,
           validateKeys: cells.map((cell) => cell.key),
           notification: `${cells.length} ${cells.length === 1 ? 'hex' : 'hexes'} updated`,
+          action: `update to ${cells.length} ${cells.length === 1 ? 'hex' : 'hexes'}`,
         });
       } catch (error) {
         return { ok: false, error: error.message };
@@ -319,13 +345,14 @@ export function createCampaignSession({ persist }) {
     },
     joinSelection() {
       try {
-        if (!multiEdit) throw new Error('Turn on multi edit to join settlements.');
+        if (!multiEdit) throw new Error('Turn on multiselect to join settlements.');
         const next = joinSettlements(state.campaign, state.world, selectedKeys, state.baseWorld);
         const relock = [...selectedKeys].filter((key) => state.campaign.hexEdits?.cells[key]?.lock);
         return transition(next, {
           relock,
           validateKeys: [...selectedKeys],
-          notification: 'Settlement joined',
+          notification: `${settlementJoin(state.world, selectedKeys)?.type === 'city' ? 'City' : 'Town'} joined across ${selectedKeys.size} hexes`,
+          action: 'settlement join',
         });
       } catch (error) {
         return { ok: false, error: error.message };
@@ -336,6 +363,7 @@ export function createCampaignSession({ persist }) {
       return transition(updateHex(state.campaign, selected, { visited }), {
         scope: 'tracking',
         fogSafe: true,
+        action: visited ? 'mark hex visited' : 'mark hex not visited',
         notification: visited ? 'Hex marked visited' : 'Hex marked not visited',
       });
     },
@@ -352,6 +380,7 @@ export function createCampaignSession({ persist }) {
       }
       return transition(next, {
         scope: 'tracking',
+        action: locked ? 'unlock appearance' : 'lock appearance',
         notification: locked ? 'Dressing unlocked' : 'Dressing locked',
       });
     },
@@ -362,12 +391,13 @@ export function createCampaignSession({ persist }) {
       return transition(updateHex(state.campaign, selected, { revision }), {
         rerollKey: selected,
         notification: 'Hex dressing regenerated',
+        action: 'hex appearance regeneration',
       });
     },
     regenerate() {
       return transition(
         { ...state.campaign, variant: state.campaign.variant + 1 },
-        { notification: 'Dressing regenerated' },
+        { notification: 'Map appearance regenerated', action: 'map appearance regeneration' },
       );
     },
     reset() {
@@ -375,7 +405,10 @@ export function createCampaignSession({ persist }) {
       const visited = next.hexEdits.cells[selected].visited;
       if (visited !== undefined) next.hexEdits.cells[selected] = { visited };
       else delete next.hexEdits.cells[selected];
-      return transition(next, { notification: 'Hex reset to generated' });
+      return transition(next, {
+        notification: 'Hex reset to generated; visited status kept',
+        action: 'hex reset',
+      });
     },
     resetSelected({ confirmed = false } = {}) {
       if (!multiEdit || !selectedKeys.size)
@@ -394,6 +427,7 @@ export function createCampaignSession({ persist }) {
         return transition(next, {
           validateKeys: [],
           notification: `${selectedKeys.size} ${selectedKeys.size === 1 ? 'hex' : 'hexes'} reset`,
+          action: `reset of ${selectedKeys.size} ${selectedKeys.size === 1 ? 'hex' : 'hexes'}`,
         });
       } catch (error) {
         return { ok: false, error: error.message };
@@ -402,7 +436,7 @@ export function createCampaignSession({ persist }) {
     undo() {
       if (!history.length) return { ok: false };
       if (state.campaign.fogOfWar && !history.at(-1).fogSafe) return fogError();
-      const { partyKey, fogSafe, ...previous } = history.at(-1);
+      const { partyKey, fogSafe, action, ...previous } = history.at(-1);
       const campaign = {
         ...state.campaign,
         ...previous,
@@ -413,7 +447,7 @@ export function createCampaignSession({ persist }) {
       history.pop();
       state = { ...state, campaign, world, dressing };
       save();
-      return result(fogSafe ? 'tracking' : 'world', 'Hex action undone');
+      return result(fogSafe ? 'tracking' : 'world', `Undid ${action}`);
     },
   };
 }

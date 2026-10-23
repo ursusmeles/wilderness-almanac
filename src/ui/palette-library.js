@@ -54,6 +54,12 @@ export function createPaletteLibrary(preferences) {
       if (defaultId === id) defaultId = DEFAULT_PALETTE;
       return true;
     },
+    restore(palette, index, wasDefault = false) {
+      if (get(palette.id) || palette.builtin) return false;
+      custom.splice(Math.min(index, custom.length), 0, palette);
+      if (wasDefault) defaultId = palette.id;
+      return true;
+    },
     setDefault(id) {
       if (!get(id)) return false;
       defaultId = id;
