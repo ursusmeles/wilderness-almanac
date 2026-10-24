@@ -659,6 +659,83 @@ test('verified primary data works without localStorage; async abort and version 
   expect(result.blocked).toBe(false);
 });
 
+test('retry saving after deleting the last-opened campaign commits deletion and palette changes', async ({
+  page,
+}) => {
+  const errors = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.addInitScript(
+    ({ campaign, key }) => {
+      if (!sessionStorage.getItem('seeded')) {
+        localStorage.setItem(key, JSON.stringify({ version: 1, campaigns: [campaign] }));
+        sessionStorage.setItem('seeded', '1');
+      }
+      const put = IDBObjectStore.prototype.put;
+      IDBObjectStore.prototype.put = function (value) {
+        if (
+          this.transaction.db.name === 'wilderness-almanac:campaigns' &&
+          sessionStorage.getItem('fail-save')
+        )
+          throw new DOMException('Full', 'QuotaExceededError');
+        return put.call(this, value);
+      };
+    },
+    { campaign, key },
+  );
+  const stored = () =>
+    page.evaluate(async () => {
+      const { openDatabase, readDatabase } = await import('/src/persistence/database.js');
+      const db = await openDatabase(indexedDB);
+      try {
+        return await readDatabase(db);
+      } finally {
+        db.close();
+      }
+    });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Enter Test campaign', exact: true }).click();
+  await expect(page.locator('#campaign-workspace')).not.toHaveAttribute('inert');
+  await expect
+    .poll(async () => (await stored()).settings.find(({ id }) => id === 'activeCampaign')?.value)
+    .toBe(campaign.id);
+  await page.locator('#hp-back-menu').click();
+  await expect(page.locator('#campaign-menu')).not.toHaveAttribute('inert');
+  await page.evaluate(() => sessionStorage.setItem('fail-save', '1'));
+  await page.getByRole('button', { name: 'Delete Test campaign', exact: true }).click();
+  await page
+    .locator('#delete-campaign-dialog')
+    .getByRole('button', { name: 'Delete campaign', exact: true })
+    .click();
+  await expect(page.locator('#campaign-list .campaign-card')).toHaveCount(0);
+  await expect(page.locator('#campaign-save-warning')).toBeVisible();
+  expect((await stored()).campaigns).toHaveLength(1);
+  await page.evaluate(() => sessionStorage.removeItem('fail-save'));
+  await page.locator('#retry-campaign-save').click();
+  await expect(page.locator('#campaign-save-warning')).toBeHidden();
+  expect((await stored()).campaigns).toHaveLength(0);
+  expect((await stored()).recovery.find(({ id }) => id === 'deleted')?.value.campaign.id).toBe(
+    campaign.id,
+  );
+
+  // A later palette-only failure must also retry while the old map session
+  // still refers to the deleted campaign.
+  await page.locator('#open-palette-manager').click();
+  await page.evaluate(() => sessionStorage.setItem('fail-save', '1'));
+  await page.locator('#add-palette').click();
+  await expect(page.locator('#palette-manager-message')).toContainText('aren’t saved');
+  await page.locator('#close-palette-manager').click();
+  await page.evaluate(() => sessionStorage.removeItem('fail-save'));
+  await page.locator('#retry-campaign-save').click();
+  await expect(page.locator('#campaign-save-warning')).toBeHidden();
+  expect((await stored()).palettes).toHaveLength(1);
+  expect((await stored()).campaigns).toHaveLength(0);
+  await page.reload();
+  await expect(page.locator('#campaign-count')).toHaveText('0');
+  await page.locator('#open-palette-manager').click();
+  await expect(page.locator('.palette-row.is-custom')).toHaveCount(1);
+  expect(errors).toEqual([]);
+});
+
 test('the app migrates, reloads, reports failed saves and downloads unsaved changes', async ({
   page,
 }) => {

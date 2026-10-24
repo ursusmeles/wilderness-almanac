@@ -87,6 +87,8 @@ export function createCampaignMenu({ store, defaultPalette, onEnter, onNewCampai
 
   async function save(palettes, activeCampaignId) {
     const revision = ++saveRevision;
+    // The retained map session can outlive its campaign's removal from the library.
+    if (!campaigns.some(({ id }) => id === activeCampaignId)) activeCampaignId = undefined;
     const success = await store.save({ campaigns, deletedCampaign, palettes, activeCampaignId });
     if (revision !== saveRevision || listeners.signal.aborted) return success;
     storageAvailable = success;

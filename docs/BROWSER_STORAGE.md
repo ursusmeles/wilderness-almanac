@@ -28,7 +28,7 @@ Only changed campaign rows are written. Revisions are checked **inside** the rea
 
 Conflicts block further writes from that store instance. Download changed campaigns or **Download unsaved data**, then reload and reconcile through imports. Imports create independent campaigns. There is no automatic merge, forced overwrite, tab refresh or cloud synchronization. Conflict detection occurs on saving.
 
-Only transaction completion means success. A quota error, thrown write, abort or closed database leaves previous committed records intact. Live changes remain exportable. **Retry saving** submits the latest library and palettes. Warnings persist through action notices and unrelated successful saves. Pending/unsaved critical writes trigger the browser's ordinary leave-page warning where supported; abrupt process termination can still lose uncommitted changes.
+Only transaction completion means success. A quota error, thrown write, abort or closed database leaves previous committed records intact. Live changes remain exportable. **Retry saving** submits the latest library and palettes. The menu forwards an active campaign ID only while it belongs to the live library, so a retained map session cannot invalidate retries after deletion. Warnings persist through action notices and unrelated successful saves. Pending/unsaved critical writes trigger the browser's ordinary leave-page warning where supported; abrupt process termination can still lose uncommitted changes.
 
 ## Migration and recovery
 
