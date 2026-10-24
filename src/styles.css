@@ -231,10 +231,15 @@
     & h1 {
       margin: 0 0 var(--space-4);
       color: var(--gold);
-      font: 400 clamp(3.25rem, 7.5vw, 5.5rem)/1 var(--font-pixel);
+      font: 400 clamp(3.25rem, 7.5vw, 5.5rem)/0.9 var(--font-pixel);
       letter-spacing: -0.055em;
       & span {
         display: block;
+      }
+      & .almanac-article {
+        font-size: 0.5em;
+        line-height: 1;
+        letter-spacing: -0.055em;
       }
     }
     & p {
