@@ -778,7 +778,7 @@ async function showMenu() {
   } catch {
     /* Sandboxed embeddings can restrict history updates. */
   }
-  document.title = 'Wilderness Almanac';
+  document.title = 'The Wilderness Almanac';
   await navigation.show('back', () => {
     campaignMenu.show();
   });
