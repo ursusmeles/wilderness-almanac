@@ -29,7 +29,8 @@ function fixture(t, reduced = false) {
     }),
   };
   const moves = [];
-  const token = createPartyToken({ host, draw() {}, onMove: (key) => moves.push(key) });
+  const map = new THREE.Group();
+  const token = createPartyToken({ host, map, draw() {}, onMove: (key) => moves.push(key) });
   token.set({ key: '0,0', style: 'warden', color: '#00ffff' }, [
     { key: '0,0', top: 0, g: new THREE.Group() },
   ]);
@@ -53,6 +54,7 @@ function fixture(t, reduced = false) {
   });
   return {
     token,
+    map,
     root,
     camera,
     event,
@@ -104,6 +106,45 @@ test('drag release retains its drop and placement callback', (t) => {
   tick(performance.now() + 10);
   assert.ok(root.position.y > initialY + 0.2);
   assert.deepEqual(moves, ['0,0']);
+});
+
+test('placed and clicked pieces share map depth; active drags stay visible', (t) => {
+  const { token, camera, event } = fixture(t);
+  let clears = 0;
+  const renderer = { clearDepth: () => clears++, render() {} };
+  token.render(renderer, camera);
+  assert.equal(clears, 0);
+  assert.equal(token.start(event, camera), true);
+  token.render(renderer, camera);
+  assert.equal(clears, 0);
+  const destination = { ...event, clientX: event.clientX + 25 };
+  token.move(destination, camera);
+  token.render(renderer, camera);
+  assert.equal(clears, 1);
+  token.end(destination, () => '0,0');
+  token.render(renderer, camera);
+  assert.equal(clears, 1);
+});
+
+test('foreground props intercept covered token clicks while rear props do not', (t) => {
+  const { token, root, map, camera, event } = fixture(t);
+  const geometry = new THREE.BoxGeometry(0.4, 0.4, 0.4);
+  const material = new THREE.MeshBasicMaterial();
+  const prop = new THREE.Mesh(geometry, material);
+  const towardCamera = camera.position.clone().sub(root.position).normalize();
+  const target = root.position.clone().add(new THREE.Vector3(0, 0.035, 0));
+  map.add(prop);
+  t.after(() => {
+    geometry.dispose();
+    material.dispose();
+  });
+  prop.position.copy(target).addScaledVector(towardCamera, 0.5);
+  map.updateMatrixWorld(true);
+  assert.equal(token.start(event, camera), false);
+  prop.position.copy(target).addScaledVector(towardCamera, -0.5);
+  map.updateMatrixWorld(true);
+  assert.equal(token.start(event, camera), true);
+  token.cancel();
 });
 
 test('reduced motion leaves a clicked piece upright and grounded', (t) => {

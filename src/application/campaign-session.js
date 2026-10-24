@@ -226,7 +226,7 @@ export function createCampaignSession({ persist }) {
         scope: 'tracking',
         fogSafe: true,
         action: 'party move',
-        notification: `${next.partyToken.name ?? 'Adventurers'} moved to ${hexAddress(state.world.cells.find((cell) => cell.key === key))}; hex marked visited`,
+        notification: `${next.partyToken.name ?? 'Adventurers'} moved to ${hexAddress(state.world.cells.find((cell) => cell.key === key))}`,
       });
     },
     partyStyle(style) {

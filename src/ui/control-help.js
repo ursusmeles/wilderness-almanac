@@ -13,10 +13,14 @@ export function createControlTooltips() {
   tooltip.setAttribute('role', 'tooltip');
   document.body.append(tooltip);
   const listeners = new AbortController();
-  const listen = (type, handler) =>
-    document.addEventListener(type, handler, { signal: listeners.signal });
+  const listen = (type, handler, options = {}) =>
+    document.addEventListener(type, handler, { ...options, signal: listeners.signal });
   let current;
+  let touch = false;
+  let dismissTimer;
   function hide() {
+    clearTimeout(dismissTimer);
+    dismissTimer = undefined;
     if (current) {
       const ids = (current.getAttribute('aria-describedby') || '')
         .split(' ')
@@ -44,20 +48,40 @@ export function createControlTooltips() {
       rect = tooltip.getBoundingClientRect();
     tooltip.style.left = `${Math.max(8, Math.min(innerWidth - rect.width - 8, anchor.left + (anchor.width - rect.width) / 2))}px`;
     tooltip.style.top = `${anchor.top > rect.height + 12 ? anchor.top - rect.height - 8 : Math.min(innerHeight - rect.height - 8, anchor.bottom + 8)}px`;
+    clearTimeout(dismissTimer);
+    dismissTimer = touch ? setTimeout(hide, 2000) : undefined;
   }
+  listen('pointerdown', (event) => {
+    touch = event.pointerType === 'touch';
+  });
   listen('pointerover', (event) => {
-    if (event.pointerType !== 'touch') show(event);
+    if (event.pointerType !== 'touch') {
+      touch = false;
+      show(event);
+    }
   });
   listen('pointerout', (event) => {
-    if (current && !current.contains(event.relatedTarget)) hide();
+    if (event.pointerType !== 'touch' && current && !current.contains(event.relatedTarget)) hide();
   });
-  listen('pointerup', (event) => {
-    if (event.pointerType === 'touch') show(event);
-  });
+  listen(
+    'pointerup',
+    (event) => {
+      if (event.pointerType === 'touch') {
+        touch = true;
+        show(event);
+      }
+    },
+    { capture: true },
+  );
   listen('focusin', show);
-  listen('focusout', hide);
+  listen('focusout', (event) => {
+    if (current?.contains(event.target)) hide();
+  });
   listen('click', show);
   listen('keydown', (event) => {
+    touch = false;
+    clearTimeout(dismissTimer);
+    dismissTimer = undefined;
     if (event.key === 'Escape') hide();
   });
   document.addEventListener('scroll', hide, { capture: true, signal: listeners.signal });
