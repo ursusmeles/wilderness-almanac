@@ -4,8 +4,8 @@ import { createColorScale, hexToOklch, contrastRatio } from './palette.js';
 export const materialRoles = {
   ground: [0, 0.39, 1.1],
   groundLight: [0, 0.42, 0.95],
-  road: [0, 0.425, 1.02],
-  roadStone: [0, 0.445, 0.9],
+  road: [0, 0.44, 1.02],
+  roadStone: [0, 0.46, 0.9],
   side: [0, 0.26, 1],
   bevel: [0, 0.46, 0.9],
   water: [1, 0.48, 1.1],
