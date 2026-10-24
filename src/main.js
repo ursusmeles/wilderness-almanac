@@ -2,7 +2,8 @@ import { openDialog } from './ui/dialog-focus.js';
 import { generateWorld } from './generation/world.js';
 import { prepareMap } from './generation/presentation.js';
 import { palettes, paletteNames, paletteTheme, DEFAULT_PALETTE } from './palette.js';
-import { readPreferences, savePreferences } from './ui/storage.js';
+import { readUIPreferences, saveUIPreferences } from './ui/ui-preferences.js';
+import { createBrowserStore } from './persistence/browser-store.js';
 import { readMapLink, mapLink, describeHex, shortCoordinates } from './ui/map-link.js';
 import { createMapConsole } from './ui/map-console.js';
 import { createSaveStatus } from './ui/save-status.js';
@@ -10,7 +11,7 @@ import { createCampaign, campaignIconCandidates } from './application/campaigns.
 import { createFogView } from './application/fog-view.js';
 import { createCampaignSession } from './application/campaign-session.js';
 import { createCampaignMenu } from './ui/campaign-menu.js';
-import { createPaletteLibrary } from './ui/palette-library.js';
+import { createPaletteLibrary } from './application/palette-library.js';
 import { createPaletteManager } from './ui/palette-manager.js';
 import { createCampaignCreator } from './ui/campaign-creator.js';
 import { createPanels } from './ui/panels.js';
@@ -35,7 +36,12 @@ try {
 } catch {
   /* Restricted browser storage. */
 }
-const saved = readPreferences(storage);
+const browserStore = await createBrowserStore({
+  legacyStorage: storage,
+  storageManager: navigator.storage,
+});
+const saved = { ...browserStore.preferences, ...readUIPreferences(storage) };
+saveUIPreferences(storage, saved);
 const linked = readMapLink(window.location.href);
 const freshSeed = () =>
   Array.from(crypto.getRandomValues(new Uint32Array(2)), (part) =>
@@ -225,44 +231,72 @@ function syncMobileLayout() {
 listen(mobileLayout, 'change', syncMobileLayout);
 syncMobileLayout();
 
-const previousMap = {
-  seed: saved.seed,
-  colors: (saved.colors ?? palettes[DEFAULT_PALETTE]).slice(),
-  variant: saved.variant ?? 0,
-  paletteName: '',
-};
 let campaignMenu;
-
-function persistPreferences(campaign = session.snapshot()?.campaign) {
-  const preferencesSaved = savePreferences(storage, {
-    ...saved,
-    ...(campaign
-      ? {
-          seed: campaign.seed,
-          variant: campaign.variant,
-          colors: campaign.colors,
-          campaignId: campaign.id,
-        }
-      : {}),
-    ...paletteLibrary.preferences(),
+let preferencesRevision = 0;
+let preferencesFailed = false;
+function persistPreferences() {
+  // UI layout and motion are the only localStorage writes.
+  return saveUIPreferences(storage, {
     motion: movement,
     settingsOpen,
     ...panels.preferences(),
   });
-  saveStatus.update('preferences', preferencesSaved);
-  return preferencesSaved;
 }
 
-function persistCampaign(campaign) {
+async function persistPalettes() {
+  const revision = ++preferencesRevision;
+  const success = await browserStore.save({ palettes: paletteLibrary.preferences() });
+  if (revision === preferencesRevision) {
+    preferencesFailed = !success;
+    saveStatus.update('preferences', success);
+  }
+  return success;
+}
+
+async function persistCampaign(campaign) {
   try {
     history.replaceState(history.state, '', mapLink(window.location.href, campaign));
   } catch {
     /* Sandboxed embeddings can restrict history updates. */
   }
-  const preferencesSaved = persistPreferences(campaign);
-  const campaignSaved = campaignMenu.update(campaign);
-  return { campaignSaved, preferencesSaved };
+  persistPreferences();
+  const revision = ++preferencesRevision;
+  const campaignSaved = await campaignMenu.update(campaign, paletteLibrary.preferences());
+  if (revision === preferencesRevision) {
+    preferencesFailed = !campaignSaved;
+    saveStatus.update('preferences', campaignSaved);
+  }
+  return { campaignSaved, preferencesSaved: campaignSaved };
 }
+
+async function retrySaving() {
+  persistPreferences();
+  const revision = ++preferencesRevision;
+  const success = await campaignMenu.save(
+    paletteLibrary.preferences(),
+    session.snapshot()?.campaign.id,
+  );
+  if (revision === preferencesRevision) {
+    preferencesFailed = !success;
+    saveStatus.update('preferences', success);
+  }
+}
+listen(document.getElementById('retry-campaign-save'), 'click', retrySaving);
+listen(element('retry-save'), 'click', retrySaving);
+const downloadUnsaved = () => campaignMenu.downloadRecovery(paletteLibrary.preferences());
+listen(document.getElementById('download-unsaved-library'), 'click', downloadUnsaved);
+listen(element('download-unsaved-data'), 'click', downloadUnsaved);
+listen(window, 'beforeunload', (event) => {
+  if (
+    browserStore.status().pending ||
+    browserStore.status().unsaved ||
+    preferencesFailed ||
+    (browserStore.status().reason && session.snapshot())
+  ) {
+    event.preventDefault();
+    event.returnValue = '';
+  }
+});
 
 async function loadMapView() {
   mapViewLoading ??= import('./ui/map-view.js').catch((error) => {
@@ -670,11 +704,12 @@ function updateMovementToggle() {
     : 'Turn wind animation on';
 }
 updateMovementToggle();
-listen(element('motion'), 'click', () => {
+listen(element('motion'), 'click', async () => {
   movement = !movement;
   updateMovementToggle();
   renderer?.setMotion(movement);
-  if (session.save().saved) mapConsole.notify(movement ? 'Wind turned on' : 'Wind turned off');
+  if ((await session.save()).saved)
+    mapConsole.notify(movement ? 'Wind turned on' : 'Wind turned off');
 });
 listen(element('fog'), 'click', (event) => {
   if (mapAction.isBusy()) return;
@@ -951,10 +986,8 @@ batchInspector = createBatchInspector(batchInspectorHost, {
 updatePaletteOptions();
 applyMenuTheme();
 applyPalette();
-previousMap.paletteName = paletteLabel(previousMap.colors);
 campaignMenu = createCampaignMenu({
-  storage,
-  previous: previousMap,
+  store: browserStore,
   defaultPalette: () => {
     const palette = paletteLibrary.default();
     return { colors: palette.colors, paletteName: palette.name };
@@ -968,7 +1001,7 @@ const campaignCreator = createCampaignCreator({
   loadMapView,
   freshSeed,
   async onCreate(campaign) {
-    campaignMenu.add(campaign);
+    await campaignMenu.add(campaign);
     return campaignMenu.enter(campaign);
   },
 });
@@ -978,7 +1011,7 @@ const paletteManager = createPaletteManager({
     applyMenuTheme();
     updatePaletteOptions();
     selectPalette(session.snapshot()?.campaign.colors ?? initialColors);
-    return persistPreferences();
+    return persistPalettes();
   },
 });
 if (linked.seed) {
@@ -1001,7 +1034,7 @@ if (linked.seed) {
       paletteLabel(initialColors),
       initialVariant,
     );
-    campaignMenu.add(campaign);
+    await campaignMenu.add(campaign);
   }
   campaignMenu.enter(campaign);
 } else campaignMenu.show();
@@ -1018,6 +1051,7 @@ if (import.meta.hot)
     controlTooltips.dispose();
     renderer?.dispose();
     campaignMenu.dispose();
+    browserStore.close();
     campaignCreator.dispose();
     paletteManager.dispose();
     inspector.dispose();

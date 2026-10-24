@@ -15,7 +15,7 @@ export function createSaveStatus(write) {
         message: campaigns
           ? "Your latest campaign changes aren't saved. Download any campaigns you changed before closing this page."
           : preferences
-            ? "Your latest settings aren't saved. Keep this page open or try again."
+            ? "Your latest palettes and default palette aren't saved. Download unsaved data before closing this page."
             : '',
       });
     },

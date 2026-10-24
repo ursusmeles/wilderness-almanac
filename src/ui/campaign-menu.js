@@ -4,7 +4,6 @@ import { campaignWorld } from '../generation/campaign-world.js';
 import { cloneTemplate } from './templates.js';
 import { loadThumbnails } from './thumbnail-cache.js';
 import { copyText, mapLink } from './map-link.js';
-import { createCampaignStore } from './campaign-store.js';
 import {
   createCampaign,
   campaignStats,
@@ -16,14 +15,7 @@ import {
   MAX_CAMPAIGN_BYTES,
 } from '../application/campaigns.js';
 
-export function createCampaignMenu({
-  storage,
-  previous,
-  defaultPalette,
-  onEnter,
-  onNewCampaign,
-  saveStatus,
-}) {
+export function createCampaignMenu({ store, defaultPalette, onEnter, onNewCampaign, saveStatus }) {
   const menu = document.getElementById('campaign-menu');
   const list = document.getElementById('campaign-list');
   const newButton = document.getElementById('new-campaign');
@@ -39,7 +31,6 @@ export function createCampaignMenu({
   const listen = (target, type, callback) =>
     target.addEventListener(type, callback, { signal: listeners.signal });
   const cached = new Map();
-  const store = createCampaignStore(storage);
   const campaigns = store.campaigns;
   let deletedCampaign = store.deletedCampaign;
   let storageAvailable = true;
@@ -47,6 +38,7 @@ export function createCampaignMenu({
   let opening = false;
   let importing = false;
   let releaseBusy = () => {};
+  let saveRevision = 0;
 
   function revealIconControls(icon, revealed) {
     icon.classList.toggle('is-revealed', revealed);
@@ -61,31 +53,47 @@ export function createCampaignMenu({
   }
 
   function recoveryNotice() {
-    const { reason, readOnly, preservedCount, hasRecovery } = store.status();
+    const { reason, readOnly, preservedCount, preservedPreferences, hasRecovery } = store.status();
     const message = document.getElementById('campaign-recovery-message');
     let text = '';
     if (reason === 'conflict')
       text =
         'Saved campaigns changed in another tab. Download your current campaigns before reloading this page.';
+    else if (reason === 'quota')
+      text = 'Browser storage is full. Download your changes, free some space, then retry saving.';
+    else if (reason === 'versionchange')
+      text =
+        'Browser storage was updated in another tab. Download your current campaigns before reloading.';
     else if (reason === 'unreadable')
       text =
         'Some saved data cannot be read by this version. It has been kept unchanged. New campaigns can only be kept in this session.';
     else if (readOnly)
       text =
-        'Browser storage cannot be read. Download any campaigns you create before closing this page.';
+        'Browser storage cannot be read. Download any campaigns you create before closing this page. Reload to retry opening your saves.';
     else if (preservedCount)
       text = `${preservedCount} saved ${preservedCount === 1 ? 'campaign cannot' : 'campaigns cannot'} be opened by this version. ${preservedCount === 1 ? 'Its' : 'Their'} data is preserved in your library.`;
+    if (preservedPreferences)
+      text += `${text ? ' ' : ''}Some older palette or settings data cannot be read. Its original data is kept in recovery.`;
     if (message.textContent !== text) message.textContent = text;
     document.getElementById('campaign-recovery').hidden = !message.textContent;
     document.getElementById('download-campaign-recovery').hidden = !hasRecovery;
+    const note = menu.querySelector('.campaign-storage-note');
+    if (note)
+      note.textContent =
+        store.status().durability === 'granted'
+          ? 'Saved on this device. Export a campaign to take it with you.'
+          : 'Saved in this browser. Export backups; the browser may clear local data.';
   }
 
-  function save() {
-    storageAvailable = store.save(campaigns, deletedCampaign);
+  async function save(palettes, activeCampaignId) {
+    const revision = ++saveRevision;
+    const success = await store.save({ campaigns, deletedCampaign, palettes, activeCampaignId });
+    if (revision !== saveRevision || listeners.signal.aborted) return success;
+    storageAvailable = success;
     saveStatus.update('campaigns', storageAvailable);
     recoveryNotice();
     undoDelete.hidden = !deletedCampaign;
-    return storageAvailable;
+    return success;
   }
 
   function expireUndo() {
@@ -96,15 +104,7 @@ export function createCampaignMenu({
   }
 
   recoveryNotice();
-  if (store.missing) {
-    if (previous.seed) {
-      const world = generateWorld(previous.seed, { generatorVersion: 6 });
-      campaigns.push(
-        createCampaign(world, previous.colors, previous.paletteName, previous.variant),
-      );
-    }
-    save();
-  }
+  const unsubscribe = store.subscribe(recoveryNotice);
 
   function campaignData(campaign) {
     const signature = JSON.stringify([campaign.seed, campaign.variant, campaign.hexEdits]);
@@ -211,10 +211,10 @@ export function createCampaignMenu({
     list.replaceChildren(...cards);
   }
 
-  function add(campaign) {
+  async function add(campaign) {
     expireUndo();
     campaigns.push(campaign);
-    save();
+    return save();
   }
 
   async function enter(campaign, button = newButton) {
@@ -258,7 +258,7 @@ export function createCampaignMenu({
         const world = generateWorld(crypto.randomUUID());
         const palette = typeof defaultPalette === 'function' ? defaultPalette() : defaultPalette;
         campaign = createCampaign(world, palette.colors, palette.paletteName);
-        add(campaign);
+        await add(campaign);
       }
       return (await onEnter(campaign)) !== false;
     } catch (error) {
@@ -294,14 +294,23 @@ export function createCampaignMenu({
     setMessage(`Campaign export started: “${campaign.name}”`);
   }
 
-  listen(document.getElementById('download-campaign-recovery'), 'click', () => {
-    const source = store.recovery();
+  async function downloadRecovery(palettes) {
+    const stored = JSON.parse(await store.recovery());
+    downloadFile(
+      JSON.stringify({ ...stored, unsaved: { campaigns, deletedCampaign, palettes } }, null, 2),
+      campaignFilename({ name: 'recovery' }),
+    );
+    setMessage('Recovery export started. Keep it with your campaign backups.');
+  }
+
+  listen(document.getElementById('download-campaign-recovery'), 'click', async () => {
+    const source = await store.recovery();
     if (source == null) return;
     downloadFile(source, campaignFilename({ name: 'recovery' }));
     setMessage('Recovery export started. Keep it with your campaign backups.');
   });
 
-  function rename(input) {
+  async function rename(input) {
     const campaign = campaigns.find(
       (item) => item.id === input.closest('.campaign-card').dataset.id,
     );
@@ -323,7 +332,7 @@ export function createCampaignMenu({
     labelActions(card, campaign);
     card.querySelector('.campaign-icon img').alt =
       `${cached.get(campaign.id)?.tile?.terrain ?? 'Terrain'} hex from ${name}`;
-    if (save()) setMessage('Campaign name saved');
+    if (await save()) setMessage('Campaign name saved');
   }
 
   listen(list, 'change', (event) => {
@@ -387,7 +396,7 @@ export function createCampaignMenu({
       if (images.length < 2) return;
       const index = images.findIndex((entry) => entry.key === campaign.iconKey);
       campaign.iconKey = images[(index + 1) % images.length].key;
-      const saved = save();
+      const saved = await save();
       void paintIcon(card, campaign, images);
       if (saved) setMessage('Campaign icon updated');
       return;
@@ -422,25 +431,27 @@ export function createCampaignMenu({
   listen(document, 'click', (event) => {
     if (!event.target.closest('.campaign-icon')) hideIconControls();
   });
-  listen(deleteDialog, 'close', () => {
+  listen(deleteDialog, 'close', async () => {
     const index = campaigns.findIndex((item) => item.id === pendingDeleteId);
     pendingDeleteId = null;
     if (deleteDialog.returnValue !== 'delete' || index < 0) return;
     const [campaign] = campaigns.splice(index, 1);
     deletedCampaign = { campaign, index };
     cached.delete(campaign.id);
-    const saved = save();
     render();
+    undoDelete.hidden = false;
+    const saved = await save();
     if (saved) setMessage(`Deleted “${campaign.name}”`);
     undoDelete.focus({ preventScroll: true });
   });
-  listen(undoDelete, 'click', () => {
+  listen(undoDelete, 'click', async () => {
     if (!deletedCampaign) return;
     const { campaign, index } = deletedCampaign;
     campaigns.splice(Math.min(index, campaigns.length), 0, campaign);
     deletedCampaign = null;
-    const saved = save();
     render();
+    undoDelete.hidden = true;
+    const saved = await save();
     if (saved) setMessage(`Restored “${campaign.name}”`);
     list
       .querySelectorAll('[data-action="delete"]')
@@ -475,7 +486,7 @@ export function createCampaignMenu({
       const campaign = importCampaign(await file.text());
       // Import as a separate local save; an existing campaign is never overwritten.
       campaign.id = crypto.randomUUID();
-      add(campaign);
+      await add(campaign);
       render();
       if (storageAvailable) setMessage(`Imported “${campaign.name}”`);
     } catch (error) {
@@ -501,6 +512,8 @@ export function createCampaignMenu({
     add,
     enter,
     download,
+    downloadRecovery,
+    save,
     refreshThumbnail(campaign) {
       const card = [...list.children].find((card) => card.dataset.id === campaign.id);
       const current = campaigns.find((item) => item.id === campaign.id);
@@ -509,10 +522,10 @@ export function createCampaignMenu({
     findReplay(state) {
       return findCampaignReplay(campaigns, state);
     },
-    update(campaign) {
+    update(campaign, palettes) {
       const index = campaigns.findIndex((item) => item.id === campaign.id);
       if (index >= 0) campaigns[index] = { ...campaign, colors: campaign.colors.slice() };
-      return save();
+      return save(palettes, campaign.id);
     },
     show() {
       menu.hidden = false;
@@ -522,6 +535,7 @@ export function createCampaignMenu({
         setMessage(deletedCampaign ? `Deleted “${deletedCampaign.campaign.name}”` : '');
     },
     dispose() {
+      unsubscribe();
       releaseBusy();
       listeners.abort();
     },

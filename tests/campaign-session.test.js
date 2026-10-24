@@ -31,6 +31,27 @@ function fixture() {
   };
 }
 
+test('asynchronous saves retain live edits and ignore older completion results', async () => {
+  const completions = [];
+  const session = createCampaignSession({
+    persist: () => new Promise((resolve, reject) => completions.push({ resolve, reject })),
+  });
+  session.open(campaign);
+  assert.equal(session.snapshot().persistence.pending, true);
+  session.visit();
+  completions[1].resolve({ campaignSaved: true, preferencesSaved: true });
+  await Promise.resolve();
+  completions[0].resolve({ campaignSaved: false, preferencesSaved: false });
+  await Promise.resolve();
+  assert.equal(session.snapshot().persistence.saved, true);
+  const edited = session.snapshot().campaign;
+  const saved = session.save();
+  completions[2].reject(new Error('Blocked browser storage'));
+  assert.equal((await saved).saved, false);
+  assert.equal(session.snapshot().campaign, edited);
+  assert.equal(session.snapshot().canUndo, true);
+});
+
 test('multi selection toggles, selects all and clears without persisting or adding history', () => {
   const { session, writes } = fixture();
   session.setMultiEdit(true);
@@ -260,6 +281,7 @@ test('storage failure retains in-memory edits and reports independent persistenc
   assert.deepEqual(session.snapshot().persistence, {
     campaignSaved: false,
     preferencesSaved: true,
+    pending: false,
     saved: false,
   });
   fail({ campaignSaved: true, preferencesSaved: true });

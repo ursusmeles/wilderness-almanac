@@ -189,7 +189,7 @@ test('storage errors remain visible, exports contain unsaved changes, and succes
     await page.getByRole('button', { name: 'Open palette and settings', exact: true }).click();
   await page.getByRole('switch', { name: 'Wind', exact: true }).click();
   await expect(page.locator('#hp-save-warning')).toBeVisible();
-  expect((await library(page)).campaigns[0].hexEdits).toBeUndefined();
+  expect((await library(page)).campaigns[0].hexEdits?.cells['0,0']).toBeUndefined();
   const event = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download campaign', exact: true }).click();
   const exported = JSON.parse(await readFile(await (await event).path(), 'utf8'));
@@ -200,30 +200,55 @@ test('storage errors remain visible, exports contain unsaved changes, and succes
   expect((await library(page)).campaigns[0].hexEdits.cells['0,0'].visited).toBe(false);
 });
 
+test('library rename, deletion and Undo persist through reload', async ({ page }) => {
+  await page.goto('/');
+  const name = page.locator('#campaign-list .campaign-name');
+  await name.fill('Renamed adventure');
+  await name.press('Enter');
+  await expect.poll(async () => (await library(page)).campaigns[0].name).toBe('Renamed adventure');
+  await page.reload();
+  await expect(page.locator('#campaign-list .campaign-name')).toHaveValue('Renamed adventure');
+  await page.getByRole('button', { name: 'Delete Renamed adventure', exact: true }).click();
+  await page
+    .locator('#delete-campaign-dialog')
+    .getByRole('button', { name: 'Delete campaign', exact: true })
+    .click();
+  await expect(page.locator('.campaign-card')).toHaveCount(0);
+  await expect.poll(async () => (await library(page)).campaigns.length).toBe(0);
+  await page.reload();
+  await page.getByRole('button', { name: 'Undo deletion', exact: true }).click();
+  await expect(page.locator('.campaign-card')).toHaveCount(1);
+  await expect.poll(async () => (await library(page)).campaigns[0]?.name).toBe('Renamed adventure');
+});
+
 test('unreadable saved records survive normal campaign actions and recovery download', async ({
   page,
 }) => {
-  await page.goto('/');
   const future = {
     ...campaign,
     id: 'future',
     generatorVersion: 99,
     futureData: { notes: ['keep me'] },
   };
-  await page.evaluate((future) => {
+  await page.addInitScript((future) => {
     const saved = JSON.parse(localStorage.getItem('wilderness-almanac:campaigns-v1'));
+    if (!saved) return;
     saved.campaigns.push(future);
     localStorage.setItem('wilderness-almanac:campaigns-v1', JSON.stringify(saved));
   }, future);
-  await page.reload();
+  await page.goto('/');
   await expect(page.locator('#campaign-recovery')).toBeVisible();
   await page.getByRole('button', { name: 'Enter Test campaign', exact: true }).click();
+  await expect(page.locator('#campaign-workspace')).not.toHaveAttribute('inert');
   await page.getByRole('switch', { name: 'Visited', exact: true }).click();
   await page.locator('#hp-back-menu').click();
   const event = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download recovery file', exact: true }).click();
   const recovered = JSON.parse(await readFile(await (await event).path(), 'utf8'));
-  expect(recovered.campaigns.find((record) => record.id === 'future')).toEqual(future);
+  const legacy = recovered.database.recovery.find((row) => row.id === 'wilderness-almanac:campaigns-v1');
+  expect(JSON.parse(legacy.source).campaigns.find((record) => record.id === 'future')).toEqual(
+    future,
+  );
 });
 
 test('mobile panels start closed above the fold and restore correctly after expansion', async ({

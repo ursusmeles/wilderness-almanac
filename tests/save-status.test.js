@@ -46,7 +46,7 @@ test('successful campaign writes do not dismiss an unsaved preferences warning, 
   status.update('campaigns', true);
   assert.equal(warning.campaigns, false);
   assert.equal(warning.preferences, true);
-  assert.match(warning.message, /settings aren't saved/);
+  assert.match(warning.message, /palette aren't saved/);
   status.update('preferences', true);
   assert.equal(warning.message, '');
 });

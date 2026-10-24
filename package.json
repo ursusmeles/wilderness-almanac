@@ -15,6 +15,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test:e2e": "playwright test",
+    "test:storage": "playwright test --config=playwright.storage.config.js",
     "check": "npm run format:check && npm test && npm run build && npm run test:e2e"
   },
   "dependencies": {

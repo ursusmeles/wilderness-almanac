@@ -29,6 +29,7 @@ export function createCampaignSession({ persist }) {
   let selectedKeys = new Set();
   let partySelected = false;
   let fogCache;
+  let saveRevision = 0;
   function visibility() {
     if (!state?.campaign.fogOfWar) return null;
     const signature = state.world.cells
@@ -68,9 +69,23 @@ export function createCampaignSession({ persist }) {
     } catch (error) {
       result = { campaignSaved: false, preferencesSaved: false, error: error.message };
     }
-    const persistence = { ...result, saved: result.campaignSaved && result.preferencesSaved };
-    state = { ...state, persistence };
-    return persistence;
+    const revision = ++saveRevision;
+    const finish = (result) => {
+      const persistence = {
+        ...result,
+        pending: false,
+        saved: result.campaignSaved && result.preferencesSaved,
+      };
+      if (revision === saveRevision) state = { ...state, persistence };
+      return persistence;
+    };
+    if (result?.then) {
+      state = { ...state, persistence: { pending: true, saved: false } };
+      return Promise.resolve(result).then(finish, (error) =>
+        finish({ campaignSaved: false, preferencesSaved: false, error: error.message }),
+      );
+    }
+    return finish(result);
   }
   const result = (scope, notification) => ({ ok: true, scope, notification, state: snapshot() });
   function remember(fogSafe, action) {

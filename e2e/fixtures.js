@@ -35,17 +35,17 @@ export const test = base.extend({
           );
           sessionStorage.setItem('test:initialized', '1');
         }
-        const write = Storage.prototype.setItem;
-        Storage.prototype.setItem = function (key, value) {
+        const write = IDBObjectStore.prototype.put;
+        IDBObjectStore.prototype.put = function (value, ...args) {
           const target = sessionStorage.getItem('test:blocked-target');
           if (
-            this === localStorage &&
+            this.transaction.db.name === 'wilderness-almanac:campaigns' &&
             (target === 'all' ||
-              (target === 'campaigns' && key === 'wilderness-almanac:campaigns-v1') ||
-              (target === 'preferences' && key === 'hex-sandbox:map-v1'))
+              (target === 'campaigns' && this.name === 'campaigns') ||
+              (target === 'preferences' && ['palettes', 'settings'].includes(this.name)))
           )
             throw new DOMException('Simulated full browser storage', 'QuotaExceededError');
-          return write.call(this, key, value);
+          return write.call(this, value, ...args);
         };
       },
       { campaign },
@@ -56,12 +56,38 @@ export const test = base.extend({
 });
 export { expect };
 export const library = (page) =>
-  page.evaluate(() => JSON.parse(localStorage.getItem('wilderness-almanac:campaigns-v1')));
+  page.evaluate(async () => {
+    const db = await new Promise((resolve, reject) => {
+      const request = indexedDB.open('wilderness-almanac:campaigns', 1);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    try {
+      return await new Promise((resolve, reject) => {
+        const transaction = db.transaction(['campaigns', 'settings', 'recovery']);
+        const campaigns = transaction.objectStore('campaigns').getAll();
+        const order = transaction.objectStore('settings').get('library');
+        const deleted = transaction.objectStore('recovery').get('deleted');
+        transaction.oncomplete = () =>
+          resolve({
+            version: 1,
+            campaigns: order.result.value.map(
+              (id) => campaigns.result.find((row) => row.id === id).value,
+            ),
+            deletedCampaign: deleted.result?.value ?? null,
+          });
+        transaction.onerror = () => reject(transaction.error);
+      });
+    } finally {
+      db.close();
+    }
+  });
 export async function openCampaign(page, { expandInspector = true } = {}) {
   await page.goto('/');
   await page.getByRole('button', { name: 'Enter Test campaign', exact: true }).click();
   await expect(page.locator('#hp-scene canvas')).toBeVisible();
   await expect(page.locator('#campaign-menu')).toBeHidden();
+  await expect(page.locator('#campaign-workspace')).not.toHaveAttribute('inert');
   const expand = page.getByRole('button', { name: 'Expand Hex Inspector', exact: true });
   if (expandInspector && (await expand.isVisible())) await expand.click();
 }

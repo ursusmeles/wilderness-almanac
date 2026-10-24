@@ -55,7 +55,7 @@ Campaigns save automatically **in your current browser**. There are no accounts 
 - **Share map** in the campaign list copies a link with the seed, world preferences, generator version, dressing variant and palette. It recreates the generated map, but does **not** include your hex edits or visited status.
 - **Export campaign** downloads the complete campaign replay record, including edits and dressing locks. Import it on another device to continue working.
 
-If campaign saving fails, a persistent warning stays visible and the map offers **Download campaign**. Saved campaigns that this version cannot read are preserved; **Download recovery file** backs up the stored library. Keep recovery files for troubleshooting or a compatible app version; they are separate from individual campaign exports.
+If saving fails, a persistent warning offers **Retry saving** and **Download unsaved data**; the map also offers **Download campaign**. Changes from another browser tab can require downloading your work before reloading. Saved data this version cannot read is preserved; **Download recovery file** backs up stored data. Keep recovery files for troubleshooting or a compatible app version; they are separate from individual campaign exports. The app requests persistent browser storage where supported, but regular exports remain your backup.
 
 Exports are named `wilderness-almanac-[campaignname]-[YYYY-MM-DD].json`. Replay files depend on their generator version; unsupported versions are rejected rather than silently producing a different map.
 

@@ -26,8 +26,11 @@ export function createPaletteManager({ library, onChange }) {
     message.classList.toggle('sr-only', message.dataset.kind !== 'error');
   }
 
-  function save(text = '', announce = true) {
-    const saved = onChange();
+  let saveRevision = 0;
+  async function save(text = '', announce = true) {
+    const revision = ++saveRevision;
+    const saved = await onChange();
+    if (revision !== saveRevision || listeners.signal.aborted) return;
     if (!saved || announce)
       feedback(saved ? text : 'Palette changes aren’t saved. Keep this page open and try again.');
   }
