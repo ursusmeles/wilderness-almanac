@@ -655,6 +655,58 @@
       flex-direction: column;
     }
   }
+  #account-dialog {
+    --dialog-width: 44rem;
+    --dialog-padding: 0;
+    max-height: calc(100dvh - var(--space-32));
+    &::backdrop {
+      background: #09070dbb;
+      backdrop-filter: blur(4px);
+    }
+    & .account-content {
+      padding: var(--space-24);
+      --stack-gap: var(--space-16);
+    }
+    & p {
+      margin: 0;
+      overflow-wrap: anywhere;
+    }
+    & h3 {
+      font: var(--text-subtitle)/1.4 var(--font-pixel);
+      margin: 0;
+    }
+    & input {
+      width: 100%;
+      min-height: var(--control-size);
+      padding: var(--space-8);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      color: var(--text);
+      background: var(--surface);
+      font: inherit;
+    }
+    & .account-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      --stack-gap: var(--space-12);
+    }
+    & .account-list li {
+      display: grid;
+      gap: var(--space-8);
+      padding-bottom: var(--space-12);
+      border-bottom: 1px solid var(--line);
+    }
+    & .account-list strong {
+      overflow-wrap: anywhere;
+      font-weight: 500;
+    }
+    & .account-list button {
+      white-space: normal;
+      height: auto;
+      min-height: var(--control-size);
+    }
+  }
   #create-campaign-dialog {
     --cc-margin: clamp(var(--space-16), 2.5vmin, var(--space-32));
     --dialog-padding: 0;

@@ -1014,6 +1014,30 @@ const paletteManager = createPaletteManager({
     return persistPalettes();
   },
 });
+const accountButton = document.getElementById('open-account');
+accountButton.hidden = import.meta.env.VITE_API_ENABLED !== 'true';
+let accountPanel;
+let accountLoading;
+listen(accountButton, 'click', async () => {
+  accountButton.disabled = true;
+  try {
+    accountLoading ??= import('./ui/account-sync.js');
+    const { createAccountPanel } = await accountLoading;
+    if (disposed) return;
+    accountPanel ??= createAccountPanel({ store: browserStore, library: campaignMenu });
+    // Disabling a button during lazy loading removes browser focus. Restore it
+    // before openDialog captures the invoker for its close/focus contract.
+    accountButton.disabled = false;
+    accountButton.focus({ preventScroll: true });
+    await accountPanel.open();
+  } catch {
+    accountLoading = undefined;
+    document.getElementById('campaign-message').textContent =
+      'Account sync could not open. Your local campaigns are still available.';
+  } finally {
+    accountButton.disabled = false;
+  }
+});
 if (linked.seed) {
   const state = {
     seed: linked.seed,
@@ -1054,6 +1078,7 @@ if (import.meta.hot)
     browserStore.close();
     campaignCreator.dispose();
     paletteManager.dispose();
+    accountPanel?.dispose();
     inspector.dispose();
     partyInspector.dispose();
     batchInspector.dispose();

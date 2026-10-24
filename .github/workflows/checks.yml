@@ -23,11 +23,17 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
       - run: npm ci
+      - run: npm ci --prefix server
       - run: npx playwright install --with-deps chromium
       - name: Formatting, unit tests and build
-        run: npm run format:check && npm test && npm run build
-      # Mobile browser tests are paused until helpers handle collapsed panels and hidden controls.
+        run: npm run format:check && npm test && npm run test:server && npm run build
+      - name: Account sync browser tests
+        run: npm run test:account
+      # Mobile map browser tests are paused until helpers handle collapsed panels and hidden controls.
       # Keep them available locally through npm run test:e2e -- --project=mobile.
       - name: Desktop browser tests
         run: npm run test:e2e -- --project=desktop

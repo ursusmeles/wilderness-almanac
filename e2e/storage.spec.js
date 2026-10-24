@@ -10,6 +10,42 @@ const palette = {
   colors: ['#112233', '#334455', '#667788'],
 };
 
+test('account sync metadata survives reload, isolates accounts and rejects stale acknowledgments', async ({
+  page,
+}) => {
+  await prepare(page);
+  await seed(page);
+  const result = await page.evaluate(async () => {
+    const store = await window.boot();
+    const state = { remoteRevision: 1, hash: 'a'.repeat(64) };
+    await store.rememberRemote('alice', 'test-campaign', state);
+    const acknowledged = await store.remoteState('alice', 'test-campaign');
+    await store.rememberRemote(
+      'alice',
+      'test-campaign',
+      { ...state, remoteRevision: 2 },
+      acknowledged,
+    );
+    let conflict = false;
+    try {
+      await store.rememberRemote('alice', 'test-campaign', state, acknowledged);
+    } catch {
+      conflict = true;
+    }
+    store.close();
+    const reloaded = await window.boot();
+    const current = await reloaded.remoteState('alice', 'test-campaign');
+    const other = await reloaded.remoteState('bob', 'test-campaign');
+    const count = reloaded.campaigns.length;
+    reloaded.close();
+    return { current, other, conflict, count };
+  });
+  expect(result.current.value.remoteRevision).toBe(2);
+  expect(result.other).toBeUndefined();
+  expect(result.conflict).toBe(true);
+  expect(result.count).toBe(1);
+});
+
 async function prepare(page) {
   // Raw storage tests exercise the real browser API without starting the app.
   await page.route('**/src/main.js', (route) =>

@@ -6,13 +6,13 @@
 
 IndexedDB database **`wilderness-almanac:campaigns`**, schema version **1**, contains:
 
-| Store       | Key                | Purpose                                                                                                                    |
-| ----------- | ------------------ | -------------------------------------------------------------------------------------------------------------------------- |
-| `campaigns` | Campaign ID        | One current replay record/revision, including sparse edits, dressing/locks, visits, party, fog, palette and world identity |
-| `palettes`  | Custom palette ID  | Current custom palette/revision                                                                                            |
-| `settings`  | Setting ID         | Campaign ordering/active selection, palette ordering/default, revision clock and migration marker                          |
-| `recovery`  | Recovery ID        | At most two immutable original legacy source strings and one deleted campaign; an empty deletion retains only its revision |
-| `journal`   | `[campaignId, id]` | Reserved for individually addressable future entries, indexed by campaign; currently empty                                 |
+| Store       | Key                | Purpose                                                                                                                                  |
+| ----------- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `campaigns` | Campaign ID        | One current replay record/revision, including sparse edits, dressing/locks, visits, party, fog, palette and world identity               |
+| `palettes`  | Custom palette ID  | Current custom palette/revision                                                                                                          |
+| `settings`  | Setting ID         | Campaign ordering/active selection, palette ordering/default, revision clock, migration marker and optional account sync acknowledgments |
+| `recovery`  | Recovery ID        | At most two immutable original legacy source strings and one deleted campaign; an empty deletion retains only its revision               |
+| `journal`   | `[campaignId, id]` | Reserved for individually addressable future entries, indexed by campaign; currently empty                                               |
 
 Saving replaces current records. There are no per-action campaign snapshots on disk. Deletion Undo retains at most one campaign. The existing 20-entry edit Undo stays in memory, shares unchanged data and resets on campaign entry. Queued saves retain at most one in-flight and one pending set of snapshots; rapid inputs coalesce to the latest pending state. All coalesced callers settle after commit or failure.
 
@@ -20,13 +20,15 @@ Saving replaces current records. There are no per-action campaign snapshots on d
 
 Future journal features should use separate rows and indexed queries rather than an ever-growing array in campaign records. Campaign deletion already deletes associated journal rows in its transaction; future journal recovery/Undo semantics need an explicit design before using that store. No Sandbox Tools are implemented here.
 
+Optional account sync stores `account-sync:[accountId,campaignId]` settings rows with an acknowledged server revision and SHA-256 hash of the exact validated campaign sent/loaded. These have their own local metadata revisions, checked transactionally to reject competing-tab acknowledgments. They hold no cookies, OTPs, account credentials or duplicate campaign snapshots. They remain after local deletion so Undo/restoring the same local identity cannot accidentally create an unconditional account overwrite. Account and local deletion are separate explicit actions. IndexedDB schema version and campaign export formats remain unchanged. See [SELF_HOSTING.md](SELF_HOSTING.md) for transfer/conflict behavior.
+
 ## Transactions and conflicts
 
 `save({ campaigns, deletedCampaign, palettes, activeCampaignId })` validates and captures data before queueing. Supply related campaign/palette changes together. Active campaign identity stays in IndexedDB so imported copies with identical replay settings reopen correctly. Each campaign row includes party placement and its visited destination, or a complete multi-hex edit. Campaign deletion/restoration, ordering and deletion recovery share a transaction. Palette deletion and fallback default selection also commit together.
 
 Only changed campaign rows are written. Revisions are checked **inside** the read/write transaction. Stale writes, deletion of a concurrently edited campaign, and stale palette-library or campaign-membership changes abort the entire transaction. Different existing campaigns can save from separate tabs without replacing each other's data. A monotonic revision clock prevents delete/restore from reusing an old campaign revision. Unchanged records in stale library snapshots are never rewritten.
 
-Conflicts block further writes from that store instance. Download changed campaigns or **Download unsaved data**, then reload and reconcile through imports. Imports create independent campaigns. There is no automatic merge, forced overwrite, tab refresh or cloud synchronization. Conflict detection occurs on saving.
+Conflicts block further writes from that store instance. Download changed campaigns or **Download unsaved data**, then reload and reconcile through imports. Imports create independent campaigns. There is no automatic merge, forced overwrite, tab refresh or automatic account synchronization. Optional account transfers are explicit. Conflict detection occurs on saving.
 
 Only transaction completion means success. A quota error, thrown write, abort or closed database leaves previous committed records intact. Live changes remain exportable. **Retry saving** submits the latest library and palettes. The menu forwards an active campaign ID only while it belongs to the live library, so a retained map session cannot invalidate retries after deletion. Warnings persist through action notices and unrelated successful saves. Pending/unsaved critical writes trigger the browser's ordinary leave-page warning where supported; abrupt process termination can still lose uncommitted changes.
 

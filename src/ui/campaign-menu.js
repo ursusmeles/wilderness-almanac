@@ -512,6 +512,29 @@ export function createCampaignMenu({ store, defaultPalette, onEnter, onNewCampai
 
   return {
     add,
+    snapshotCampaigns: () => campaigns.map((campaign) => structuredClone(campaign)),
+    async applyRemote(campaign, expected = null) {
+      if (opening || importing) throw new Error('Wait for the current campaign action to finish.');
+      const index = campaigns.findIndex((item) => item.id === campaign.id);
+      const current = index < 0 ? null : campaigns[index];
+      if (JSON.stringify(current) !== JSON.stringify(expected))
+        throw new Error('The local campaign changed while loading. Both copies have been kept.');
+      const next = campaigns.slice();
+      if (index < 0) next.push(campaign);
+      else next[index] = campaign;
+      const success = await store.save({ campaigns: next, deletedCampaign: null });
+      saveStatus.update('campaigns', success);
+      if (!success)
+        throw new Error(
+          'The account copy could not be saved in this browser. Download it before retrying.',
+        );
+      campaigns.splice(0, campaigns.length, ...next);
+      deletedCampaign = null;
+      cached.delete(campaign.id);
+      undoDelete.hidden = true;
+      render();
+      return campaign;
+    },
     enter,
     download,
     downloadRecovery,

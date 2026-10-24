@@ -365,6 +365,31 @@ export async function createBrowserStore({
       subscribers.add(callback);
       return () => subscribers.delete(callback);
     },
+    async remoteState(accountId, campaignId) {
+      if (!db || readOnly) throw new Error('Account sync requires writable browser storage.');
+      const id = `account-sync:${JSON.stringify([accountId, campaignId])}`;
+      return transact(db, ['settings'], 'readonly', (stores) => requested(stores.settings.get(id)));
+    },
+    async rememberRemote(accountId, campaignId, value, expected) {
+      if (!db || readOnly) throw new Error('Account sync requires writable browser storage.');
+      if (
+        !Number.isSafeInteger(value?.remoteRevision) ||
+        value.remoteRevision < 1 ||
+        !/^[a-f0-9]{64}$/.test(value.hash)
+      )
+        throw new Error('Invalid account sync state.');
+      const id = `account-sync:${JSON.stringify([accountId, campaignId])}`;
+      return transact(db, ['settings'], 'readwrite', async (stores) => {
+        const current = await requested(stores.settings.get(id));
+        if (revision(current) !== revision(expected))
+          throw new Error(
+            'Account sync changed in another tab. Refresh the account copies before retrying.',
+          );
+        const row = { id, revision: revision(current) + 1, value };
+        stores.settings.put(row);
+        return row;
+      });
+    },
     save({ campaigns, deletedCampaign, palettes, activeCampaignId } = {}) {
       let change;
       try {

@@ -41,6 +41,15 @@
             <div class="campaign-toolbar-actions">
               <button
                 type="button"
+                id="open-account"
+                aria-haspopup="dialog"
+                aria-controls="account-dialog"
+                hidden
+              >
+                Account &amp; sync
+              </button>
+              <button
+                type="button"
                 id="open-palette-manager"
                 aria-haspopup="dialog"
                 aria-controls="palette-manager-dialog"
@@ -105,6 +114,74 @@
             </button>
           </div>
         </section>
+        <dialog
+          id="account-dialog"
+          aria-labelledby="account-title"
+          aria-describedby="account-description"
+        >
+          <header class="palette-manager-header">
+            <h2 id="account-title">Account &amp; sync</h2>
+            <button
+              type="button"
+              id="close-account"
+              class="menu-icon-button"
+              aria-label="Close account"
+            >
+              <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <use href="/icons/pixelarticons.svg#close"></use>
+              </svg>
+            </button>
+          </header>
+          <div class="account-content stack">
+            <p id="account-description">
+              Work stays in this browser. Sign in to save and load account copies.
+            </p>
+            <form id="account-email-form" class="stack">
+              <label for="account-email">Email</label>
+              <input
+                id="account-email"
+                type="email"
+                autocomplete="email"
+                required
+                maxlength="254"
+              />
+              <button type="submit" id="account-send-code">Send sign-in code</button>
+            </form>
+            <form id="account-code-form" class="stack" hidden>
+              <label for="account-code">Six-digit code</label>
+              <input
+                id="account-code"
+                type="text"
+                inputmode="numeric"
+                autocomplete="one-time-code"
+                pattern="[0-9]{6}"
+                maxlength="6"
+                required
+              />
+              <button type="submit">Sign in</button>
+            </form>
+            <section id="account-campaigns" class="stack" hidden>
+              <div class="cluster">
+                <p id="account-identity"></p>
+                <button type="button" id="account-sign-out">Sign out</button
+                ><button type="button" id="account-refresh">Refresh</button>
+              </div>
+              <h3>On this device</h3>
+              <ul
+                id="account-local-list"
+                class="account-list stack"
+                aria-label="Local campaigns to save"
+              ></ul>
+              <h3>In your account</h3>
+              <ul
+                id="account-remote-list"
+                class="account-list stack"
+                aria-label="Account campaigns"
+              ></ul>
+            </section>
+            <p id="account-message" class="campaign-message" role="status" aria-live="polite"></p>
+          </div>
+        </dialog>
         <dialog id="palette-manager-dialog" aria-labelledby="palette-manager-title">
           <header class="palette-manager-header">
             <h2 id="palette-manager-title">Palette manager</h2>

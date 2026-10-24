@@ -59,6 +59,8 @@ If saving fails, a persistent warning offers **Retry saving** and **Download uns
 
 Exports are named `wilderness-almanac-[campaignname]-[YYYY-MM-DD].json`. Replay files depend on their generator version; unsupported versions are rejected rather than silently producing a different map.
 
+Self-hosted deployments can enable **Account & sync** to sign in with an emailed code and save or load account copies. Work still saves in this browser, including offline. Conflicting edits are kept for you to resolve; **Import as copy** preserves both versions. JSON export/import remains available. See the [self-hosting guide](docs/SELF_HOSTING.md) to enable this option.
+
 ## Run locally
 
 You need [Node.js](https://nodejs.org/) 24 or later. The repository includes an `.nvmrc` for Node 24.

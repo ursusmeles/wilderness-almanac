@@ -1,0 +1,83 @@
+name: wilderness-almanac
+
+services:
+  api:
+    image: wilderness-almanac-api:local
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    container_name: wilderness-almanac-api
+    restart: unless-stopped
+    init: true
+    environment:
+      NODE_ENV: production
+      APP_ORIGIN: ${APP_ORIGIN:?Set the canonical HTTPS frontend origin}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Set a random secret of at least 32 characters}
+      API_PROXY_SECRET: ${API_PROXY_SECRET:?Set the shared Cloudflare Pages proxy secret}
+      RESEND_API_KEY: ${RESEND_API_KEY:?Configure a Resend sending API key}
+      RESEND_FROM: ${RESEND_FROM:?Configure a verified Resend sender}
+      DATABASE_PATH: /data/wilderness-almanac.sqlite
+      PORT: 3000
+    ports:
+      - '127.0.0.1:8086:3000'
+    volumes:
+      - database:/data
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=64m,mode=1777
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test:
+        [
+          CMD,
+          node,
+          -e,
+          "fetch('http://127.0.0.1:3000/healthz').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+  backup:
+    image: wilderness-almanac-api:local
+    container_name: wilderness-almanac-backup
+    command: [node, server/backup.js, loop]
+    restart: unless-stopped
+    init: true
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      DATABASE_PATH: /data/wilderness-almanac.sqlite
+      BACKUP_DIRECTORY: /backups
+      BACKUP_INTERVAL_HOURS: ${BACKUP_INTERVAL_HOURS:-6}
+      BACKUP_PREFIX: ${BACKUP_PREFIX:-wilderness-almanac}
+      BACKUP_BUCKET: ${BACKUP_BUCKET:?Configure a private off-server backup bucket}
+      S3_ENDPOINT: ${S3_ENDPOINT:?Configure an HTTPS S3-compatible endpoint}
+      AWS_REGION: ${AWS_REGION:-auto}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?Configure backup-only bucket credentials}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:?Configure backup-only bucket credentials}
+    volumes:
+      - database:/data:ro
+      - backup-state:/backups
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=64m,mode=1777
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: [CMD, node, server/backup.js, health]
+      interval: 5m
+      timeout: 10s
+      start_period: 5m
+      retries: 1
+
+volumes:
+  database:
+    name: ${DATABASE_VOLUME:-wilderness_almanac_data}
+    driver: local
+  backup-state:
+    name: wilderness_almanac_backup_state
+    driver: local
