@@ -14,9 +14,13 @@ IndexedDB database **`wilderness-almanac:campaigns`**, schema version **1**, con
 | `recovery`  | Recovery ID        | At most two immutable original legacy source strings and one deleted campaign; an empty deletion retains only its revision               |
 | `journal`   | `[campaignId, id]` | Reserved for individually addressable future entries, indexed by campaign; currently empty                                               |
 
+On the same origin, startup enumerates IndexedDB databases before creating a new one. If the current name is absent, a single earlier `:campaigns` namespace is reused in place after checking its store layout. Multiple candidates, unavailable enumeration or an incompatible schema block persistence instead of opening an apparently empty library. This requires `indexedDB.databases()` in the browser. Earlier database names and their recovery sources are retained on the user's device.
+
 Saving replaces current records. There are no per-action campaign snapshots on disk. Deletion Undo retains at most one campaign. The existing 20-entry edit Undo stays in memory, shares unchanged data and resets on campaign entry. Queued saves retain at most one in-flight and one pending set of snapshots; rapid inputs coalesce to the latest pending state. All coalesced callers settle after commit or failure.
 
 `wilderness-almanac:ui-v1` in localStorage allows only motion, settings disclosure, panel order and collapse preferences. Campaigns, replay identity, party, visits, palettes and default selection never go there. Failure to save these noncritical preferences does not claim campaign data was lost. The optional bounded thumbnail database remains independent and disposable.
+
+UI preferences fall back to a unique earlier `:ui-v1` key; new writes use the current name. Thumbnail caches are disposable and regenerate under the current namespace.
 
 Future journal features should use separate rows and indexed queries rather than an ever-growing array in campaign records. Campaign deletion already deletes associated journal rows in its transaction; future journal recovery/Undo semantics need an explicit design before using that store. No Sandbox Tools are implemented here.
 
@@ -34,7 +38,7 @@ Only transaction completion means success. A quota error, thrown write, abort or
 
 ## Migration and recovery
 
-Legacy sources are `wilderness-almanac:campaigns-v1` and `hex-sandbox:map-v1` in localStorage. Migration:
+Legacy sources are `wilderness-almanac:campaigns-v1` (or a unique earlier `:campaigns-v1` key) and `hex-sandbox:map-v1` in localStorage. Ambiguous campaign sources block migration. Migration:
 
 1. Reads sources without treating blocked reads as an empty library. Validates supported campaigns/deletion state and decodes preferences. A pre-library single map becomes a version-6 campaign with stable migration identity. Custom palette IDs/default selection are persisted.
 2. Copies usable records, ordering/defaults, deletion state, both original source strings and an unverified marker in one transaction. Unknown local fields remain outside rendering. Unsupported/invalid/duplicate records remain verbatim in the recovery source.
@@ -45,7 +49,7 @@ Retries reuse the marker, never clear/reimport a database and never duplicate ca
 
 Malformed legacy envelopes/deletion data are read-only. Individually unreadable primary campaign rows remain intact and downloadable while other readable campaigns stay editable. Malformed primary metadata/palettes block writes. Failed reads never permit blind overwrites.
 
-Campaign JSON export/import and the 4 MB validation limit remain unchanged, including generator versions 6/7/8, world preferences, dressing snapshots and locks. **Download recovery file** contains raw committed rows and original legacy sources. **Download unsaved data** additionally includes the live campaign library, deletion state and palettes. These troubleshooting envelopes remain separate from single-campaign imports; automatic recovery-file import is not implemented.
+New campaign exports use the `wilderness-almanac-campaign` format identifier. Version-1/2 envelopes with earlier lowercase product namespaces ending in `-campaign` still import after full campaign/dressing validation; format identifiers are bounded to 73 characters. The 4 MB limit, generator versions 6/7/8, world preferences, dressing snapshots and locks remain unchanged. **Download recovery file** contains raw committed rows and original legacy sources. **Download unsaved data** additionally includes the live campaign library, deletion state and palettes. These troubleshooting envelopes remain separate from single-campaign imports; automatic recovery-file import is not implemented.
 
 ## Browser durability and checks
 

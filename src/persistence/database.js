@@ -1,10 +1,17 @@
 export const DATABASE_NAME = 'wilderness-almanac:campaigns';
 export const STORES = ['campaigns', 'palettes', 'settings', 'recovery', 'journal'];
 
-export function openDatabase(factory) {
+export async function openDatabase(factory) {
+  const databases = await factory.databases();
+  let name = DATABASE_NAME;
+  if (!databases.some((database) => database.name === name)) {
+    const previous = databases.filter((database) => database.name?.endsWith(':campaigns'));
+    if (previous.length > 1) throw new Error('Ambiguous browser storage');
+    name = previous[0]?.name ?? name;
+  }
   return new Promise((resolve, reject) => {
     let settled = false;
-    const request = factory.open(DATABASE_NAME, 1);
+    const request = factory.open(name, 1);
     request.onupgradeneeded = () => {
       const db = request.result;
       for (const name of STORES) {
@@ -21,7 +28,15 @@ export function openDatabase(factory) {
     request.onerror = () => reject(request.error);
     request.onsuccess = () => {
       if (settled) request.result.close();
-      else resolve(request.result);
+      else if (
+        STORES.every((name) => request.result.objectStoreNames.contains(name)) &&
+        request.result.objectStoreNames.length === STORES.length
+      )
+        resolve(request.result);
+      else {
+        request.result.close();
+        reject(new Error('unreadable'));
+      }
     };
   });
 }

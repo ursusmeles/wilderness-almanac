@@ -77,6 +77,72 @@ async function seed(page, campaigns = [campaign], preferences = {}) {
   );
 }
 
+test('earlier product namespaces retain committed campaigns and original migration sources', async ({
+  page,
+}) => {
+  await prepare(page);
+  const result = await page.evaluate(async (campaign) => {
+    const sourceKey = 'previous-product:campaigns-v1';
+    const original = JSON.stringify({ version: 1, campaigns: [campaign] });
+    localStorage.setItem(sourceKey, original);
+    const { openDatabase, DATABASE_NAME } = await import('/src/persistence/database.js');
+    const previous = await openDatabase({
+      databases: async () => [],
+      open: (_name, version) => indexedDB.open('previous-product:campaigns', version),
+    });
+    previous.close();
+    const store = await window.boot();
+    const imported = store.campaigns[0];
+    const saved = await store.save({ campaigns: [{ ...imported, name: 'After rename' }] });
+    store.close();
+    const reloaded = await window.boot();
+    const recovery = JSON.parse(await reloaded.recovery());
+    const result = {
+      imported,
+      saved,
+      name: reloaded.campaigns[0]?.name,
+      source: recovery.database.recovery.find((row) => row.id === sourceKey)?.source,
+      retired: localStorage.getItem(sourceKey),
+      createdEmpty: (await indexedDB.databases()).some(({ name }) => name === DATABASE_NAME),
+      original,
+    };
+    reloaded.close();
+    return result;
+  }, campaign);
+  expect(result.imported).toEqual(campaign);
+  expect(result.saved).toBe(true);
+  expect(result.name).toBe('After rename');
+  expect(result.source).toBe(result.original);
+  expect(result.retired).toBeNull();
+  expect(result.createdEmpty).toBe(false);
+});
+
+test('ambiguous earlier database namespaces block writes without creating an empty library', async ({
+  page,
+}) => {
+  await prepare(page);
+  const result = await page.evaluate(async () => {
+    const { openDatabase, DATABASE_NAME } = await import('/src/persistence/database.js');
+    for (const prefix of ['previous-product', 'other-product']) {
+      const db = await openDatabase({
+        databases: async () => [],
+        open: (_name, version) => indexedDB.open(`${prefix}:campaigns`, version),
+      });
+      db.close();
+    }
+    const store = await window.boot();
+    const saved = await store.save({ campaigns: [] });
+    const result = {
+      saved,
+      readOnly: store.status().readOnly,
+      createdEmpty: (await indexedDB.databases()).some(({ name }) => name === DATABASE_NAME),
+    };
+    store.close();
+    return result;
+  });
+  expect(result).toEqual({ saved: false, readOnly: true, createdEmpty: false });
+});
+
 test('migration preserves replay versions, party, visits, locks, palettes and unknown records', async ({
   page,
 }) => {

@@ -135,7 +135,13 @@ export function importCampaign(source) {
   } catch {
     throw new Error('This file is not valid JSON. Choose a Wilderness Almanac campaign export.');
   }
-  if (data?.format !== 'wilderness-almanac-campaign' || ![1, 2].includes(data.version))
+  // Earlier product namespaces used the same versioned campaign envelope.
+  // The full replay record and dressing remain subject to validation below.
+  if (
+    typeof data?.format !== 'string' ||
+    !/^[a-z][a-z0-9-]{0,63}-campaign$/.test(data.format) ||
+    ![1, 2].includes(data.version)
+  )
     throw new Error('Choose a supported Wilderness Almanac campaign export.');
   const campaign = validateCampaign(data.campaign);
   if (campaign.hexEdits) campaignDressing(campaign, campaignWorld(campaign));

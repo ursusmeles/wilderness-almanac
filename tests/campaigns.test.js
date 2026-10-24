@@ -58,6 +58,18 @@ test('campaign import rejects malformed, oversized, incompatible and incomplete 
   const envelope = JSON.parse(exportCampaign(campaign));
   assert.throws(() => importCampaign(JSON.stringify({ ...envelope, version: 3 })), /supported/);
   assert.deepEqual(importCampaign(JSON.stringify({ ...envelope, version: 1 })), campaign);
+  assert.deepEqual(
+    importCampaign(JSON.stringify({ ...envelope, format: 'previous-product-campaign' })),
+    campaign,
+  );
+  assert.equal(envelope.format, 'wilderness-almanac-campaign');
+  for (const format of [
+    'campaign',
+    'unrelated',
+    'previous-product-recovery',
+    'x'.repeat(100) + '-campaign',
+  ])
+    assert.throws(() => importCampaign(JSON.stringify({ ...envelope, format })), /supported/);
   for (const patch of [
     { name: '' },
     { name: 'a'.repeat(101) },
@@ -122,7 +134,10 @@ test('export names include a safe campaign slug and the local export date', () =
     campaignFilename({ ...campaign, name: '../../Żmij: The "Ash" / Coast?' }, date),
     'wilderness-almanac-żmij-the-ash-coast-2026-10-19.json',
   );
-  assert.equal(campaignFilename({ name: '🏔' }, date), 'wilderness-almanac-campaign-2026-10-19.json');
+  assert.equal(
+    campaignFilename({ name: '🏔' }, date),
+    'wilderness-almanac-campaign-2026-10-19.json',
+  );
 });
 
 test('New Map replaces a campaign world while preserving its identity and palette', () => {

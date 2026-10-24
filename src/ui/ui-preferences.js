@@ -1,3 +1,5 @@
+import { storageKey } from '../persistence/storage-namespace.js';
+
 export const UI_PREFERENCES_KEY = 'wilderness-almanac:ui-v1';
 
 // Explicit allowlist: campaigns, palettes and replay state never go here.
@@ -23,7 +25,7 @@ function pick(value = {}) {
 
 export function readUIPreferences(storage) {
   try {
-    const saved = JSON.parse(storage.getItem(UI_PREFERENCES_KEY));
+    const saved = JSON.parse(storage.getItem(storageKey(storage, UI_PREFERENCES_KEY)));
     return saved?.version === 1 ? pick(saved) : {};
   } catch {
     return {};

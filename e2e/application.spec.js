@@ -114,7 +114,9 @@ test('campaign JSON export/import preserves edits and creates an independent sav
   await page.getByRole('switch', { name: 'Lock hex dressing', exact: true }).click();
   await page.locator('#hp-back-menu').click();
   const download = await exportFromMenu(page);
-  expect(download.suggestedFilename()).toMatch(/^wilderness-almanac-test-campaign-\d{4}-\d{2}-\d{2}\.json$/);
+  expect(download.suggestedFilename()).toMatch(
+    /^wilderness-almanac-test-campaign-\d{4}-\d{2}-\d{2}\.json$/,
+  );
   const source = await readFile(await download.path(), 'utf8');
   const exported = JSON.parse(source).campaign;
   expect(exported.hexEdits.cells['0,0'].visited).toBe(true);
@@ -245,7 +247,9 @@ test('unreadable saved records survive normal campaign actions and recovery down
   const event = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download recovery file', exact: true }).click();
   const recovered = JSON.parse(await readFile(await (await event).path(), 'utf8'));
-  const legacy = recovered.database.recovery.find((row) => row.id === 'wilderness-almanac:campaigns-v1');
+  const legacy = recovered.database.recovery.find(
+    (row) => row.id === 'wilderness-almanac:campaigns-v1',
+  );
   expect(JSON.parse(legacy.source).campaigns.find((record) => record.id === 'future')).toEqual(
     future,
   );

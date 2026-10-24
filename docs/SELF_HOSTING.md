@@ -1,6 +1,7 @@
 # Self-hosted accounts and campaign copies
 
 Wilderness Almanac can run entirely in the browser or use an optional office-server API.
+
 IndexedDB remains the local working store. Account transfers are explicit through
 **Account & sync** in the campaign library; editing, Undo, offline work and JSON
 export/import keep their existing behavior. Signing out keeps local campaigns.
@@ -28,24 +29,27 @@ The proxy key is an origin protection layer, not a replacement for user sessions
 
 ## Office-server setup
 
+When upgrading an existing deployment, preserve the existing `DATABASE_VOLUME` and set `DATABASE_PATH` in `.env` to its current SQLite filename before starting the renamed stack. The new defaults use `wilderness_almanac_data` and `/data/wilderness-almanac.sqlite`; accepting them on an existing installation would open an empty database. Stop the previous stack first, retain its volume, and deploy the API and Cloudflare proxy together because their private header names change together. Keep the previous `BACKUP_PREFIX` explicitly configured if backups should continue under the same object prefix. Repository and hosting project/domain renames are separate from these source changes; changing the frontend origin also requires moving browser campaigns through JSON exports/imports.
+
 Keep the source and root `compose.yaml` together, for example in
 `/opt/stacks/wilderness-almanac`, where Dockge can discover it. Copy `.env.example` to `.env`
 with mode 600 and configure:
 
-| Variable                                     | Purpose                                                        |
-| -------------------------------------------- | -------------------------------------------------------------- |
-| `APP_ORIGIN`                                 | One canonical HTTPS Cloudflare frontend origin, without a path |
-| `BETTER_AUTH_SECRET`                         | Persistent random secret, at least 32 characters               |
-| `API_PROXY_SECRET`                           | Separate random secret shared only with Pages runtime          |
-| `RESEND_API_KEY`                             | Sending key for the verified Resend domain                     |
-| `RESEND_FROM`                                | Verified sender, e.g. `Wilderness Almanac <login@your-domain>`          |
-| `S3_ENDPOINT`                                | HTTPS endpoint of a private off-server S3-compatible bucket    |
-| `BACKUP_BUCKET`                              | Backup bucket name                                             |
-| `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | Bucket-scoped object read/write credentials                    |
-| `AWS_REGION`                                 | `auto` for R2; the provider's region for other S3 endpoints    |
-| `BACKUP_PREFIX`                              | Object-key prefix, default `wilderness-almanac`                         |
-| `BACKUP_INTERVAL_HOURS`                      | Backup interval, 1–24 hours; default 6                         |
-| `DATABASE_VOLUME`                            | Active local database volume; default `wilderness_almanac_data`         |
+| Variable                                     | Purpose                                                                      |
+| -------------------------------------------- | ---------------------------------------------------------------------------- |
+| `APP_ORIGIN`                                 | One canonical HTTPS Cloudflare frontend origin, without a path               |
+| `BETTER_AUTH_SECRET`                         | Persistent random secret, at least 32 characters                             |
+| `API_PROXY_SECRET`                           | Separate random secret shared only with Pages runtime                        |
+| `RESEND_API_KEY`                             | Sending key for the verified Resend domain                                   |
+| `RESEND_FROM`                                | Verified sender, e.g. `Wilderness Almanac <login@your-domain>`               |
+| `S3_ENDPOINT`                                | HTTPS endpoint of a private off-server S3-compatible bucket                  |
+| `BACKUP_BUCKET`                              | Backup bucket name                                                           |
+| `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | Bucket-scoped object read/write credentials                                  |
+| `AWS_REGION`                                 | `auto` for R2; the provider's region for other S3 endpoints                  |
+| `BACKUP_PREFIX`                              | Object-key prefix, default `wilderness-almanac`                              |
+| `BACKUP_INTERVAL_HOURS`                      | Backup interval, 1–24 hours; default 6                                       |
+| `DATABASE_VOLUME`                            | Active local database volume; default `wilderness_almanac_data`              |
+| `DATABASE_PATH`                              | SQLite filename inside the volume; default `/data/wilderness-almanac.sqlite` |
 
 Generate secrets locally with `openssl rand -hex 32`. Keep a secure copy of the
 environment file outside the server, separately from database backups. Never

@@ -215,13 +215,21 @@ test('HTTPS, trusted origins, content type, required revisions and input bounds 
     400,
   );
   assert.equal(
-    (await f.request('/api/campaigns', { cookie, headers: { 'x-wilderness-almanac-proxy-key': '' } }))
-      .status,
+    (
+      await f.request('/api/campaigns', {
+        cookie,
+        headers: { 'x-wilderness-almanac-proxy-key': '' },
+      })
+    ).status,
     403,
   );
   assert.equal(
-    (await f.request('/api/campaigns', { cookie, headers: { 'x-wilderness-almanac-client-ip': '' } }))
-      .status,
+    (
+      await f.request('/api/campaigns', {
+        cookie,
+        headers: { 'x-wilderness-almanac-client-ip': '' },
+      })
+    ).status,
     400,
   );
   assert.equal(

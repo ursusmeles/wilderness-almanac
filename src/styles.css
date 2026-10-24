@@ -230,6 +230,7 @@
     margin: 0 0 clamp(var(--space-32), 7vh, 4.5rem);
     & h1 {
       display: flex;
+      flex-wrap: wrap;
       gap: 0.32em;
       margin: 0 0 var(--space-4);
       color: var(--gold);

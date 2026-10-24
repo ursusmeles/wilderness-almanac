@@ -5,6 +5,7 @@ import { createCampaign, validateCampaign } from '../application/campaigns.js';
 import { generateWorld } from '../generation/world.js';
 import { paletteNames, palettes, DEFAULT_PALETTE } from '../palette.js';
 import { requested, transact, readDatabase, STORES } from './database.js';
+import { storageKey } from './storage-namespace.js';
 
 export const LEGACY_CAMPAIGNS = 'wilderness-almanac:campaigns-v1';
 export const LEGACY_PREFERENCES = 'hex-sandbox:map-v1';
@@ -35,14 +36,20 @@ function understoodPreferences(source, preferences, library) {
 export function readLegacy(storage) {
   const sources = {};
   let unavailable = false;
-  for (const key of [LEGACY_CAMPAIGNS, LEGACY_PREFERENCES]) {
+  let campaignKey = LEGACY_CAMPAIGNS;
+  try {
+    campaignKey = storageKey(storage, campaignKey);
+  } catch {
+    unavailable = true;
+  }
+  for (const key of [campaignKey, LEGACY_PREFERENCES]) {
     try {
       sources[key] = storage.getItem(key) ?? null;
     } catch {
       unavailable = true;
     }
   }
-  const reader = createCampaignStore({ getItem: () => sources[LEGACY_CAMPAIGNS] });
+  const reader = createCampaignStore({ getItem: () => sources[campaignKey] });
   const preferences = readPreferences({ getItem: () => sources[LEGACY_PREFERENCES] });
   const library = createPaletteLibrary(preferences).preferences();
   const campaigns = reader.campaigns.slice();
@@ -61,6 +68,7 @@ export function readLegacy(storage) {
     campaigns.push(campaign);
   }
   return {
+    campaignKey,
     sources,
     reader,
     preferences,
@@ -73,7 +81,7 @@ export function readLegacy(storage) {
 
 function originalCampaign(legacy, campaign) {
   try {
-    const envelope = JSON.parse(legacy.sources[LEGACY_CAMPAIGNS]);
+    const envelope = JSON.parse(legacy.sources[legacy.campaignKey]);
     const raw = [...envelope.campaigns, envelope.deletedCampaign?.campaign].find((raw) => {
       try {
         return raw.id === campaign.id && equal(validateCampaign(raw), campaign);
@@ -160,7 +168,7 @@ export async function migrateLegacy(db, storage, legacy) {
   // An already verified primary store stays usable when localStorage is
   // subsequently disabled. First-run reads must still succeed before import.
   if (legacy.unavailable && marker.value.verified) return data;
-  for (const key of [LEGACY_CAMPAIGNS, LEGACY_PREFERENCES]) {
+  for (const key of Object.keys(legacy.sources)) {
     const current = storage?.getItem(key) ?? null;
     if (current !== null && current !== sources.get(key)) throw new Error('legacy-conflict');
   }
@@ -220,7 +228,7 @@ export async function migrateLegacy(db, storage, legacy) {
   }
   // Unreadable/unknown sources remain at their original key as well as in the
   // bounded recovery archive. Never scrub data we only partially understood.
-  for (const key of [LEGACY_CAMPAIGNS, LEGACY_PREFERENCES]) {
+  for (const key of Object.keys(legacy.sources)) {
     const source = sources.get(key);
     if (source == null) continue;
     let understood = false;
@@ -228,7 +236,7 @@ export async function migrateLegacy(db, storage, legacy) {
       const parsed = JSON.parse(source);
       understood =
         parsed?.version === 1 &&
-        (key === LEGACY_CAMPAIGNS
+        (key === legacy.campaignKey
           ? !legacy.reader.status().readOnly && !legacy.reader.status().preservedCount
           : !legacy.preservedPreferences);
     } catch {

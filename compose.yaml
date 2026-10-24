@@ -16,7 +16,7 @@ services:
       API_PROXY_SECRET: ${API_PROXY_SECRET:?Set the shared Cloudflare Pages proxy secret}
       RESEND_API_KEY: ${RESEND_API_KEY:?Configure a Resend sending API key}
       RESEND_FROM: ${RESEND_FROM:?Configure a verified Resend sender}
-      DATABASE_PATH: /data/wilderness-almanac.sqlite
+      DATABASE_PATH: ${DATABASE_PATH:-/data/wilderness-almanac.sqlite}
       PORT: 3000
     ports:
       - '127.0.0.1:8086:3000'
@@ -50,7 +50,7 @@ services:
       api:
         condition: service_healthy
     environment:
-      DATABASE_PATH: /data/wilderness-almanac.sqlite
+      DATABASE_PATH: ${DATABASE_PATH:-/data/wilderness-almanac.sqlite}
       BACKUP_DIRECTORY: /backups
       BACKUP_INTERVAL_HOURS: ${BACKUP_INTERVAL_HOURS:-6}
       BACKUP_PREFIX: ${BACKUP_PREFIX:-wilderness-almanac}
