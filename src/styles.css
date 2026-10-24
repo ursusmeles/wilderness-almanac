@@ -231,7 +231,7 @@
     & h1 {
       margin: 0 0 var(--space-4);
       color: var(--gold);
-      font: 400 clamp(3.25rem, 7.5vw, 5.5rem)/0.9 var(--font-pixel);
+      font: 400 clamp(2.5rem, 4.125vw, 3rem)/0.9 var(--font-pixel);
       letter-spacing: -0.055em;
       & span {
         display: block;
@@ -241,6 +241,9 @@
         line-height: 1;
         letter-spacing: -0.055em;
       }
+      & > span:last-child {
+        margin-top: -0.025em;
+      }
     }
     & p {
       color: var(--muted);
@@ -248,7 +251,7 @@
     }
     @media (max-width: 640px) {
       & h1 {
-        font-size: clamp(2.75rem, 12vw, 4rem);
+        font-size: clamp(2.5rem, 10.8vw, 3rem);
       }
       & p {
         font-size: var(--text-control);
