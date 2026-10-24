@@ -11,7 +11,7 @@ Build a world, find a place worth exploring, and make it your own. Wilderness Al
 ## Your next unexplored world
 
 - **Generate a campaign.** Each seed creates a named map of 469 hexes across six regions, with villages, towns, cities, ruins, dungeons and other places to discover.
-- **Shape the map.** Use the Hex Inspector to change terrain, elevation, settlements and points of interest. Regenerate a single hex, lock its dressing, mark it visited, or undo an edit.
+- **Shape the map.** Use the Hex Inspector to change terrain, elevation, settlements, points of interest and road exits. Regenerate a single hex, lock its dressing, mark it visited, or undo an edit.
 - **Set the atmosphere.** Choose from nine palettes or make your own from three colours. The palette system keeps surfaces, water and props readable while preserving deep shadows and saturated accents.
 - **Keep several adventures.** Name your campaigns, choose their tile icons and return to them from the campaign library.
 - **Explore on desktop or mobile.** Pan and zoom, fold away the tool panels, or expand the map to fill the browser viewport. On mobile, both tool panels start closed below the map, with their headers visible on the first screen. Trees, reeds and water have optional ambient motion.
@@ -35,6 +35,8 @@ Select connected town or city hexes to **Join town** or **Join city**. Villages 
 **Reset selected**, next to Undo, restores the selected hexes to their generated defaults after confirmation. It clears their edits, visited status and dressing locks. Undo restores the reset hexes.
 
 **Regenerate map**, next to Wind on mobile and above it on desktop in palette and settings, changes the map's cosmetic dressing while keeping its geography and locations. Create a different world through **New campaign** in the main menu. Hexes with locked dressing keep their appearance through map-wide regeneration.
+
+New campaigns include subtle roads connecting settlements, crossings and selected points of interest. Roads favour open terrain, avoid mountains and use existing bridges and ferries. Regenerate changes their shape while keeping their routes. In **Edit hex**, choose **Road exits** to connect neighbouring hexes; unavailable exits explain their terrain restriction. Manual roads can extend beyond the generated road budget. Adding a settlement or POI leaves roads unchanged; removing a destination removes its generated links without rerouting other roads. Existing campaigns keep their original maps.
 
 ### Fog of War
 

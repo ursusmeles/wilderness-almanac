@@ -238,19 +238,21 @@ export function createTerrainBuilder({ materials, makeCrossing }) {
     const water = river || openWater;
     addMesh(
       g,
-      bevelTile(
-        data.top,
-        water,
-        river
-          ? data.riverCorners
-          : openWater
-            ? Array.from({ length: 6 }, (_, k) => [
-                Math.sin((k * Math.PI) / 3),
-                Math.cos((k * Math.PI) / 3),
-              ])
-            : data.corners,
-        water ? (data.riverShared ?? data.openWaterShared) : data.surface ? data.shared : null,
-      ),
+      data.roadSurface
+        ? roadTerrainGeometry(data.roadSurface)
+        : bevelTile(
+            data.top,
+            water,
+            river
+              ? data.riverCorners
+              : openWater
+                ? Array.from({ length: 6 }, (_, k) => [
+                    Math.sin((k * Math.PI) / 3),
+                    Math.cos((k * Math.PI) / 3),
+                  ])
+                : data.corners,
+            water ? (data.riverShared ?? data.openWaterShared) : data.surface ? data.shared : null,
+          ),
       [
         materials.side,
         water && !(data.water === 'river' && data.clipWater)
@@ -276,4 +278,18 @@ export function createTerrainBuilder({ materials, makeCrossing }) {
     } else makeLandBankJoin(content, data);
     return { g, content };
   };
+}
+
+function roadTerrainGeometry(surface) {
+  const buckets = [[], [], []];
+  surface.triangles.forEach((face, i) =>
+    face.forEach((vertex) => buckets[surface.materialIndices[i]].push(...surface.vertices[vertex])),
+  );
+  const geometry = geometryFrom(buckets.flat());
+  let start = 0;
+  buckets.forEach((vertices, materialIndex) => {
+    geometry.addGroup(start, vertices.length / 3, materialIndex);
+    start += vertices.length / 3;
+  });
+  return geometry;
 }

@@ -23,7 +23,7 @@ test('versions 6/7 replay their captured worlds and dressing exactly', () => {
     assert.equal(digest(world), fixture.world);
     assert.equal(digest(generateDressing(world, 2)), fixture.dressing);
   }
-  assert.equal(GENERATOR_VERSION, 8);
+  assert.equal(GENERATOR_VERSION, 9);
 });
 
 test('mountain villages and high/steep sites use one 0.3 suitability penalty', () => {
@@ -81,7 +81,7 @@ test('v8 worlds respect regional/footprint caps and spacing across slider combin
     emptyWetRegions = 0;
   for (const preferences of settings)
     for (let seed = 0; seed < 12; seed++) {
-      const world = generateWorld(String(seed), { preferences });
+      const world = generateWorld(String(seed), { preferences, generatorVersion: 8 });
       const byKey = new Map(world.cells.map((cell) => [cell.key, cell]));
       for (const plan of world.settlementPlans) {
         const settlements = world.settlements.filter((s) => s.regionId === plan.regionId);
@@ -107,7 +107,7 @@ test('v8 worlds respect regional/footprint caps and spacing across slider combin
             assert.ok(other.hexKeys.every((otherKey) => distance(cell, byKey.get(otherKey)) > 2));
         }
       }
-      assert.deepEqual(world, generateWorld(String(seed), { preferences }));
+      assert.deepEqual(world, generateWorld(String(seed), { preferences, generatorVersion: 8 }));
     }
   assert.ok(townsOnly > 0 && mountainVillages > 0 && emptyWetRegions > 0);
 });
@@ -164,7 +164,7 @@ test('v8 POI preferences add fresh water, deep forest, small islands and shared 
 });
 
 test('mountain village footings fit their sampled slope and survive locking/export/import', () => {
-  const world = generateWorld('1');
+  const world = generateWorld('1', { generatorVersion: 8 });
   const village = world.cells.find(
     (cell) => cell.elevation === 4 && cell.pointOfLight?.type === 'village',
   );

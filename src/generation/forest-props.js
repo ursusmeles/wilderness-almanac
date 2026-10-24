@@ -3,6 +3,7 @@ import { randomFor } from './seed.js';
 import { fitsHex, fitsTree, minimumSpacing } from './prop-placement.js';
 import { poiAnchor } from './points-of-interest.js';
 import { isForest, forestProfiles } from './forest-types.js';
+import { roadAllowsProp } from './road-geometry.js';
 
 export const TOKEN_ANCHOR = { x: 0.5, z: 0.16, r: 0.1 };
 export { isForest } from './forest-types.js';
@@ -123,6 +124,7 @@ function plantCanopy(group, byKey, seed, variant) {
     const species = deciduous ? 1 : appearance() < 0.2 ? 2 : 0;
     const scale = deciduous ? 0.55 + appearance() * 0.25 : 0.57 + appearance() * 0.2;
     const prop = { kind: 'tree', x: wx - cell.wx, z: wz - cell.wz, footprint: 0.24 * scale };
+    if (!roadAllowsProp(cell.roads, prop)) continue;
     if (!fitsTree(cell, prop.x, prop.z, prop.footprint)) continue;
     if (
       reservations.get(cell.key).some((next) => {

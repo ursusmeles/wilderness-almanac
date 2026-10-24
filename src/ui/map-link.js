@@ -107,6 +107,8 @@ export function describeHex(cell) {
       ? cell.crossing.kind === 'ferry'
         ? 'a ferry'
         : `a ${cell.crossing.material === 'stone' ? 'stone' : 'wooden'} bridge`
-      : '';
+      : !cell.pointOfLight && cell.road
+        ? 'a road'
+        : '';
   return `${hexAddress(cell)} · ${label[0].toUpperCase() + label.slice(1)}${feature ? ` with ${feature}` : ''}`;
 }

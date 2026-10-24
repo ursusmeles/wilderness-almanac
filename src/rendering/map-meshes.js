@@ -7,6 +7,7 @@ import { createNatureBuilder } from './nature-props.js';
 import { createCrossingBuilder } from './crossings.js';
 import { createPoiBuilder } from './poi-props.js';
 import { createSettlementBuilder, roofGeometry } from './settlement-props.js';
+import { createRoadBuilder } from './roads.js';
 
 // Own map geometry and prop batches; the material registry outlives rebuilds.
 export function createMapMeshes({
@@ -30,6 +31,7 @@ export function createMapMeshes({
     roofGeometry,
   });
   const makePoi = createPoiBuilder({ addMesh, propMaterial, makeHouse, makeTower, roofGeometry });
+  const makeRoads = createRoadBuilder({ propMaterial });
   function buildMap(layout) {
     clearGeometries(map);
     cells.length = 0;
@@ -40,6 +42,7 @@ export function createMapMeshes({
       const { g, content } = makeTerrain(data);
       const propRoot = new THREE.Group();
       content.add(propRoot);
+      makeRoads(propRoot, data);
       for (const prop of data.props) {
         if (prop.kind === 'tree') makeTree(propRoot, prop);
         else if (prop.kind === 'house') makeHouse(propRoot, prop);

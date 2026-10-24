@@ -75,13 +75,7 @@ export function createMapRenderer(
   const meshes = createMapMeshes(palette);
   scene.add(meshes.group);
   const party = onPartyMove
-    ? createPartyToken({
-        host,
-        map: meshes.group,
-        draw,
-        onMove: onPartyMove,
-        onSelect: onPartySelect,
-      })
+    ? createPartyToken({ host, draw, onMove: onPartyMove, onSelect: onPartySelect })
     : null;
   const keyHints = onPartyMove ? createPartyKeyHints(host) : null;
   let partyKey,

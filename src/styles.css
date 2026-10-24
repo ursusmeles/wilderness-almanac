@@ -1752,6 +1752,33 @@
     font-size: var(--text-control);
     margin: var(--space-12) 0;
   }
+  .hp-road-field {
+    grid-column: 1 / -1;
+    color: var(--muted);
+    font-size: var(--text-control);
+  }
+  .hp-road-exits {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-4) var(--space-8);
+    margin-top: var(--space-4);
+    & label {
+      flex-direction: row;
+      align-items: center;
+      min-height: var(--control-size);
+      padding-inline: var(--space-8);
+      border: 1px solid var(--line);
+    }
+    & label:has(input:disabled) {
+      opacity: 0.5;
+    }
+    & input {
+      width: 20px;
+      height: 20px;
+      margin: 0;
+      accent-color: var(--gold);
+    }
+  }
   :is(.hp-inspector-edit-actions, .hp-inspector-actions) {
     display: flex;
     gap: var(--space-8);

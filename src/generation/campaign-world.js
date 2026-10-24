@@ -1,5 +1,5 @@
 import { generateWorld, generateDressing } from './world.js';
-import { components, distance, neighbours, DIRECTIONS, hexAddress } from './hex.js';
+import { components, distance, neighbours, DIRECTIONS, hexAddress, directionTo } from './hex.js';
 import { randomFor } from './seed.js';
 import { emptyHexEdits, validateHexEdits } from './hex-edits.js';
 import { prepareRiverGeometry, riverFieldFor } from './presentation.js';
@@ -9,9 +9,20 @@ import { riverBankValue, riverBankHeight } from './river-surfaces.js';
 import { fitsHex, minimumSpacing, fitsTree } from './prop-placement.js';
 import { prepareMountainRanges } from './mountain-surfaces.js';
 import { surfaceHeight } from './math.js';
+import { applyRoadEdits, roadGraph } from './roads.js';
+import { roadAllowsProp, roadBarrierPieces, roadHeight } from './road-geometry.js';
 
 const own = (value, key) => Object.hasOwn(value, key);
-const structural = ['terrain', 'elevation', 'settlement', 'settlementGroup', 'poi', 'crossing'];
+const structural = [
+  'terrain',
+  'elevation',
+  'settlement',
+  'settlementGroup',
+  'poi',
+  'crossing',
+  'road',
+  'removedRoadLinks',
+];
 const openWater = (cell) => ['ocean', 'lake'].includes(cell.water);
 
 export function campaignWorld(
@@ -200,7 +211,7 @@ export function campaignWorld(
   world.crossings = world.cells
     .filter((cell) => cell.crossing)
     .map((cell) => ({ key: cell.key, ...cell.crossing }));
-  return world;
+  return applyRoadEdits(world, base, edits);
 }
 
 export function crossingFor(cell, fields) {
@@ -249,6 +260,7 @@ export function campaignDressing(
     revisions,
     mountainLocks,
     canopySalt: rerollKey ? `${rerollKey}:${revisions[rerollKey]}` : '',
+    roadLocks: fixed,
   });
   const worldByKey = new Map(world.cells.map((cell) => [cell.key, cell]));
   const fixedMountains = Object.keys(fixed).some(
@@ -307,6 +319,10 @@ export function campaignDressing(
             prop.foundationHeights = heights.map((height) => height - top - 0.015);
           }
         }
+      if (cell.roadSurface)
+        for (const prop of cell.props)
+          if (prop.kind !== 'poi' && !prop.foundationHeights)
+            prop.y = roadHeight(origin, prop.x, prop.z, cell.roadSurface);
     }
   }
   // Reserve frozen crowns before accepting freshly generated neighbours. Local
@@ -378,6 +394,22 @@ export function campaignDressing(
       }
     }
   }
+  for (const cell of dressing.cells) {
+    if (
+      !cell.roads?.length ||
+      !fixed[cell.key] ||
+      fixed[cell.key].roadMask === worldByKey.get(cell.key)?.road?.exits
+    )
+      continue;
+    cell.props = cell.props.flatMap((prop) =>
+      ['city-wall', 'fence'].includes(prop.kind)
+        ? roadBarrierPieces(cell.roads, prop)
+        : roadAllowsProp(cell.roads, prop)
+          ? [prop]
+          : [],
+    );
+    cell.roadMask = worldByKey.get(cell.key).road.exits;
+  }
   return dressing;
 }
 
@@ -396,11 +428,14 @@ export function updateHex(campaign, key, patch) {
 // Merge the entire operation before reconciling shared forest/ridge snapshots.
 export function updateHexes(campaign, patches, baseWorld) {
   const previous = campaign.hexEdits ?? emptyHexEdits();
-  const version =
-    previous.version === 2 ||
-    Object.values(patches).some((patch) => patch && own(patch, 'settlementGroup'))
-      ? 2
-      : 1;
+  const roadRequests = Object.entries(patches).filter(
+    ([, patch]) => patch && own(patch, 'roadExits'),
+  );
+  const version = Math.max(
+    previous.version,
+    roadRequests.length ? 3 : 1,
+    Object.values(patches).some((patch) => patch && own(patch, 'settlementGroup')) ? 2 : 1,
+  );
   const hexEdits = { version, cells: { ...previous.cells } };
   const changed = [];
   for (const [key, patch] of Object.entries(patches)) {
@@ -410,7 +445,8 @@ export function updateHexes(campaign, patches, baseWorld) {
       delete hexEdits.cells[key];
       continue;
     }
-    const edit = { ...hexEdits.cells[key], ...patch };
+    const { roadExits: _exits, ...fields } = patch;
+    const edit = { ...hexEdits.cells[key], ...fields };
     if (
       own(patch, 'settlement') &&
       !own(patch, 'settlementGroup') &&
@@ -427,6 +463,96 @@ export function updateHexes(campaign, patches, baseWorld) {
     hexEdits.cells[key] = validateHexEdits({ version, cells: { [key]: edit } }).cells[key];
   }
   let next = { ...campaign, hexEdits };
+  if (
+    changed.length ||
+    roadRequests.length ||
+    Object.values(patches).some((patch) => patch === null)
+  ) {
+    const base =
+      baseWorld ??
+      generateWorld(campaign.seed, {
+        preferences: campaign.preferences,
+        generatorVersion: campaign.generatorVersion,
+      });
+    if (roadRequests.length && !base.roads)
+      throw new Error('Road editing requires a version 9 campaign.');
+    if (base.roads) {
+      const before = campaignWorld(campaign, base);
+      // Reset an incident manual edge from either of its two hexes.
+      for (const [key, patch] of Object.entries(patches)) {
+        if (patch !== null) continue;
+        const cell = base.cells.find((cell) => cell.key === key);
+        if (!cell) continue;
+        for (const neighbour of neighbours(
+          cell,
+          new Map(base.cells.map((entry) => [entry.key, entry])),
+        )) {
+          const edit = hexEdits.cells[neighbour.key];
+          if (!edit?.road) continue;
+          const road = edit.road.slice();
+          road[directionTo(neighbour, cell)] = null;
+          hexEdits.cells[neighbour.key] = { ...edit, road };
+        }
+      }
+      const after = campaignWorld(next, base);
+      const removed = before.roads.links.filter(
+        (link) => !after.roads.links.some((other) => other.id === link.id),
+      );
+      const owner = changed.find((key) => patches[key] !== null);
+      if (removed.length && owner) {
+        hexEdits.version = 3;
+        hexEdits.cells[owner] = {
+          ...hexEdits.cells[owner],
+          removedRoadLinks: [
+            ...new Set([
+              ...(hexEdits.cells[owner]?.removedRoadLinks ?? []),
+              ...removed.map((link) => link.id),
+            ]),
+          ].sort(),
+        };
+      }
+      const graph = roadGraph(after);
+      for (const [key, mask] of roadRequests) {
+        if (!Number.isInteger(mask.roadExits) || mask.roadExits < 0 || mask.roadExits > 63)
+          throw new Error('Road exits must identify valid hex sides.');
+        const cell = graph.cells.get(key);
+        if (!cell) throw new Error('Choose a hex for the road.');
+        const old = before.cells.find((entry) => entry.key === key)?.road?.exits ?? 0;
+        for (let side = 0; side < 6; side++) {
+          const wanted = Boolean(mask.roadExits & (1 << side));
+          const edge = graph.ports.get(`${key}/${side}`);
+          if (wanted && !edge)
+            throw new Error(
+              `${hexAddress(cell)}: Roads need dry land, an existing crossing, and elevation changes of at most one level.`,
+            );
+          if (wanted === Boolean(old & (1 << side))) continue;
+          const [q, r] = DIRECTIONS[side],
+            otherKey = `${cell.q + q},${cell.r + r}`;
+          const ownerKey = key < otherKey ? key : otherKey;
+          if (!graph.cells.has(ownerKey)) continue;
+          const ownerSide = ownerKey === key ? side : (side + 3) % 6;
+          const edit = { ...hexEdits.cells[ownerKey] };
+          edit.road = edit.road?.slice() ?? Array(6).fill(null);
+          edit.road[ownerSide] = wanted;
+          delete edit.dressing;
+          delete edit.dressingVariant;
+          hexEdits.cells[ownerKey] = edit;
+          changed.push(key, otherKey);
+          // Imports may have stored the same edge from the opposite side.
+          const opposite = ownerKey === key ? otherKey : key;
+          if (hexEdits.cells[opposite]?.road) {
+            const copy = {
+              ...hexEdits.cells[opposite],
+              road: hexEdits.cells[opposite].road.slice(),
+            };
+            copy.road[(ownerSide + 3) % 6] = null;
+            hexEdits.cells[opposite] = copy;
+          }
+        }
+      }
+      next = { ...campaign, hexEdits: validateHexEdits(hexEdits) };
+    }
+  }
   if (changed.length && Object.values(hexEdits.cells).some((value) => value.dressing)) {
     // Cosmetic snapshots remain local until a structural edit changes their
     // shared forest/ridge context. Clear snapshots only in affected components.

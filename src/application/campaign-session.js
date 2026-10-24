@@ -416,10 +416,9 @@ export function createCampaignSession({ persist }) {
       );
     },
     reset() {
-      const next = updateHex(state.campaign, selected, {});
-      const visited = next.hexEdits.cells[selected].visited;
+      const visited = state.campaign.hexEdits?.cells[selected]?.visited;
+      const next = updateHexes(state.campaign, { [selected]: null }, state.baseWorld);
       if (visited !== undefined) next.hexEdits.cells[selected] = { visited };
-      else delete next.hexEdits.cells[selected];
       return transition(next, {
         notification: 'Hex reset to generated; visited status kept',
         action: 'hex reset',

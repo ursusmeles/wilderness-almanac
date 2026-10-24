@@ -10,9 +10,11 @@ import { prepareMountainRanges } from './mountain-surfaces.js';
 import { generatePointsOfLight } from './points-of-light.js';
 import { generatePointsOfInterest } from './points-of-interest.js';
 import { worldPreferences } from './world-preferences.js';
+import { generateRoads } from './roads.js';
+import { generateRoadDressing, roadHeight } from './road-geometry.js';
 
-export const GENERATOR_VERSION = 8;
-export const SUPPORTED_GENERATOR_VERSIONS = [6, 7, GENERATOR_VERSION];
+export const GENERATOR_VERSION = 9;
+export const SUPPORTED_GENERATOR_VERSIONS = [6, 7, 8, GENERATOR_VERSION];
 
 export function generateWorld(seed, { preferences, generatorVersion = GENERATOR_VERSION } = {}) {
   if (!SUPPORTED_GENERATOR_VERSIONS.includes(generatorVersion))
@@ -46,6 +48,7 @@ export function generateWorld(seed, { preferences, generatorVersion = GENERATOR_
   generatePointsOfLight(world);
   generateFarmlands(world);
   generatePointsOfInterest(world);
+  if (generatorVersion >= 9) generateRoads(world);
   return world;
 }
 
@@ -54,7 +57,13 @@ export function generateWorld(seed, { preferences, generatorVersion = GENERATOR_
 export function generateDressing(
   world,
   variant = 0,
-  { fixedCells = {}, revisions = {}, mountainLocks = {}, canopySalt = '' } = {},
+  {
+    fixedCells = {},
+    revisions = {},
+    mountainLocks = {},
+    canopySalt = '',
+    roadLocks = fixedCells,
+  } = {},
 ) {
   const dressing = {
     seed: world.seed,
@@ -76,12 +85,25 @@ export function generateDressing(
     cells: [],
     ...(Object.keys(revisions).length ? { revisions } : {}),
   };
+  const roads = generateRoadDressing(world, variant, { fixedCells: roadLocks, revisions });
   dressing.cells = world.stages.props
     ? generatePropDressing(world, variant, prepareMountainRanges(world, dressing), {
         fixedCells,
         revisions,
         canopySalt,
+        roads,
       })
     : world.cells.map((cell) => ({ key: cell.key, placementSeed: 0, props: [] }));
+  for (const cell of dressing.cells)
+    if (roads.has(cell.key)) {
+      const detail = roads.get(cell.key);
+      Object.assign(cell, detail);
+      if (detail.roadSurface) {
+        const origin = world.cells.find((entry) => entry.key === cell.key);
+        for (const prop of cell.props)
+          if (prop.kind !== 'poi' && !prop.foundationHeights)
+            prop.y = roadHeight(origin, prop.x, prop.z, detail.roadSurface);
+      }
+    }
   return dressing;
 }

@@ -6,6 +6,7 @@ import { describeHex } from './map-link.js';
 import { cloneTemplate } from './templates.js';
 import { hexAddress } from '../generation/hex.js';
 import { explainDisabled } from './control-help.js';
+import { roadGraph } from '../generation/roads.js';
 
 const title = (text) => (text ? text[0].toUpperCase() + text.slice(1) : 'None');
 export function createHexInspector(
@@ -29,6 +30,7 @@ export function createHexInspector(
     target.addEventListener(event, handler, { signal: listeners.signal });
   host.replaceChildren(cloneTemplate('hex-inspector-template'));
   const el = (name) => host.querySelector(`#hp-hex-${name}`);
+  const roadExits = [...host.querySelectorAll('[data-road-exit]')];
   const options = (control, values, none = false) => {
     control.replaceChildren(
       ...(none ? [''] : []).concat(values).map((value) => {
@@ -45,6 +47,7 @@ export function createHexInspector(
   let state,
     editing = false,
     dirty = false,
+    roadDirty = false,
     pending,
     frame,
     previewTile,
@@ -74,6 +77,37 @@ export function createHexInspector(
           : '',
     );
     explainDisabled(el('crossing'), terrain !== 'river' ? 'River hexes only' : '');
+    if (state) {
+      const draft = {
+        ...state.cell,
+        terrain,
+        elevation: Number(el('elevation').value),
+        water: terrain === 'river' ? 'river' : terrain === 'open water' ? 'lake' : null,
+      };
+      if (terrain !== 'river' || !el('crossing').value) delete draft.crossing;
+      const graph = state.world.roads
+        ? roadGraph({
+            ...state.world,
+            cells: state.world.cells.map((cell) => (cell.key === draft.key ? draft : cell)),
+          })
+        : null;
+      for (const input of roadExits) {
+        const side = Number(input.dataset.roadExit);
+        const allowed = graph?.ports.has(`${draft.key}/${side}`);
+        explainDisabled(
+          input,
+          !graph
+            ? 'Roads are available in new campaigns'
+            : !allowed
+              ? 'Needs neighbouring land or a crossing, with at most one level of elevation change'
+              : '',
+        );
+        if (!allowed && input.checked) {
+          input.checked = false;
+          if (editing) roadDirty = true;
+        }
+      }
+    }
     el('constraint').textContent =
       terrain === 'open water'
         ? 'This removes settlements, points of interest and crossings.'
@@ -99,12 +133,16 @@ export function createHexInspector(
     subtype(poi?.variant);
     el('elevation').value = String(cell.elevation);
     el('crossing').value = cell.crossing?.kind ?? '';
+    for (const input of roadExits)
+      input.checked = Boolean((cell.road?.exits ?? 0) & (1 << Number(input.dataset.roadExit)));
     constraints();
+    roadDirty = false;
   }
   function setEditing(enabled) {
     enabled = enabled && !state?.fogOfWar;
     editing = enabled;
     dirty = false;
+    roadDirty = false;
     el('fields').disabled = !enabled;
     el('form').classList.toggle('is-editing', enabled);
     el('constraint').hidden = !enabled;
@@ -160,6 +198,15 @@ export function createHexInspector(
           ? null
           : { kind, variant: variants.find((value) => String(value) === el('subtype').value) },
       crossing: terrain === 'river' ? el('crossing').value || null : null,
+      ...(roadDirty
+        ? {
+            roadExits: roadExits.reduce(
+              (mask, input) =>
+                input.checked ? mask | (1 << Number(input.dataset.roadExit)) : mask,
+              0,
+            ),
+          }
+        : {}),
     };
   }
   async function apply(button = el('apply')) {
@@ -184,6 +231,7 @@ export function createHexInspector(
   });
   listen(el('fields'), 'change', (event) => {
     dirty = true;
+    if (event.target.matches('[data-road-exit]')) roadDirty = true;
     el('feedback').textContent = '';
     el('fields')
       .querySelectorAll('select')
@@ -281,15 +329,17 @@ export function createHexInspector(
     error: (message) => {
       el('feedback').textContent = message;
       // Constraint errors identify a field when possible; otherwise focus the alert.
-      const field = /crossing|banks/i.test(message)
-        ? 'crossing'
-        : /elevation/i.test(message)
-          ? 'elevation'
-          : /settlement/i.test(message)
-            ? 'settlement'
-            : /point of interest/i.test(message)
-              ? 'poi'
-              : null;
+      const field = /road/i.test(message)
+        ? null
+        : /crossing|banks/i.test(message)
+          ? 'crossing'
+          : /elevation/i.test(message)
+            ? 'elevation'
+            : /settlement/i.test(message)
+              ? 'settlement'
+              : /point of interest/i.test(message)
+                ? 'poi'
+                : null;
       if (field && !el(field).disabled) {
         el(field).setAttribute('aria-invalid', 'true');
         el(field).setAttribute('aria-describedby', 'hp-hex-constraint hp-hex-feedback');

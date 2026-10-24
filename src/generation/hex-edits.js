@@ -159,13 +159,26 @@ function validateLock(value, key) {
       ['phase', 'angle', 'heightScale'].map((field) => [field, value.mountain[field]]),
     );
   }
+  if (value.roadShape !== undefined) {
+    if (
+      !record(value.roadShape) ||
+      !integer(value.roadShape.variant) ||
+      !integer(value.roadShape.revision)
+    )
+      fail();
+    lock.roadShape = { variant: value.roadShape.variant, revision: value.roadShape.revision };
+  }
+  if (value.roadMask !== undefined) {
+    if (!Number.isInteger(value.roadMask) || value.roadMask < 0 || value.roadMask > 63) fail();
+    lock.roadMask = value.roadMask;
+  }
   return lock;
 }
 
 export function validateHexEdits(value) {
   if (
     !record(value) ||
-    ![1, 2].includes(value.version) ||
+    ![1, 2, 3].includes(value.version) ||
     !record(value.cells) ||
     Object.keys(value.cells).length > 469
   )
@@ -191,7 +204,7 @@ export function validateHexEdits(value) {
       const parts =
         typeof source.settlementGroup === 'string' ? source.settlementGroup.split('/') : [];
       if (
-        value.version !== 2 ||
+        value.version < 2 ||
         !['town', 'city'].includes(edit.settlement) ||
         parts.length !== 2 ||
         !validKey(parts[0]) ||
@@ -215,6 +228,29 @@ export function validateHexEdits(value) {
     if (source.crossing !== undefined) {
       if (![null, 'bridge', 'ferry'].includes(source.crossing)) fail();
       edit.crossing = source.crossing;
+    }
+    if (source.road !== undefined) {
+      if (
+        value.version < 3 ||
+        !Array.isArray(source.road) ||
+        source.road.length !== 6 ||
+        !source.road.every((exit) => exit === null || typeof exit === 'boolean')
+      )
+        fail();
+      edit.road = source.road.slice();
+    }
+    if (source.removedRoadLinks !== undefined) {
+      if (
+        value.version < 3 ||
+        !Array.isArray(source.removedRoadLinks) ||
+        source.removedRoadLinks.length > 469 ||
+        !source.removedRoadLinks.every(
+          (id) => typeof id === 'string' && /^road-[1-9]\d{0,2}$/.test(id),
+        ) ||
+        new Set(source.removedRoadLinks).size !== source.removedRoadLinks.length
+      )
+        fail();
+      edit.removedRoadLinks = source.removedRoadLinks.slice();
     }
     if (source.visited !== undefined) {
       if (typeof source.visited !== 'boolean') fail();

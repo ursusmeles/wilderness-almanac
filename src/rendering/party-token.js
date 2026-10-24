@@ -13,7 +13,7 @@ export function partyNudgeAngle(progress) {
 }
 
 // A separately rendered piece shares the map camera, but never moves it.
-export function createPartyToken({ host, map, draw, onMove, onSelect }) {
+export function createPartyToken({ host, draw, onMove, onSelect }) {
   const scene = new THREE.Scene(),
     root = new THREE.Group();
   scene.add(root, new THREE.HemisphereLight(0xffffff, 0x777777, 1.8));
@@ -172,10 +172,7 @@ export function createPartyToken({ host, map, draw, onMove, onSelect }) {
       if (!piece || document.hidden) return false;
       cast(event, camera);
       root.updateWorldMatrix(true, true);
-      const hit = ray.intersectObject(root, true)[0];
-      if (!hit) return false;
-      // Covered parts of the piece belong to the foreground map prop instead.
-      if (map && ray.intersectObject(map, true)[0]?.distance < hit.distance) return false;
+      if (!ray.intersectObject(root, true).length) return false;
       if (onSelect?.() === false) return true;
       select(true);
       dragging = true;
@@ -232,8 +229,7 @@ export function createPartyToken({ host, map, draw, onMove, onSelect }) {
     setSelected: select,
     render(renderer, camera) {
       if (piece) {
-        // Placed pieces share map depth. Keep an actively dragged piece visible.
-        if (dragging && moved) renderer.clearDepth();
+        renderer.clearDepth();
         renderer.render(scene, camera);
       }
     },

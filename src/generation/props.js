@@ -5,6 +5,7 @@ import { surfaceHeight } from './math.js';
 import { poiAnchor } from './points-of-interest.js';
 import { TOKEN_ANCHOR, isForest, populateForests } from './forest-props.js';
 import { settlementBarriers, isBarrier, barrierDistance } from './settlement-props.js';
+import { roadAllowsProp, roadBarrierPieces } from './road-geometry.js';
 
 export { TOKEN_ANCHOR } from './forest-props.js';
 
@@ -12,7 +13,7 @@ export function generatePropDressing(
   world,
   variant,
   mountainSurfaces,
-  { fixedCells = {}, revisions = {}, canopySalt = '' } = {},
+  { fixedCells = {}, revisions = {}, canopySalt = '', roads = new Map() } = {},
 ) {
   const states = world.cells.map((cell) => {
     const localVariant = revisions[cell.key] ? `${variant}:${revisions[cell.key]}` : variant;
@@ -24,6 +25,7 @@ export function generatePropDressing(
       fixed: Boolean(fixedCells[cell.key]),
       links: Array(6).fill(null),
       sparse: random() < (cell.terrain === 'dense forest' ? 0.1 : 0.32),
+      roads: roads.get(cell.key)?.roads,
     };
   });
   const byKey = new Map(states.map((cell) => [cell.key, cell]));
@@ -73,7 +75,9 @@ export function generatePropDressing(
           : {}),
       });
     }
-    props.push(...(barriers.get(cell.key) ?? []));
+    props.push(
+      ...(barriers.get(cell.key) ?? []).flatMap((prop) => roadBarrierPieces(cell.roads, prop)),
+    );
     // Keep the non-forest dressing stream unchanged after removing local patches.
     random();
     random();
@@ -91,6 +95,7 @@ export function generatePropDressing(
       )
         return false;
       const candidate = { kind, x, z, footprint };
+      if (!roadAllowsProp(cell.roads, candidate)) return false;
       // Even low props yield their entire footprint to the POI corner.
       if (
         props.some(
