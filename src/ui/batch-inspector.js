@@ -1,8 +1,9 @@
 import { openDialog } from './dialog-focus.js';
 import { TERRAIN_TYPES } from '../generation/terrain-types.js';
-import { POI_TYPES, SETTLEMENT_TYPES, variantsFor } from '../generation/hex-edits.js';
+import { SETTLEMENT_TYPES } from '../generation/hex-edits.js';
 import { cloneTemplate } from './templates.js';
 import { explainDisabled } from './control-help.js';
+import { POI_OPTIONS, poiValue, poiLabel, poiFromValue } from './poi-options.js';
 
 const KEEP = '__keep__';
 const title = (value) => (value ? value[0].toUpperCase() + value.slice(1) : 'None');
@@ -35,7 +36,6 @@ export function createBatchInspector(
   for (const [field, values] of Object.entries({
     terrain: TERRAIN_TYPES,
     settlement: ['', ...SETTLEMENT_TYPES],
-    poi: ['', ...POI_TYPES],
     elevation: [0, 1, 2, 3],
     crossing: ['', 'bridge', 'ferry'],
     visited: ['true', 'false'],
@@ -54,6 +54,10 @@ export function createBatchInspector(
       ),
     );
   }
+  el('poi').replaceChildren(
+    option(KEEP, 'Keep'),
+    ...POI_OPTIONS.map(({ value, label }) => option(value, label)),
+  );
   const unsaved = cloneTemplate('unsaved-batch-dialog-template').firstElementChild;
   const resetDialog = cloneTemplate('reset-selected-dialog-template').firstElementChild;
   host.closest('#campaign-workspace').append(unsaved, resetDialog);
@@ -76,10 +80,6 @@ export function createBatchInspector(
       explainDisabled(el(field), reason);
       if (reason) el(field).value = KEEP;
     }
-    explainDisabled(
-      el('subtype'),
-      el('poi').value === KEEP || !el('poi').value ? 'Choose a point of interest first' : '',
-    );
     el('note').textContent =
       terrain === 'open water'
         ? 'This removes settlements, points of interest and crossings.'
@@ -97,7 +97,6 @@ export function createBatchInspector(
   }
   function reset() {
     for (const field of fields) el(field).value = KEEP;
-    el('subtype').replaceChildren();
     el('feedback').textContent = '';
     el('fields')
       .querySelectorAll('select')
@@ -111,14 +110,7 @@ export function createBatchInspector(
       if (value === KEEP) continue;
       result[field] =
         field === 'poi'
-          ? value
-            ? {
-                kind: value,
-                variant: variantsFor(value).find(
-                  (variant) => String(variant) === el('subtype').value,
-                ),
-              }
-            : null
+          ? poiFromValue(value)
           : field === 'elevation'
             ? Number(value)
             : field === 'visited'
@@ -146,14 +138,6 @@ export function createBatchInspector(
   listen(el('fields'), 'change', (event) => {
     el('feedback').textContent = '';
     event.target.removeAttribute('aria-invalid');
-    if (event.target === el('poi')) {
-      const kind = el('poi').value;
-      el('subtype').replaceChildren(
-        ...(kind && kind !== KEEP ? variantsFor(kind) : []).map((value) =>
-          option(value, typeof value === 'number' ? `Variation ${value + 1}` : title(value)),
-        ),
-      );
-    }
     constraints();
   });
   listen(el('form'), 'submit', (event) => {
@@ -238,7 +222,7 @@ export function createBatchInspector(
           field === 'settlement'
             ? (cell.pointOfLight?.type ?? '')
             : field === 'poi'
-              ? (cell.pointsOfInterest[0]?.kind ?? '')
+              ? poiValue(cell.pointsOfInterest[0])
               : field === 'crossing'
                 ? (cell.crossing?.kind ?? '')
                 : field === 'visited'
@@ -251,7 +235,9 @@ export function createBatchInspector(
             ? values[0] === 'true'
               ? 'Visited'
               : 'Not visited'
-            : title(values[0] ?? '');
+            : field === 'poi'
+              ? poiLabel(next.cells[0]?.pointsOfInterest[0])
+              : title(values[0] ?? '');
         el(field).options[0].textContent =
           unique.size > 1 ? 'Keep mixed values' : unique.size ? `Keep · ${current}` : 'Keep';
       }

@@ -280,7 +280,11 @@ export function campaignDressing(
           (prop) =>
             prop.kind === 'poi' &&
             !origin.pointsOfInterest.some(
-              (poi) => poi.kind === prop.poiKind && poi.variant === prop.variant,
+              (poi) =>
+                poi.kind === prop.poiKind &&
+                (typeof poi.variant === 'number'
+                  ? typeof prop.variant === 'number'
+                  : poi.variant === prop.variant),
             ),
         )
       )

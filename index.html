@@ -1019,18 +1019,6 @@
             <select id="hp-hex-terrain" aria-label="Terrain"></select>
           </label>
           <label>
-            Settlement
-            <select id="hp-hex-settlement" aria-label="Settlement"></select>
-          </label>
-          <label>
-            Point of interest
-            <select id="hp-hex-poi" aria-label="Point of interest"></select>
-          </label>
-          <label id="hp-hex-subtype-label">
-            POI variant
-            <select id="hp-hex-subtype" aria-label="POI variant"></select>
-          </label>
-          <label>
             Elevation
             <select id="hp-hex-elevation" aria-label="Elevation">
               <option value="0">0 · Lowland</option>
@@ -1039,6 +1027,14 @@
               <option value="3">3 · Highland</option>
               <option value="4">4 · Mountains</option>
             </select>
+          </label>
+          <label>
+            Settlement
+            <select id="hp-hex-settlement" aria-label="Settlement"></select>
+          </label>
+          <label>
+            Point of interest
+            <select id="hp-hex-poi" aria-label="Point of interest"></select>
           </label>
           <label>
             Crossing
@@ -1150,16 +1146,13 @@
           aria-describedby="hp-batch-note"
         >
           <label>Terrain<select id="hp-batch-terrain" aria-label="Terrain"></select></label>
+          <label>Elevation<select id="hp-batch-elevation" aria-label="Elevation"></select></label>
           <label
             >Settlement<select id="hp-batch-settlement" aria-label="Settlement"></select
           ></label>
           <label
             >Point of interest<select id="hp-batch-poi" aria-label="Point of interest"></select
           ></label>
-          <label
-            >POI variant<select id="hp-batch-subtype" aria-label="POI variant" disabled></select
-          ></label>
-          <label>Elevation<select id="hp-batch-elevation" aria-label="Elevation"></select></label>
           <label>Crossing<select id="hp-batch-crossing" aria-label="Crossing"></select></label>
           <label>Visited<select id="hp-batch-visited" aria-label="Visited"></select></label>
           <button type="button" id="hp-batch-join" hidden>Join town</button>

@@ -59,11 +59,22 @@ export function generatePropDressing(
       );
       heights.push(surface ? surfaceHeight(surface, anchor.x, anchor.z) : 0);
       const top = Math.max(...heights);
+      let { variant: poiVariant, detailSeed } = poi;
+      const revision = revisions[cell.key];
+      if (typeof poiVariant === 'number' && revision) {
+        // Local rerolls cycle cosmetic models without changing the world feature
+        // or consuming its existing dressing streams. Named subtypes stay fixed.
+        const step = randomFor(world.seed, `poi-cosmetic:${cell.key}:${poi.kind}`)() < 0.5 ? 1 : 2;
+        poiVariant = (poiVariant + revision * step) % 3;
+        detailSeed = Math.floor(
+          randomFor(world.seed, `poi-detail:${cell.key}:${poi.kind}:${revision}`)() * 4294967296,
+        );
+      }
       props.push({
         kind: 'poi',
         poiKind: poi.kind,
-        variant: poi.variant,
-        detailSeed: poi.detailSeed,
+        variant: poiVariant,
+        detailSeed,
         temperature: poi.temperature,
         x: anchor.x,
         z: anchor.z,

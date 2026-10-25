@@ -350,6 +350,65 @@ test('local reroll and locking remain replayable; reset preserves tracking', () 
   assert.deepEqual(session.snapshot().campaign.hexEdits.cells['0,0'], { visited: true });
 });
 
+test('hex regeneration changes cosmetic POI variants while preserving named variants and saved locks', () => {
+  const { session } = fixture();
+  const before = session.snapshot();
+  const cosmetic = before.world.cells.find(
+    (cell) => typeof cell.pointsOfInterest[0]?.variant === 'number',
+  );
+  const propAt = (snapshot, key) =>
+    snapshot.dressing.cells
+      .find((cell) => cell.key === key)
+      .props.find((prop) => prop.kind === 'poi');
+  session.select(cosmetic.key);
+  let previous = propAt(before, cosmetic.key);
+  const variants = new Set([previous.variant]);
+  for (let revision = 1; revision <= 2; revision++) {
+    assert.equal(session.regenerateHex().ok, true);
+    const after = session.snapshot();
+    const prop = propAt(after, cosmetic.key);
+    assert.notEqual(prop.variant, previous.variant);
+    assert.notEqual(prop.detailSeed, previous.detailSeed);
+    assert.deepEqual(after.world.pointsOfInterest, before.world.pointsOfInterest);
+    variants.add(prop.variant);
+    previous = prop;
+  }
+  assert.equal(variants.size, 3);
+  assert.equal(session.lock().ok, true);
+  assert.equal(session.regenerate().ok, true);
+  assert.deepEqual(propAt(session.snapshot(), cosmetic.key), previous);
+  const imported = importCampaign(exportCampaign(session.snapshot().campaign));
+  session.open(imported);
+  assert.deepEqual(propAt(session.snapshot(), cosmetic.key), previous);
+  const named = session
+    .snapshot()
+    .world.cells.find((cell) => typeof cell.pointsOfInterest[0]?.variant === 'string');
+  const namedProp = propAt(session.snapshot(), named.key);
+  session.select(named.key);
+  assert.equal(session.regenerateHex().ok, true);
+  assert.equal(propAt(session.snapshot(), named.key).variant, namedProp.variant);
+  assert.equal(propAt(session.snapshot(), named.key).detailSeed, namedProp.detailSeed);
+});
+
+test('applying a cosmetic POI kind in a batch retains each existing variant and identity', () => {
+  const { session } = fixture();
+  const before = session.snapshot();
+  const cells = before.world.cells.filter((cell) => cell.pointsOfInterest[0]?.kind === 'abbey');
+  assert.ok(new Set(cells.map((cell) => cell.pointsOfInterest[0].variant)).size > 1);
+  session.select(cells[0].key);
+  session.setMultiEdit(true);
+  for (const cell of cells.slice(1)) session.select(cell.key);
+  assert.equal(session.applyBatch({ poi: { kind: 'abbey', variant: 0 }, visited: true }).ok, true);
+  const after = session.snapshot();
+  for (const cell of cells) {
+    assert.deepEqual(
+      after.world.cells.find((entry) => entry.key === cell.key).pointsOfInterest,
+      cell.pointsOfInterest,
+    );
+    assert.equal(after.campaign.hexEdits.cells[cell.key].visited, true);
+  }
+});
+
 test('world icon selection persists without rebuilding the world or adding hex Undo history', () => {
   const { session, writes } = fixture();
   session.visit();

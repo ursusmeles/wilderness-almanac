@@ -7,7 +7,7 @@ import {
   updateHexes,
   lockHex,
 } from '../generation/campaign-world.js';
-import { validateHexEdits } from '../generation/hex-edits.js';
+import { validateHexEdits, variantsFor } from '../generation/hex-edits.js';
 import { replaceCampaignMap } from './campaigns.js';
 import { settlementJoin, joinSettlements } from '../generation/settlement-edits.js';
 import { hexAddress } from '../generation/hex.js';
@@ -336,6 +336,14 @@ export function createCampaignSession({ persist }) {
             throw new Error(
               `${hexAddress(cell)}: Crossings can only be placed on rivers. Select a river hex.`,
             );
+          const currentPoi = cell.pointsOfInterest[0];
+          if (
+            edit.poi &&
+            typeof edit.poi.variant === 'number' &&
+            currentPoi?.kind === edit.poi.kind &&
+            variantsFor(edit.poi.kind).includes(edit.poi.variant)
+          )
+            delete edit.poi;
           if (
             state.campaign.hexEdits?.cells[cell.key]?.lock &&
             ['terrain', 'elevation', 'settlement', 'poi', 'crossing'].some((field) =>

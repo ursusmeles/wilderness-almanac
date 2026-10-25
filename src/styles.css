@@ -1753,9 +1753,11 @@
     margin: var(--space-12) 0;
   }
   .hp-road-field {
-    grid-column: 1 / -1;
     color: var(--muted);
     font-size: var(--text-control);
+  }
+  .is-editing .hp-road-field {
+    grid-column: 1 / -1;
   }
   #hp-hex-road-summary {
     margin: var(--space-4) 0 0;

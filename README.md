@@ -30,6 +30,8 @@ Open **Palette manager** in the main menu to add palettes, edit their three colo
 
 Choose **Turn on multiselect** in the third button row of the Hex Inspector to edit several hexes together. You can also **Ctrl+click** (**Cmd+click on Mac**) a map hex to turn multi-edit on, keeping the inspected hex selected and adding the clicked hex. Once multiselect is on, click or tap hexes to add or remove them; **Ctrl** or **Cmd** clicks work the same way. On mobile, hold an unselected hex to add it to your selection and turn multi-edit on. The coordinate selector toggles hexes while multi-edit is on, and the Inspector offers **Select all** and **Clear selection**. Choose only the fields you want to change, then apply to the selection. One **Undo** restores the entire batch. Open water removes settlements and POIs; incompatible edits leave the whole batch unapplied. Choose **Turn off multiselect** beside Clear selection to return to the single-hex Inspector. Sandbox tools stays closed while multiselect is on; its expand button becomes available again when you turn multiselect off.
 
+The **Point of interest** field includes named choices such as **Mystic · Portal**. Cosmetic model variations are chosen by **Regenerate hex**. Other edits preserve the current variation.
+
 Select connected town or city hexes to **Join town** or **Join city**. Villages always occupy one hex each.
 
 **Reset selected**, next to Undo, restores the selected hexes to their generated defaults after confirmation. It clears their edits, visited status and dressing locks. Undo restores the reset hexes.

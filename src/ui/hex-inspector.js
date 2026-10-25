@@ -1,6 +1,6 @@
 import { openDialog } from './dialog-focus.js';
 import { TERRAIN_TYPES } from '../generation/terrain-types.js';
-import { POI_TYPES, SETTLEMENT_TYPES, variantsFor } from '../generation/hex-edits.js';
+import { SETTLEMENT_TYPES } from '../generation/hex-edits.js';
 import { inspectDistances } from '../generation/campaign-world.js';
 import { describeHex } from './map-link.js';
 import { cloneTemplate } from './templates.js';
@@ -8,6 +8,7 @@ import { hexAddress } from '../generation/hex.js';
 import { explainDisabled } from './control-help.js';
 import { roadGraph } from '../generation/roads.js';
 import { ROAD_DIRECTIONS, roadExitLabels } from './road-labels.js';
+import { POI_OPTIONS, poiValue, poiFromValue } from './poi-options.js';
 
 const title = (text) => (text ? text[0].toUpperCase() + text.slice(1) : 'None');
 export function createHexInspector(
@@ -48,14 +49,21 @@ export function createHexInspector(
       ...(none ? [''] : []).concat(values).map((value) => {
         const option = document.createElement('option');
         option.value = String(value);
-        option.textContent = typeof value === 'number' ? `Variation ${value + 1}` : title(value);
+        option.textContent = title(value);
         return option;
       }),
     );
   };
   options(el('terrain'), TERRAIN_TYPES);
   options(el('settlement'), SETTLEMENT_TYPES, true);
-  options(el('poi'), POI_TYPES, true);
+  el('poi').replaceChildren(
+    ...POI_OPTIONS.map(({ value, label }) => {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = label;
+      return option;
+    }),
+  );
   let state,
     editing = false,
     dirty = false,
@@ -80,14 +88,6 @@ export function createHexInspector(
     el('elevation').querySelector('[value="4"]').disabled = !mountain;
     explainDisabled(el('settlement'), water ? 'Land hexes only' : '');
     explainDisabled(el('poi'), terrain === 'open water' ? 'Land or river hexes only' : '');
-    explainDisabled(
-      el('subtype'),
-      terrain === 'open water'
-        ? 'Land or river hexes only'
-        : !el('poi').value
-          ? 'Choose a point of interest first'
-          : '',
-    );
     explainDisabled(el('crossing'), terrain !== 'river' ? 'River hexes only' : '');
     if (state) {
       const draft = {
@@ -129,20 +129,15 @@ export function createHexInspector(
             ? 'Mountain elevation is fixed at 4.'
             : '';
     el('constraint').hidden = !editing || !el('constraint').textContent;
-    for (const field of ['terrain', 'elevation', 'settlement', 'poi', 'subtype', 'crossing'])
+    for (const field of ['terrain', 'elevation', 'settlement', 'poi', 'crossing'])
       el(field).setAttribute('aria-describedby', 'hp-hex-constraint');
-  }
-  function subtype(value) {
-    options(el('subtype'), el('poi').value ? variantsFor(el('poi').value) : []);
-    if (value !== undefined) el('subtype').value = String(value);
   }
   function fill() {
     const cell = state.cell,
       poi = cell.pointsOfInterest[0];
     el('terrain').value = cell.terrain;
     el('settlement').value = cell.pointOfLight?.type ?? '';
-    el('poi').value = poi?.kind ?? '';
-    subtype(poi?.variant);
+    el('poi').value = poiValue(poi);
     el('elevation').value = String(cell.elevation);
     el('crossing').value = cell.crossing?.kind ?? '';
     for (const input of roadExits)
@@ -202,16 +197,14 @@ export function createHexInspector(
   function patch() {
     const terrain = el('terrain').value,
       water = ['river', 'open water'].includes(terrain);
-    const kind = el('poi').value,
-      variants = variantsFor(kind);
+    const currentPoi = state.cell.pointsOfInterest[0];
+    const poi = terrain === 'open water' ? null : poiFromValue(el('poi').value, currentPoi);
+    const poiChanged = poi?.kind !== currentPoi?.kind || poi?.variant !== currentPoi?.variant;
     return {
       terrain,
       elevation: water ? 0 : terrain === 'mountains' ? 4 : Number(el('elevation').value),
       settlement: water ? null : el('settlement').value || null,
-      poi:
-        terrain === 'open water' || !kind
-          ? null
-          : { kind, variant: variants.find((value) => String(value) === el('subtype').value) },
+      ...(poiChanged ? { poi } : {}),
       crossing: terrain === 'river' ? el('crossing').value || null : null,
       ...(roadDirty
         ? {
@@ -251,7 +244,6 @@ export function createHexInspector(
     el('fields')
       .querySelectorAll('select')
       .forEach((control) => control.removeAttribute('aria-invalid'));
-    if (event.target === el('poi')) subtype();
     constraints();
   });
   listen(el('visited'), 'click', onVisit);
