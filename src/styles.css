@@ -1414,9 +1414,27 @@
     width: 100%;
     max-width: var(--palette-controls-width);
     justify-self: start;
+    align-self: start;
     & :is(input, select, button) {
       width: 100%;
       max-width: 100%;
+    }
+  }
+  .hp-palette-picker {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-8);
+    &:has(> .hp-time-of-day) {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+    & > #hp-preset {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    & > #hp-motion {
+      grid-column: 2;
+      grid-row: 2;
     }
   }
   .hp-seed-action {
@@ -1454,10 +1472,10 @@
     min-width: 0;
   }
   .hp-time-of-day {
-    width: 6rem;
-    min-width: 0;
-    min-height: var(--control-compact-size);
+    min-width: 7rem;
+    white-space: nowrap;
     padding-inline: var(--space-8);
+    --icon-size: var(--icon-small);
   }
   .hp-motion-light {
     width: var(--space-8);
@@ -1472,16 +1490,18 @@
     min-width: 3ch;
   }
   .hp-map-navigation {
-    width: 12rem;
+    width: 15rem;
     max-width: 100%;
-    align-self: end;
+    align-self: start;
     justify-self: end;
+    grid-template-columns: minmax(0, 1fr) var(--control-compact-size);
   }
   .hp-panel-actions {
     display: grid;
     grid-template-columns: var(--control-compact-size);
     justify-content: end;
     align-items: center;
+    align-self: end;
     gap: var(--space-8);
   }
   @container (max-width: 360px) {
@@ -1879,7 +1899,8 @@
   #palette-manager-message[data-kind='error'] {
     color: var(--error);
   }
-  :is(.hp-scene, .cc-scene) canvas:focus-visible {
+  :root[data-map-input='keyboard'] .hp-scene canvas:focus,
+  .cc-scene canvas:focus-visible {
     outline: 2px solid var(--focus, #e5b96e);
     outline-offset: -4px;
   }
@@ -2040,6 +2061,10 @@
     & .hp-map-navigation {
       align-self: center;
       width: var(--control-compact-size);
+      grid-template-columns: var(--control-compact-size);
+    }
+    & .hp-palette-controls {
+      max-width: none;
     }
   }
   .is-side-collapsed {
@@ -2173,6 +2198,7 @@
     }
     .hp-palette-controls {
       max-width: none;
+      grid-column: 2 / -1;
     }
     .hp-map-navigation {
       grid-column: 1 / -1;
@@ -2210,6 +2236,9 @@
         grid-template-columns: var(--control-compact-size);
         border-top: 0;
         padding-top: 0;
+      }
+      & .hp-palette-controls {
+        grid-column: 2;
       }
     }
     .hp-side-panels {

@@ -604,12 +604,6 @@
                 <span class="hp-motion-light" aria-hidden="true"></span>
                 <span>Fog of war <span id="hp-fog-state" aria-hidden="true">OFF</span></span>
               </button>
-              <select id="hp-time-of-day" class="hp-time-of-day" aria-label="Time of day">
-                <option value="dawn">Dawn</option>
-                <option value="day" selected>Day</option>
-                <option value="dusk">Dusk</option>
-                <option value="night">Night</option>
-              </select>
             </div>
             <button
               type="button"
@@ -692,8 +686,12 @@
           <button type="button" id="hp-retry-save">Retry saving</button>
           <button type="button" id="hp-download-unsaved-data">Download unsaved data</button>
         </div>
-        <section class="hp-map-options" id="hp-map-options" aria-label="Palette and settings">
-          <form class="hp-palette" id="hp-palette-form">
+        <section
+          class="hp-map-options is-collapsed"
+          id="hp-map-options"
+          aria-label="Palette and settings"
+        >
+          <div class="hp-palette" id="hp-appearance-controls">
             <div class="hp-colors stack">
               <label class="hp-color">
                 <span class="hp-swatch">
@@ -719,35 +717,31 @@
                 <span>Elements<code class="hp-hex-code" id="hp-elements-value">#11B329</code></span>
               </label>
             </div>
-            <div class="hp-palette-controls stack">
-              <select id="hp-preset" aria-label="Colour palette" data-tooltip="Choose palette">
-                <option value="forbidden">Forbidden Lands</option>
-                <option value="dusk">Dusk &amp; gold</option>
-                <option value="ember">Ember coast</option>
-                <option value="moss">Moss &amp; bone</option>
-                <option value="classic">Verdant Kingdoms</option>
-                <option value="thronefall">Thronefall</option>
-                <option value="glacial">Glacial mint</option>
-                <option value="autumn">Autumn copper</option>
-                <option value="sand">Sand &amp; sage</option>
-                <option value="custom" hidden>Custom</option>
-              </select>
-              <div id="hp-palette-create" class="hp-palette-create stack">
-                <label class="sr-only" for="hp-palette-name">Palette name</label>
-                <input
-                  id="hp-palette-name"
-                  type="text"
-                  maxlength="60"
-                  required
-                  placeholder="New palette name"
-                  autocomplete="off"
-                />
+            <div class="hp-palette-controls">
+              <div id="hp-palette-picker" class="hp-palette-picker">
+                <select id="hp-preset" aria-label="Colour palette" data-tooltip="Choose palette">
+                  <option value="forbidden">Forbidden Lands</option>
+                  <option value="dusk">Dusk &amp; gold</option>
+                  <option value="ember">Ember coast</option>
+                  <option value="moss">Moss &amp; bone</option>
+                  <option value="classic">Verdant Kingdoms</option>
+                  <option value="thronefall">Thronefall</option>
+                  <option value="glacial">Glacial mint</option>
+                  <option value="autumn">Autumn copper</option>
+                  <option value="sand">Sand &amp; sage</option>
+                  <option value="custom" hidden>Custom</option>
+                  <option value="save-new">Save as new palette…</option>
+                </select>
                 <button
-                  type="submit"
-                  id="hp-save-palette"
-                  data-tooltip="Save these colours as a new custom palette."
+                  type="button"
+                  id="hp-time-of-day"
+                  class="hp-time-of-day"
+                  data-tooltip="Change time to Dusk"
                 >
-                  Save new palette
+                  <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <use href="/icons/pixelarticons.svg#sun"></use>
+                  </svg>
+                  <span id="hp-time-of-day-label" aria-live="polite">Time: Day</span>
                 </button>
               </div>
             </div>
@@ -780,19 +774,47 @@
                 <button
                   type="button"
                   id="hp-toggle-settings"
-                  aria-label="Close palette and settings"
-                  aria-expanded="true"
-                  aria-controls="hp-palette-form"
-                  data-tooltip="Close panel"
+                  aria-label="Open palette and settings"
+                  aria-expanded="false"
+                  aria-controls="hp-appearance-controls"
+                  data-tooltip="Open panel"
                 >
                   <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
-                    <use href="/icons/pixelarticons.svg#collapse"></use>
+                    <use href="/icons/pixelarticons.svg#expand"></use>
                   </svg>
                 </button>
               </div>
             </div>
-          </form>
+          </div>
         </section>
+        <dialog
+          id="hp-save-palette-dialog"
+          class="hp-inspector-dialog"
+          aria-labelledby="hp-save-palette-title"
+        >
+          <form id="hp-palette-form" class="stack">
+            <h2 id="hp-save-palette-title">Save palette</h2>
+            <label for="hp-palette-name">Palette name</label>
+            <input
+              id="hp-palette-name"
+              type="text"
+              maxlength="60"
+              required
+              placeholder="New palette name"
+              autocomplete="off"
+            />
+            <div class="hp-tools cluster">
+              <button type="button" id="hp-cancel-save-palette">Cancel</button>
+              <button
+                type="submit"
+                id="hp-save-palette"
+                data-tooltip="Save these colours as a new custom palette."
+              >
+                Save palette
+              </button>
+            </div>
+          </form>
+        </dialog>
         <dialog
           id="hp-move-party-dialog"
           class="hp-inspector-dialog"

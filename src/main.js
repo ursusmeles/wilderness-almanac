@@ -10,7 +10,7 @@ import { createSaveStatus } from './ui/save-status.js';
 import { createCampaign, campaignIconCandidates } from './application/campaigns.js';
 import { createFogView } from './application/fog-view.js';
 import { createCampaignSession } from './application/campaign-session.js';
-import { timeOfDay } from './application/time-of-day.js';
+import { timeOfDay, nextTimeOfDay } from './application/time-of-day.js';
 import { createCampaignMenu } from './ui/campaign-menu.js';
 import { createPaletteLibrary } from './application/palette-library.js';
 import { createPaletteManager } from './ui/palette-manager.js';
@@ -117,7 +117,7 @@ const mobileLayout = window.matchMedia(
 );
 const mapOptions = element('map-options');
 const expandMap = element('expand-map');
-let settingsOpen = saved.settingsOpen ?? !mobileLayout.matches;
+let settingsOpen = false;
 let expanded = false;
 let keyboardNavigation = false;
 const controlTooltips = createControlTooltips();
@@ -133,20 +133,31 @@ function setSettingsOpen(enabled) {
   button
     .querySelector('use')
     .setAttribute('href', `/icons/pixelarticons.svg#${enabled ? 'collapse' : 'expand'}`);
-  element('palette-create').hidden = !enabled;
-  element('palette-create')
-    .querySelectorAll('input, button')
-    .forEach((control) => {
-      control.disabled = !enabled;
-    });
   element('motion').hidden = !enabled;
   element('regenerate').hidden = !enabled || Boolean(session.snapshot()?.campaign.fogOfWar);
+  syncAppearanceLayout();
 }
 setSettingsOpen(settingsOpen);
 listen(element('toggle-settings'), 'click', () => {
   setSettingsOpen(!settingsOpen);
-  if (session.snapshot()) session.save();
 });
+
+function syncAppearanceLayout() {
+  const modes = root.querySelector('.hp-map-modes');
+  const picker = element('palette-picker');
+  const time = element('time-of-day');
+  const motion = element('motion');
+  const focused = document.activeElement;
+  const timeParent = settingsOpen && !mobileLayout.matches ? modes : picker;
+  const motionParent = settingsOpen && mobileLayout.matches ? picker : modes;
+  if (time.parentElement !== timeParent) {
+    if (timeParent === modes) modes.prepend(time);
+    else picker.append(time);
+  }
+  if (motion.parentElement !== motionParent) motionParent.append(motion);
+  if ((focused === time || focused === motion) && document.activeElement !== focused)
+    focused.focus({ preventScroll: true });
+}
 
 function setExpanded(enabled) {
   expanded = enabled;
@@ -161,10 +172,12 @@ function setExpanded(enabled) {
 
 listen(expandMap, 'click', () => setExpanded(!expanded));
 listen(document, 'pointerdown', () => {
+  document.documentElement.dataset.mapInput = 'pointer';
   keyboardNavigation = false;
   renderer?.setPartyKeys(false);
 });
 listen(document, 'keydown', (event) => {
+  document.documentElement.dataset.mapInput = 'keyboard';
   if (event.key === 'Tab' && !root.hidden && !document.querySelector('dialog[open]')) {
     keyboardNavigation = true;
     renderer?.setPartyKeys(Boolean(session.snapshot()?.partySelected));
@@ -228,6 +241,7 @@ function syncMobileLayout() {
     root.querySelector('.hp-status').prepend(selection);
   }
   if (!mobileLayout.matches) setExpanded(false);
+  syncAppearanceLayout();
 }
 listen(mobileLayout, 'change', syncMobileLayout);
 syncMobileLayout();
@@ -239,7 +253,6 @@ function persistPreferences() {
   // UI layout and motion are the only localStorage writes.
   return saveUIPreferences(storage, {
     motion: movement,
-    settingsOpen,
     ...panels.preferences(),
   });
 }
@@ -328,6 +341,7 @@ async function openCampaign(campaign) {
 
 function presentCampaign({ resetView = false } = {}) {
   const { campaign, world } = session.snapshot();
+  setSettingsOpen(false);
   inspector.reset();
   batchInspector.reset();
   root.hidden = false;
@@ -538,7 +552,7 @@ function updatePaletteOptions() {
     option.value = `saved:${index}`;
     option.textContent = palette.name;
     option.dataset.saved = '';
-    preset.append(option);
+    preset.insertBefore(option, preset.querySelector('option[value="save-new"]'));
   });
 }
 
@@ -600,7 +614,13 @@ function selectPalette(colors) {
     candidate.every((color, index) => color.toLowerCase() === colors[index].toLowerCase());
   const builtin = Object.keys(palettes).find((key) => same(palettes[key]));
   const custom = savedPalettes.findIndex((palette) => same(palette.colors));
-  preset.value = builtin ?? (custom >= 0 ? `saved:${custom}` : 'custom');
+  const namedCustom = savedPalettes.findIndex(
+    (palette) => palette.name === session.snapshot()?.campaign.paletteName && same(palette.colors),
+  );
+  preset.value =
+    namedCustom >= 0
+      ? `saved:${namedCustom}`
+      : (builtin ?? (custom >= 0 ? `saved:${custom}` : 'custom'));
 }
 
 function paletteLabel(candidate) {
@@ -709,12 +729,22 @@ function updateMovementToggle() {
 updateMovementToggle();
 function syncTimeOfDay() {
   const value = timeOfDay(session.snapshot()?.campaign.timeOfDay);
-  element('time-of-day').value = value;
+  const label = value[0].toUpperCase() + value.slice(1);
+  const next = nextTimeOfDay(value);
+  element('time-of-day-label').textContent = `Time: ${label}`;
+  element('time-of-day').dataset.tooltip =
+    `Change time to ${next[0].toUpperCase() + next.slice(1)}`;
+  element('time-of-day')
+    .querySelector('use')
+    .setAttribute(
+      'href',
+      `/icons/pixelarticons.svg#${value === 'dawn' || value === 'day' ? 'sun' : 'moon'}`,
+    );
   renderer?.setTimeOfDay(value);
   root.dataset.timeOfDay = value;
 }
-listen(element('time-of-day'), 'change', () => {
-  handleAction(session.setTimeOfDay(element('time-of-day').value));
+listen(element('time-of-day'), 'click', () => {
+  handleAction(session.setTimeOfDay(nextTimeOfDay(session.snapshot().campaign.timeOfDay)));
 });
 listen(element('motion'), 'click', async () => {
   movement = !movement;
@@ -803,6 +833,14 @@ listen(element('regenerate'), 'click', (event) =>
   mapAction.run(event.currentTarget, () => handleAction(session.regenerate()), 'Regenerating…'),
 );
 listen(preset, 'change', () => {
+  if (preset.value === 'save-new') {
+    selectPalette(session.snapshot().campaign.colors);
+    element('palette-name').value = '';
+    element('palette-name').setCustomValidity('');
+    syncPaletteSaveLabel();
+    openDialog(element('save-palette-dialog'), element('palette-name'));
+    return;
+  }
   const savedIndex = Number(preset.value.split(':')[1]);
   const palette = palettes[preset.value] ?? savedPalettes[savedIndex]?.colors;
   if (palette) {
@@ -827,7 +865,7 @@ function syncPaletteSaveLabel() {
   const existing = savedPalettes.find(
     (palette) => palette.name.toLowerCase() === name.toLowerCase(),
   );
-  element('save-palette').textContent = existing ? `Update ${existing.name}` : 'Save new palette';
+  element('save-palette').textContent = existing ? `Update ${existing.name}` : 'Save palette';
   element('save-palette').dataset.tooltip = existing
     ? `Replace the saved colours in “${existing.name}”; other campaigns keep their colours.`
     : 'Save these colours as a new custom palette.';
@@ -855,7 +893,9 @@ listen(element('palette-form'), 'submit', (event) => {
   });
   input.value = '';
   syncPaletteSaveLabel();
+  element('save-palette-dialog').close();
 });
+listen(element('cancel-save-palette'), 'click', () => element('save-palette-dialog').close());
 listen(element('palette-name'), 'input', () => {
   element('palette-name').setCustomValidity('');
   syncPaletteSaveLabel();

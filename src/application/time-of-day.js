@@ -1,6 +1,8 @@
 // Saved campaign presentation; these presets never change map replay data.
 export const TIMES_OF_DAY = ['dawn', 'day', 'dusk', 'night'];
 export const timeOfDay = (value) => (TIMES_OF_DAY.includes(value) ? value : 'day');
+export const nextTimeOfDay = (value) =>
+  TIMES_OF_DAY[(TIMES_OF_DAY.indexOf(timeOfDay(value)) + 1) % TIMES_OF_DAY.length];
 const dayWind = { strength: 1.2, gustPeriod: 18 };
 const ordinaryWind = { strength: 1, gustPeriod: 24 };
 export const windForTimeOfDay = (value) => (timeOfDay(value) === 'day' ? dayWind : ordinaryWind);

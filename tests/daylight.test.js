@@ -1,7 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { DAYLIGHT, TIMES_OF_DAY, timeOfDay } from '../src/application/time-of-day.js';
+import {
+  DAYLIGHT,
+  TIMES_OF_DAY,
+  timeOfDay,
+  nextTimeOfDay,
+} from '../src/application/time-of-day.js';
 import { createDaylight, applyNightColor } from '../src/rendering/daylight.js';
 import { createMapMaterials } from '../src/rendering/map-materials.js';
 import { createAmbientLoop } from '../src/rendering/ambient-motion.js';
@@ -9,6 +14,7 @@ import { createAmbientLoop } from '../src/rendering/ambient-motion.js';
 test('day retains the standard rig; dawn rises in the east and dusk has the longest shadows', () => {
   assert.deepEqual(TIMES_OF_DAY, ['dawn', 'day', 'dusk', 'night']);
   assert.equal(timeOfDay('invalid'), 'day');
+  assert.deepEqual(TIMES_OF_DAY.map(nextTimeOfDay), ['day', 'dusk', 'night', 'dawn']);
   const scene = new THREE.Scene(),
     rig = createDaylight(scene);
   assert.deepEqual(rig.sun.position.toArray(), [-15, 30, -18]);
