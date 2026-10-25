@@ -329,6 +329,7 @@ async function loadMapView() {
 }
 
 async function openCampaign(campaign, { fromHistory = false } = {}) {
+  renderer?.cancelInteraction();
   try {
     const opened = await navigation.show('forward', async () => {
       await loadMapView();
@@ -828,6 +829,7 @@ function toggleMultiEdit() {
   if (!mapAction.isBusy() && activeInspector().beforeLeave(change)) change();
 }
 async function showMenu() {
+  renderer?.cancelInteraction();
   setExpanded(false);
   session.save();
   renderer?.setMotion(false);

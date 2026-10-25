@@ -91,6 +91,8 @@ export function createMapControls({
     activeRing.visible = points.length > 0;
   }
   function choose(key, { notify = true, additive = false, fromMap = false } = {}) {
+    cancelTap();
+    lastTap = null;
     const cell = cells.find((cell) => cell.key === key);
     if (!cell) return;
     selected = key;
@@ -210,18 +212,46 @@ export function createMapControls({
   }
   let last = null,
     start = null,
+    lastTap = null,
+    slideZoom = false,
     pinched = false,
-    pinchDistance = 0;
+    pinchDistance = 0,
+    tapTimer,
+    tapAction,
+    interactionRevision = 0;
+  function cancelTap() {
+    clearTimeout(tapTimer);
+    tapTimer = tapAction = undefined;
+  }
+  function flushTap() {
+    const action = tapAction;
+    cancelTap();
+    action?.();
+  }
   listen(host, 'pointerdown', (e) => {
     if (e.button !== 0) return;
     cancelLongPress();
+    const secondTap =
+      e.pointerType === 'touch' &&
+      pointers.size === 0 &&
+      partyPointer === null &&
+      lastTap &&
+      e.timeStamp - lastTap.time <= 300 &&
+      Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 24;
+    const revision = interactionRevision;
+    if (secondTap) cancelTap();
+    else flushTap();
+    if (revision !== interactionRevision || listeners.signal.aborted) return;
+    lastTap = null;
     if (partyPointer !== null) {
       party.cancel();
       partyPointer = null;
       return;
     }
-    if (pointers.size === 0 && party?.start(e, camera)) {
+    if (!secondTap && pointers.size === 0 && party?.start(e, camera)) {
       partyPointer = e.pointerId;
+      start = { x: e.clientX, y: e.clientY, time: e.timeStamp };
+      gestureMoved = false;
       host.setPointerCapture(e.pointerId);
       return;
     }
@@ -229,11 +259,15 @@ export function createMapControls({
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pointers.size === 1) {
       last = { x: e.clientX, y: e.clientY };
-      start = { ...last };
+      start = { ...last, time: e.timeStamp };
+      slideZoom = Boolean(secondTap);
       pinched = false;
       longPressed = false;
       gestureMoved = false;
-      const key = touchMultiSelect && e.pointerType === 'touch' ? hit(e.clientX, e.clientY) : null;
+      const key =
+        touchMultiSelect && e.pointerType === 'touch' && !slideZoom
+          ? hit(e.clientX, e.clientY)
+          : null;
       const keys = selectionKeys ?? (selected ? [selected] : []);
       if (key && keys.length && !keys.includes(key)) {
         longPressTimer = setTimeout(() => {
@@ -243,6 +277,7 @@ export function createMapControls({
       }
     } else {
       pinched = true;
+      slideZoom = false;
       const [a, b] = [...pointers.values()];
       pinchDistance = Math.hypot(a.x - b.x, a.y - b.y);
     }
@@ -252,6 +287,7 @@ export function createMapControls({
   });
   listen(host, 'pointermove', (e) => {
     if (partyPointer === e.pointerId) {
+      if (start && Math.hypot(e.clientX - start.x, e.clientY - start.y) >= 3) gestureMoved = true;
       party.move(e, camera);
       return;
     }
@@ -272,6 +308,13 @@ export function createMapControls({
       if (last) {
         const dx = e.clientX - last.x,
           dy = e.clientY - last.y;
+        if (slideZoom) {
+          if (gestureMoved) {
+            last = { x: e.clientX, y: e.clientY };
+            changeZoom(Math.exp(dy * 0.01));
+          }
+          return;
+        }
         const scale = (camera.right - camera.left) / (host.clientWidth * zoom);
         const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0);
         const up = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1);
@@ -299,6 +342,15 @@ export function createMapControls({
     cancelLongPress();
     if (partyPointer === e.pointerId) {
       partyPointer = null;
+      if (
+        e.pointerType === 'touch' &&
+        !gestureMoved &&
+        start &&
+        e.timeStamp - start.time <= 300 &&
+        Math.hypot(e.clientX - start.x, e.clientY - start.y) < 3
+      )
+        lastTap = { x: e.clientX, y: e.clientY, time: e.timeStamp };
+      start = null;
       party.end(e, hit);
       return;
     }
@@ -313,17 +365,30 @@ export function createMapControls({
       Math.hypot(e.clientX - start.x, e.clientY - start.y) < 6
     ) {
       const key = hit(e.clientX, e.clientY);
-      if (key) choose(key, { additive: e.ctrlKey || e.metaKey, fromMap: true });
+      const additive = e.ctrlKey || e.metaKey;
+      if (e.pointerType === 'touch' && !slideZoom && e.timeStamp - start.time <= 300) {
+        lastTap = { x: e.clientX, y: e.clientY, time: e.timeStamp };
+        // Let a second press claim zoom before a tap opens selection or move dialogs.
+        tapAction = () => {
+          if (key) choose(key, { additive, fromMap: true });
+        };
+        tapTimer = setTimeout(flushTap, 300);
+      } else if (key) choose(key, { additive, fromMap: true });
     }
     last = null;
     start = null;
+    slideZoom = false;
     if (pointers.size === 1) last = [...pointers.values()][0];
   }
   listen(host, 'pointerup', release);
   listen(host, 'pointercancel', (e) => {
     cancelLongPress();
+    cancelTap();
+    lastTap = null;
+    slideZoom = false;
     if (partyPointer === e.pointerId) {
       partyPointer = null;
+      start = null;
       party.cancel();
       return;
     }
@@ -371,12 +436,16 @@ export function createMapControls({
       else resize();
     },
     cancelInteraction() {
+      interactionRevision++;
       cancelLongPress();
+      cancelTap();
       for (const id of [...pointers.keys(), partyPointer])
         if (id !== null && host.hasPointerCapture?.(id)) host.releasePointerCapture(id);
       pointers.clear();
       partyPointer = null;
       last = start = null;
+      lastTap = null;
+      slideZoom = false;
       pinched = longPressed = gestureMoved = false;
       party?.cancel();
     },
@@ -391,6 +460,7 @@ export function createMapControls({
     pan,
     dispose() {
       cancelLongPress();
+      cancelTap();
       listeners.abort();
       observer.disconnect();
       for (const ring of [activeRing, hoverRing]) {
