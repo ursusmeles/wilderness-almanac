@@ -164,7 +164,7 @@ test('Inspector hides empty feature metadata, keeps proximity, and offers Undo o
         y: button.getBoundingClientRect().top,
       })),
     );
-  expect(rows.map((row) => row.label)).toEqual(['Edit', 'Edit many', 'Reset', 'Regenerate']);
+  expect(rows.map((row) => row.label)).toEqual(['Edit', 'Multiselect', 'Reset', 'Regenerate']);
   expect(new Set(rows.map((row) => row.y)).size).toBe(1);
   await page.screenshot({ path: testInfo.outputPath('inspector.png'), fullPage: true });
   await page.locator('#hp-hex-visited').click();

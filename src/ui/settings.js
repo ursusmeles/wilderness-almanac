@@ -22,10 +22,10 @@ export function createSettings({ library, read, onSave }) {
   });
   const current = () => ({ defaultPalette: library.default().id, ...read() });
   function sync() {
-    el('save').disabled =
-      reading ||
-      saving ||
-      (!pendingImport && JSON.stringify(values()) === JSON.stringify(current()));
+    const unchanged = !pendingImport && JSON.stringify(values()) === JSON.stringify(current());
+    el('save').disabled = reading || saving || unchanged;
+    if (unchanged && !reading && !saving) el('save-help').dataset.tooltip = 'No changes made';
+    else delete el('save-help').dataset.tooltip;
     for (const control of dialog.querySelectorAll('button, select, input'))
       if (control !== el('save')) control.disabled = saving;
     importButton.disabled = reading || saving;
@@ -63,7 +63,7 @@ export function createSettings({ library, read, onSave }) {
     el('filename').textContent = 'No file selected';
     el('message').textContent = '';
     sync();
-    openDialog(dialog, el('palette'));
+    openDialog(dialog, el('motion'));
   });
   listen(el('palette'), 'change', () => {
     paletteEdited = true;
@@ -80,9 +80,25 @@ export function createSettings({ library, read, onSave }) {
     sync();
   });
   listen(el('cancel'), 'click', discard);
+  listen(el('close'), 'click', discard);
   listen(dialog, 'cancel', (event) => {
     event.preventDefault();
     discard();
+  });
+  const isBackdrop = (event) => {
+    if (event.target !== dialog) return false;
+    const { left, right, top, bottom } = dialog.getBoundingClientRect();
+    return (
+      event.clientX < left || event.clientX > right || event.clientY < top || event.clientY > bottom
+    );
+  };
+  let backdropPress = false;
+  listen(dialog, 'pointerdown', (event) => {
+    backdropPress = isBackdrop(event);
+  });
+  listen(dialog, 'click', (event) => {
+    if (backdropPress && isBackdrop(event)) discard();
+    backdropPress = false;
   });
   listen(importButton, 'click', () => fileInput.click());
   listen(fileInput, 'change', async () => {

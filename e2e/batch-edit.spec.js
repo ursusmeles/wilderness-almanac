@@ -2,7 +2,7 @@ import { test, expect, library, openCampaign } from './fixtures.js';
 
 async function enableMultiEdit(page) {
   await openCampaign(page);
-  await page.getByRole('button', { name: 'Edit many', exact: true }).click();
+  await page.getByRole('button', { name: 'Multiselect', exact: true }).click();
   await expect(page.locator('#campaign-workspace')).toHaveAttribute('data-multi-edit', 'true');
   return page.locator('#hp-batch-off');
 }

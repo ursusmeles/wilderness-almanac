@@ -109,64 +109,85 @@
         </section>
         <dialog id="settings-dialog" aria-labelledby="settings-title">
           <form id="settings-form">
-            <header class="palette-manager-header"><h2 id="settings-title">Settings</h2></header>
+            <header class="palette-manager-header">
+              <h2 id="settings-title">Settings</h2>
+              <button
+                type="button"
+                id="settings-close"
+                class="menu-icon-button"
+                aria-label="Close Settings"
+              >
+                <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <use href="/icons/pixelarticons.svg#close"></use>
+                </svg>
+              </button>
+            </header>
             <div class="settings-content stack">
-              <label class="cc-field" for="settings-palette">
-                Default palette
-                <select id="settings-palette" aria-describedby="settings-palette-note"></select>
-              </label>
-              <p id="settings-palette-note" class="settings-note">
-                New campaigns start with this palette. You can change it anytime.
-              </p>
-              <button
-                type="button"
-                id="open-palette-manager"
-                class="settings-link"
-                aria-haspopup="dialog"
-                aria-controls="palette-manager-dialog"
-              >
-                Manage palettes
-              </button>
-              <label class="cc-field" for="settings-time">
-                Default time of day
-                <select id="settings-time" aria-describedby="settings-time-note">
-                  <option value="dawn">Dawn</option>
-                  <option value="day">Day</option>
-                  <option value="dusk">Dusk</option>
-                  <option value="night">Night</option>
-                </select>
-              </label>
-              <p id="settings-time-note" class="settings-note">
-                New campaigns start at this time. You can change it anytime.
-              </p>
-              <button
-                type="button"
-                id="settings-motion"
-                class="hp-motion"
-                role="switch"
-                aria-label="Movement"
-                aria-checked="true"
-                aria-describedby="settings-motion-note"
-              >
-                <span class="hp-motion-light" aria-hidden="true"></span>
-                <span>Movement <span id="settings-motion-state" aria-hidden="true">ON</span></span>
-              </button>
-              <p id="settings-motion-note" class="settings-note">
-                Animate wind, waves, light pulses and lighthouse beams. Reduced-motion preferences
-                still apply.
-              </p>
-              <div class="settings-import cluster">
-                <button type="button" id="import-campaign">
-                  <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
-                    <use href="/icons/pixelarticons.svg#upload"></use></svg
-                  >Import campaign
+              <div class="settings-group stack">
+                <button
+                  type="button"
+                  id="settings-motion"
+                  class="hp-motion"
+                  role="switch"
+                  aria-label="Movement"
+                  aria-checked="true"
+                  aria-describedby="settings-motion-note"
+                >
+                  <span class="hp-motion-light" aria-hidden="true"></span>
+                  <span
+                    >Movement <span id="settings-motion-state" aria-hidden="true">ON</span></span
+                  >
                 </button>
-                <span id="settings-filename">No file selected</span>
-                <input type="file" id="campaign-file" accept=".json,application/json" hidden />
+                <p id="settings-motion-note" class="settings-note">
+                  Animate wind, waves, light pulses and lighthouse beams. Reduced-motion preferences
+                  still apply.
+                </p>
               </div>
-              <p class="settings-note">
-                Choose an exported campaign JSON file. Save imports it as a separate campaign.
-              </p>
+              <div class="settings-group stack">
+                <label class="cc-field" for="settings-time">
+                  Default time of day
+                  <select id="settings-time" aria-describedby="settings-time-note">
+                    <option value="dawn">Dawn</option>
+                    <option value="day">Day</option>
+                    <option value="dusk">Dusk</option>
+                    <option value="night">Night</option>
+                  </select>
+                </label>
+                <p id="settings-time-note" class="settings-note">
+                  New campaigns start at this time.
+                </p>
+              </div>
+              <div class="settings-group settings-palette-group stack">
+                <label for="settings-palette">Default palette</label>
+                <div class="settings-palette-actions">
+                  <select id="settings-palette" aria-describedby="settings-palette-note"></select>
+                  <button
+                    type="button"
+                    id="open-palette-manager"
+                    aria-haspopup="dialog"
+                    aria-controls="palette-manager-dialog"
+                  >
+                    Manage palettes
+                  </button>
+                </div>
+                <p id="settings-palette-note" class="settings-note">
+                  New campaigns start with this palette.
+                </p>
+              </div>
+              <div class="settings-group stack">
+                <div class="settings-import cluster">
+                  <button type="button" id="import-campaign">
+                    <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+                      <use href="/icons/pixelarticons.svg#upload"></use></svg
+                    >Import campaign
+                  </button>
+                  <span id="settings-filename">No file selected</span>
+                  <input type="file" id="campaign-file" accept=".json,application/json" hidden />
+                </div>
+                <p class="settings-note">
+                  Choose an exported campaign JSON file. Save imports it as a separate campaign.
+                </p>
+              </div>
               <output
                 id="settings-message"
                 class="campaign-message"
@@ -176,7 +197,11 @@
             </div>
             <footer class="dialog-actions cluster">
               <button type="button" id="settings-cancel">Cancel</button>
-              <button type="submit" id="settings-save" class="primary-button" disabled>Save</button>
+              <span id="settings-save-help" class="settings-save-control">
+                <button type="submit" id="settings-save" class="primary-button" disabled>
+                  Save
+                </button>
+              </span>
             </footer>
           </form>
         </dialog>
@@ -1053,7 +1078,7 @@
               <dd id="hp-party-visited"></dd>
             </div>
             <div>
-              <dt><span>Weeks</span></dt>
+              <dt><span>Weeks travelled</span></dt>
               <dd id="hp-party-weeks"></dd>
             </div>
           </dl>
@@ -1162,7 +1187,7 @@
               <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <use href="/icons/pixelarticons.svg#grid-2x2-2"></use>
               </svg>
-              Edit many
+              Multiselect
             </button>
             <button type="button" id="hp-hex-undo" hidden>
               <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
