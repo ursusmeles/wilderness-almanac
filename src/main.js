@@ -180,12 +180,14 @@ function setExpanded(enabled) {
 
 listen(expandMap, 'click', () => setExpanded(!expanded));
 listen(document, 'pointerdown', () => {
-  document.documentElement.dataset.mapInput = 'pointer';
+  if (document.documentElement.dataset.mapInput !== 'pointer')
+    document.documentElement.dataset.mapInput = 'pointer';
   keyboardNavigation = false;
-  renderer?.setPartyKeys(false);
+  if (!root.hidden) renderer?.setPartyKeys(false);
 });
 listen(document, 'keydown', (event) => {
-  document.documentElement.dataset.mapInput = 'keyboard';
+  if (document.documentElement.dataset.mapInput !== 'keyboard')
+    document.documentElement.dataset.mapInput = 'keyboard';
   if (event.key === 'Tab' && !root.hidden && !document.querySelector('dialog[open]')) {
     keyboardNavigation = true;
     renderer?.setPartyKeys(Boolean(session.snapshot()?.partySelected));

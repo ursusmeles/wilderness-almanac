@@ -23,24 +23,39 @@ export function createSettings({ library, read, onSave }) {
   const current = () => ({ defaultPalette: library.default().id, ...read() });
   function sync() {
     const unchanged = !pendingImport && JSON.stringify(values()) === JSON.stringify(current());
-    el('save').disabled = reading || saving || unchanged;
-    if (unchanged && !reading && !saving) el('save-help').dataset.tooltip = 'No changes made';
-    else delete el('save-help').dataset.tooltip;
+    const disabled = reading || saving || unchanged;
+    if (el('save').disabled !== disabled) el('save').disabled = disabled;
+    if (unchanged && !reading && !saving) {
+      if (el('save-help').dataset.tooltip !== 'No changes made')
+        el('save-help').dataset.tooltip = 'No changes made';
+    } else delete el('save-help').dataset.tooltip;
     for (const control of dialog.querySelectorAll('button, select, input'))
-      if (control !== el('save')) control.disabled = saving;
-    importButton.disabled = reading || saving;
-    el('motion-state').textContent = values().motion ? 'ON' : 'OFF';
+      if (control !== el('save') && control.disabled !== saving) control.disabled = saving;
+    if (importButton.disabled !== (reading || saving)) importButton.disabled = reading || saving;
+    const motionState = values().motion ? 'ON' : 'OFF';
+    if (el('motion-state').textContent !== motionState)
+      el('motion-state').textContent = motionState;
   }
   function palettes(selected = el('palette').value) {
-    el('palette').replaceChildren(
-      ...library.all().map((palette) => {
-        const option = document.createElement('option');
-        option.value = palette.id;
-        option.textContent = palette.name;
-        return option;
-      }),
-    );
-    el('palette').value = library.get(selected) ? selected : library.default().id;
+    const entries = library.all();
+    const existing = [...el('palette').options];
+    if (
+      entries.length !== existing.length ||
+      entries.some(
+        (palette, index) =>
+          palette.id !== existing[index].value || palette.name !== existing[index].textContent,
+      )
+    )
+      el('palette').replaceChildren(
+        ...entries.map((palette) => {
+          const option = document.createElement('option');
+          option.value = palette.id;
+          option.textContent = palette.name;
+          return option;
+        }),
+      );
+    const value = library.get(selected) ? selected : library.default().id;
+    if (el('palette').value !== value) el('palette').value = value;
   }
   function discard() {
     if (saving) return;
