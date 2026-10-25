@@ -1,6 +1,7 @@
 import { worldPreferences, PREFERENCE_NAMES } from '../generation/world-preferences.js';
 import { GENERATOR_VERSION, SUPPORTED_GENERATOR_VERSIONS } from '../generation/world.js';
 import { hexAddress } from '../generation/hex.js';
+import { roadExitLabels } from './road-labels.js';
 
 const validColors = (colors) =>
   colors?.length === 3 && colors.every((c) => /^#[0-9a-f]{6}$/i.test(c));
@@ -94,6 +95,7 @@ export function describeHex(cell) {
     dungeon: 'a dungeon',
   };
   const poi = cell.pointsOfInterest[0];
+  const exits = roadExitLabels(cell.road?.exits);
   const subtypes = {
     lair: { cave: 'a cave lair', nest: 'a nest' },
     dungeon: { mine: 'a mine', dungeon: 'a dungeon entrance' },
@@ -107,8 +109,10 @@ export function describeHex(cell) {
       ? cell.crossing.kind === 'ferry'
         ? 'a ferry'
         : `a ${cell.crossing.material === 'stone' ? 'stone' : 'wooden'} bridge`
-      : !cell.pointOfLight && cell.road
-        ? 'a road'
+      : !cell.pointOfLight && exits.length
+        ? exits.length >= 3
+          ? 'crossroads'
+          : 'a road'
         : '';
   return `${hexAddress(cell)} · ${label[0].toUpperCase() + label.slice(1)}${feature ? ` with ${feature}` : ''}`;
 }

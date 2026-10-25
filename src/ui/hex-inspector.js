@@ -7,6 +7,7 @@ import { cloneTemplate } from './templates.js';
 import { hexAddress } from '../generation/hex.js';
 import { explainDisabled } from './control-help.js';
 import { roadGraph } from '../generation/roads.js';
+import { ROAD_DIRECTIONS, roadExitLabels } from './road-labels.js';
 
 const title = (text) => (text ? text[0].toUpperCase() + text.slice(1) : 'None');
 export function createHexInspector(
@@ -30,6 +31,17 @@ export function createHexInspector(
     target.addEventListener(event, handler, { signal: listeners.signal });
   host.replaceChildren(cloneTemplate('hex-inspector-template'));
   const el = (name) => host.querySelector(`#hp-hex-${name}`);
+  el('road-exits').replaceChildren(
+    ...ROAD_DIRECTIONS.map(({ side, label, name }) => {
+      const control = document.createElement('input');
+      control.type = 'checkbox';
+      control.dataset.roadExit = String(side);
+      control.setAttribute('aria-label', `${name} road exit`);
+      const wrapper = document.createElement('label');
+      wrapper.append(control, ` ${label}`);
+      return wrapper;
+    }),
+  );
   const roadExits = [...host.querySelectorAll('[data-road-exit]')];
   const options = (control, values, none = false) => {
     control.replaceChildren(
@@ -135,6 +147,7 @@ export function createHexInspector(
     el('crossing').value = cell.crossing?.kind ?? '';
     for (const input of roadExits)
       input.checked = Boolean((cell.road?.exits ?? 0) & (1 << Number(input.dataset.roadExit)));
+    el('road-summary').textContent = roadExitLabels(cell.road?.exits).join(', ') || 'None';
     constraints();
     roadDirty = false;
   }
@@ -145,6 +158,8 @@ export function createHexInspector(
     roadDirty = false;
     el('fields').disabled = !enabled;
     el('form').classList.toggle('is-editing', enabled);
+    el('road-summary').hidden = enabled;
+    el('road-exits').hidden = !enabled;
     el('constraint').hidden = !enabled;
     el('edit').hidden = enabled;
     el('apply').hidden = el('cancel').hidden = !enabled;

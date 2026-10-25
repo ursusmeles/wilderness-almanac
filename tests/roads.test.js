@@ -299,8 +299,11 @@ test('road geometry is finite, stays in the hex, meets at elevation ramps, and r
 
 test('road names respect destination labels and undiscovered fog tiles hide road geometry', () => {
   const cell = base.cells.find(counted);
-  assert.match(describeHex(cell), /with a road$/);
-  assert.doesNotMatch(describeHex({ ...cell, pointOfLight: { type: 'city' } }), /with a road/);
+  assert.match(describeHex(cell), /with (?:a road|crossroads)$/);
+  assert.doesNotMatch(
+    describeHex({ ...cell, pointOfLight: { type: 'city' } }),
+    /with (?:a road|crossroads)/,
+  );
   const layout = prepareMap(base, generateDressing(base));
   const states = new Map(base.cells.map((entry) => [entry.key, 'undiscovered']));
   const view = createFogView(base, layout, states);

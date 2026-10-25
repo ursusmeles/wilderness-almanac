@@ -7,6 +7,40 @@ import {
   copyText,
   shortCoordinates,
 } from '../src/ui/map-link.js';
+import { directionTo } from '../src/generation/hex.js';
+import { roadExitLabels } from '../src/ui/road-labels.js';
+
+test('road directions use north-up columns and list exits clockwise', () => {
+  const origin = { q: 4, r: -2 };
+  for (const [q, r, name] of [
+    [4, -3, 'N'],
+    [5, -3, 'NE'],
+    [5, -2, 'SE'],
+    [4, -1, 'S'],
+    [3, -1, 'SW'],
+    [3, -2, 'NW'],
+  ])
+    assert.deepEqual(roadExitLabels(1 << directionTo(origin, { q, r })), [name]);
+  assert.deepEqual(roadExitLabels(63), ['N', 'NE', 'SE', 'S', 'SW', 'NW']);
+  assert.deepEqual(roadExitLabels(), []);
+});
+
+test('three or more road exits name crossroads while destinations keep their labels', () => {
+  const cell = { regionId: 1, x: 4, y: -2, terrain: 'meadow', pointsOfInterest: [] };
+  for (const mask of [1, 3, 17])
+    assert.match(describeHex({ ...cell, road: { exits: mask } }), /Meadow with a road$/);
+  for (const mask of [7, 15, 31, 63])
+    assert.match(describeHex({ ...cell, road: { exits: mask } }), /Meadow with crossroads$/);
+  assert.match(describeHex({ ...cell, road: { exits: 0 } }), /Meadow$/);
+  assert.match(
+    describeHex({ ...cell, road: { exits: 63 }, pointOfLight: { type: 'city' } }),
+    /City$/,
+  );
+  assert.match(
+    describeHex({ ...cell, road: { exits: 63 }, pointsOfInterest: [{ kind: 'abbey' }] }),
+    /Meadow with an abbey$/,
+  );
+});
 
 test('short hover coordinates retain one-based region IDs, negative and zero local axes', () => {
   assert.equal(shortCoordinates({ regionId: 1, x: 1, y: 2 }), '1/1,2');

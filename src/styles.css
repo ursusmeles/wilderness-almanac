@@ -1757,6 +1757,13 @@
     color: var(--muted);
     font-size: var(--text-control);
   }
+  #hp-hex-road-summary {
+    margin: var(--space-4) 0 0;
+    min-height: var(--icon-size);
+    color: var(--text);
+    font-family: var(--font-pixel);
+    line-height: 1.5;
+  }
   .hp-road-exits {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
