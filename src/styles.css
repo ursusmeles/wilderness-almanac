@@ -94,7 +94,7 @@
   }
   main {
     padding: var(--panel-margin);
-    min-height: 100dvh;
+    min-height: 100svh;
   }
   ::selection {
     background: color-mix(in srgb, var(--surface, var(--page-bg)) 65%, #000);
@@ -845,7 +845,7 @@
     --dialog-width: calc(100vw - var(--cc-margin) * 2);
     width: var(--dialog-width);
     max-width: none;
-    height: calc(100dvh - var(--cc-margin) * 2);
+    height: calc(100svh - var(--cc-margin) * 2);
     max-height: none;
     overflow: hidden;
     box-shadow: 0 24px 100px #0006;
@@ -914,7 +914,7 @@
     border-inline-end: 1px solid var(--line);
     background: var(--page-bg);
     @media (max-width: 760px) {
-      flex: 0 0 clamp(15rem, 40dvh, 26rem);
+      flex: 0 0 clamp(15rem, 40svh, 26rem);
       border-inline-end: 0;
       border-block-end: 1px solid var(--line);
     }
@@ -1304,7 +1304,7 @@
     --panel-bar-size: calc(var(--control-size) + var(--space-8) * 2 + 1px);
     color: var(--text);
     width: 100%;
-    height: calc(100dvh - var(--panel-margin) * 2);
+    height: calc(100svh - var(--panel-margin) * 2);
     display: grid;
     grid-template-columns: minmax(0, 60vw) minmax(0, 1fr);
     gap: var(--panel-margin);
@@ -2258,7 +2258,7 @@
       }
     }
     #campaign-workspace {
-      --mobile-map-height: calc(100dvh - var(--panel-bar-size) * 2 - 2px);
+      --mobile-map-height: calc(100svh - var(--panel-bar-size) * 2 - 2px);
       --mobile-palette-columns: 4.375rem minmax(0, 1fr) 7rem var(--control-compact-size);
       display: flex;
       flex-direction: column;
@@ -2461,7 +2461,7 @@
     position: fixed;
     inset: 0;
     width: 100%;
-    height: 100dvh;
+    height: 100svh;
     display: block;
     background: var(--surface);
     z-index: 10;
