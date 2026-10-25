@@ -251,15 +251,34 @@ export function generatePropDressing(
         place('reeds', 0.065, { scale: 0.8 + random() * 0.3, variant: integer(0, 2) });
       if (random() < 0.25) place('tree', 0.12, { scale: 0.5, variant: 1 });
     } else if (cell.terrain === 'farmlands') {
+      const modern = world.generatorVersion >= 9;
+      const farmRandom = randomFor(
+        world.seed,
+        `farmland:${cell.key}:${variant}:${revisions[cell.key] ?? 0}`,
+      );
+      const cropStyle =
+        cell.elevation > 0 && farmRandom() < 0.35
+          ? 'vineyard'
+          : farmRandom() < 0.5
+            ? 'grain'
+            : 'plots';
       for (let n = 0, count = integer(2, 3); n < count; n++) {
-        const scale = 0.85 + random() * 0.2;
+        const scale = modern ? 1.1 + random() * 0.18 : 0.85 + random() * 0.2;
         place('crops', 0.28 * scale, {
           scale,
           angle: (Math.floor(random() * 3) * Math.PI) / 3,
           variant: integer(0, 2),
+          ...(modern ? { cropStyle } : {}),
         });
       }
-      if (random() < 0.25) place('tree', 0.12, { scale: 0.5, variant: cell.treeVariant });
+      if (random() < 0.25) {
+        const fruit = modern && farmRandom() < 0.5;
+        place('tree', 0.12, {
+          scale: 0.5,
+          variant: fruit ? 1 : cell.treeVariant,
+          ...(modern ? { fruit } : {}),
+        });
+      }
     } else if (surface) {
       for (let n = 0; n < 3; n++) {
         const scale = 0.36 + random() * 0.14;

@@ -29,6 +29,8 @@ export function createMapMaterials() {
   materials.rock.side = THREE.DoubleSide;
   materials.rockMid.side = THREE.DoubleSide;
   materials.rockLight.side = THREE.DoubleSide;
+  materials.grain.side = THREE.DoubleSide;
+  materials.grainStem.side = THREE.DoubleSide;
   materials.line = new THREE.MeshBasicMaterial({
     color: color.role('active'),
     side: THREE.DoubleSide,
@@ -43,7 +45,17 @@ export function createMapMaterials() {
   const ambientTime = { value: 0 };
   const wind = { strength: { value: 1.2 }, gustPeriod: { value: 18 } };
   const waveDirection = { value: new THREE.Vector2(1, 0) };
-  for (const role of ['leaf', 'leafLight', 'leafDark', 'trunk', 'reeds', 'reedHead'])
+  for (const role of [
+    'leaf',
+    'leafLight',
+    'leafDark',
+    'trunk',
+    'reeds',
+    'reedHead',
+    'fruit',
+    'grain',
+    'grainStem',
+  ])
     installTreeSway(materials[role], ambientTime, wind);
   const treeDepth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
   installTreeSway(treeDepth, ambientTime, wind);

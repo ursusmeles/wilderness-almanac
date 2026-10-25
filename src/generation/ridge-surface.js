@@ -13,6 +13,29 @@ function ridgeHeight(range, x, z) {
   let edgeDistance = Infinity;
   for (const [a, b] of range.boundary)
     edgeDistance = Math.min(edgeDistance, segmentDistance(x, z, a, b));
+  if (range.ridges) {
+    const { main, branches, width, ruggedness, relief, detail } = range.ridges;
+    const distanceTo = (segments) => {
+      let distance = Infinity;
+      for (const [a, b] of segments) distance = Math.min(distance, segmentDistance(x, z, a, b));
+      return distance;
+    };
+    const broad = relief(x, z),
+      summit = detail(x, z);
+    const localWidth = width * (0.8 + broad * 0.4);
+    const crest = Math.exp(-Math.pow(distanceTo(main) / localWidth, 2.3 - ruggedness));
+    const spur = Math.exp(-Math.pow(distanceTo(branches) / (localWidth * 0.75), 1.8));
+    const height =
+      0.13 +
+      broad * 0.08 +
+      Math.max(
+        crest * (0.44 + broad * 0.38 + summit * (0.12 + ruggedness * 0.65)),
+        spur * (0.38 + broad * 0.24 + summit * 0.15),
+      );
+    return (
+      height * (0.68 + ruggedness * 0.4) * smoothstep(0, 0.57 - ruggedness * 0.1, edgeDistance)
+    );
+  }
   let backboneDistance = Infinity;
   for (const [a, b] of range.spines)
     backboneDistance = Math.min(backboneDistance, segmentDistance(x, z, a, b));

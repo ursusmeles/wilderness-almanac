@@ -119,6 +119,125 @@ test('supercover includes both sides of a seam and conservatively blocks all six
   }
 });
 
+test('inland elevation adds water reach without revealing the intervening land or a new far shore', () => {
+  for (const water of ['ocean', 'lake'])
+    for (const elevation of [1, 2, 3, 4]) {
+      const { world, byKey, source } = fixture();
+      source.elevation = elevation;
+      const range = sightRange(source),
+        reach = range + Math.max(0, elevation - 1);
+      for (let q = reach; q <= reach + 2; q++)
+        Object.assign(byKey.get(`${q},0`), { terrain: 'open water', water, elevation: 0 });
+      const states = computeFogOfWar(world, visits(source.key));
+      for (let q = reach; q <= reach + 2; q++)
+        assert.equal(
+          states.get(`${q},0`),
+          'unvisited',
+          `${water} seen from elevation ${elevation}`,
+        );
+      if (elevation > 1)
+        for (const cell of world.cells)
+          if (!cell.water && cell.key !== source.key)
+            assert.equal(
+              states.get(cell.key),
+              distance(source, cell) <= range ? 'unvisited' : 'undiscovered',
+              'Extra water sight does not reveal any additional land',
+            );
+      assert.equal(states.get(source.key), 'visited');
+    }
+});
+
+test('water just beyond the inland allowance remains hidden and landmarks retain their normal bonuses', () => {
+  for (const elevation of [1, 2, 3, 4]) {
+    const { world, byKey, source } = fixture();
+    source.elevation = elevation;
+    const reach = sightRange(source) + Math.max(0, elevation - 1);
+    Object.assign(byKey.get(`${reach + 1},0`), {
+      terrain: 'open water',
+      water: 'ocean',
+      elevation: 0,
+    });
+    assert.equal(canSee(source, byKey.get(`${reach + 1},0`), byKey), false);
+    assert.equal(computeFogOfWar(world, visits(source.key)).get(`${reach + 1},0`), 'undiscovered');
+    source.pointsOfInterest = [{ kind: 'watchtower' }];
+    source.pointOfLight = { type: 'town' };
+    assert.equal(canSee(source, byKey.get(`${reach + 1},0`), byKey), true);
+    assert.equal(computeFogOfWar(world, visits(source.key)).get(`${reach + 1},0`), 'unvisited');
+  }
+});
+
+test('equal or higher terrain blocks the additional water sight while lower terrain does not', () => {
+  const { world, byKey, source } = fixture();
+  source.elevation = 3;
+  for (let q = 4; q <= 7; q++)
+    Object.assign(byKey.get(`${q},0`), { terrain: 'open water', water: 'ocean', elevation: 0 });
+  for (const q of [1, 3])
+    for (const elevation of [2, 3, 4]) {
+      byKey.get(`${q},0`).elevation = elevation;
+      assert.equal(canSee(source, byKey.get('7,0'), byKey), elevation < source.elevation);
+      assert.equal(
+        computeFogOfWar(world, visits('0,0')).get('7,0'),
+        elevation < source.elevation ? 'unvisited' : 'undiscovered',
+      );
+      if (q === 1)
+        assert.equal(
+          canSee(source, byKey.get('2,0'), byKey),
+          true,
+          'Ordinary land sight is unchanged',
+        );
+      byKey.get(`${q},0`).elevation = 1;
+    }
+});
+
+test('coastal sources keep existing sight and inland water sight never hops over islands', () => {
+  const { byKey, source } = fixture();
+  source.elevation = 3;
+  for (let q = 4; q <= 7; q++)
+    Object.assign(byKey.get(`${q},0`), { terrain: 'open water', water: 'lake', elevation: 0 });
+  assert.equal(canSee(source, byKey.get('7,0'), byKey), true);
+  Object.assign(byKey.get('-1,0'), { terrain: 'open water', water: 'ocean', elevation: 0 });
+  assert.equal(
+    canSee(source, byKey.get('7,0'), byKey),
+    false,
+    'A coastal source gets no inland allowance',
+  );
+  Object.assign(byKey.get('-1,0'), { terrain: 'meadow', water: null, elevation: 1 });
+  Object.assign(byKey.get('5,0'), { terrain: 'meadow', water: null, elevation: 1 });
+  assert.equal(canSee(source, byKey.get('4,0'), byKey), true);
+  assert.equal(
+    canSee(source, byKey.get('5,0'), byKey),
+    false,
+    'The extra water view does not reveal the island',
+  );
+  assert.equal(
+    canSee(source, byKey.get('6,0'), byKey),
+    false,
+    'The island ends the water extension',
+  );
+});
+
+test('extra inland water sight checks equal-height seam contacts in all six rotations', () => {
+  let target = { q: 3, r: 3 },
+    blocker = { q: 1, r: 0 };
+  const rotate = ({ q, r }) => ({ q: -r, r: q + r });
+  for (let turn = 0; turn < 6; turn++) {
+    const { world, byKey, source } = fixture();
+    source.elevation = 4;
+    const end = byKey.get(`${target.q},${target.r}`);
+    const obstacle = byKey.get(`${blocker.q},${blocker.r}`);
+    // A wide water cap avoids introducing an island or coastline seam at entry.
+    for (const cell of world.cells)
+      if (distance(source, cell) >= 4)
+        Object.assign(cell, { terrain: 'open water', water: 'ocean', elevation: 0 });
+    assert.equal(canSee(source, end, byKey), true);
+    obstacle.elevation = 4;
+    assert.ok(hexSightLine(source, end, byKey).some(({ cell }) => cell.key === obstacle.key));
+    assert.equal(canSee(source, end, byKey), false);
+    target = rotate(target);
+    blocker = rotate(blocker);
+  }
+});
+
 test('projection masks unknown geometry and POIs consistently without changing campaign data', () => {
   const { world, byKey } = fixture();
   byKey.get('1,0').pointsOfInterest = [{ kind: 'dungeon', variant: 'mine' }];

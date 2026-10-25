@@ -38,6 +38,8 @@ Select connected town or city hexes to **Join town** or **Join city**. Villages 
 
 **Reset selected**, next to Undo, restores the selected hexes to their generated defaults after confirmation. It clears their edits, visited status and dressing locks. Undo restores the reset hexes.
 
+On current maps, mountain ranges mix rounded ridges with occasional taller, steeper crests. Farmland can show larger planted plots, rolling grain patches or vineyards on raised tiles. Some farmland trees bear colourful fruit. These are cosmetic variants chosen by regeneration; locks preserve them.
+
 **Regenerate map**, in the expanded appearance panel, changes the map's cosmetic dressing while keeping its geography and locations. Create a different world through **New campaign** in the main menu. Hexes with locked dressing keep their appearance through map-wide regeneration.
 
 New campaigns include subtle roads connecting settlements, crossings and selected points of interest. Roads favour open terrain, avoid mountains and use existing bridges and ferries. Regenerate changes their shape while keeping their routes. The Hex Inspector lists road exits clockwise as N, NE, SE, S, SW and NW. In **Edit hex**, use the **Road exits** checkboxes to connect neighbouring hexes; unavailable exits explain their terrain restriction. Ordinary terrain with three or more exits is labelled “with crossroads”. Manual roads can extend beyond the generated road budget. Adding a settlement or POI leaves roads unchanged; removing a destination removes its generated links without rerouting other roads. Existing campaigns keep their original maps.
@@ -46,7 +48,7 @@ The appearance panel starts closed whenever you enter a campaign. On mobile, ope
 
 ### Fog of War
 
-Turn **Fog of war ON** in the map header (top-right of the map on mobile) to show a player-facing view of your campaign. Visited hexes stay coloured, visible but unvisited hexes turn grayscale, and undiscovered hexes become blank tiles. Hidden hexes show only their coordinates and “Undiscovered hex”. Visited hexes reveal a one-hex radius, increasing to two at elevation 3 and three on mountains/elevation 4. Towns/cities and watchtowers/lighthouses/strongholds each add one, stacking to five for a mountain town with a watchtower. High terrain blocks sight, while open water reveals the first far shore.
+Turn **Fog of war ON** in the map header (top-right of the map on mobile) to show a player-facing view of your campaign. Visited hexes stay coloured, visible but unvisited hexes turn grayscale, and undiscovered hexes become blank tiles. Hidden hexes show only their coordinates and “Undiscovered hex”. Visited hexes reveal a one-hex radius, increasing to two at elevation 3 and three on mountains/elevation 4. Towns/cities and watchtowers/lighthouses/strongholds each add one, stacking to five for a mountain town with a watchtower. High terrain blocks sight, while open water reached within normal sight reveals the first far shore. From an inland hex, each elevation level above 1 adds one hex of reach to open water over lower land; equal or higher terrain blocks this extra view. The extra reach reveals water without uncovering intervening land or additional shores.
 
 Move the party or mark hexes visited to uncover the map. You can also mark visited hexes as unvisited, including in multi-edit; this can hide areas again. Fog remembers its setting per campaign. Turn it off to edit terrain, features or dressing. Undo remains available for visits and party moves.
 

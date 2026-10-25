@@ -12,6 +12,10 @@ Sightlines run from source centres to target centres over the complete hex footp
 
 Ocean and lake water reached within ordinary sight radius extends the line across the continuous water stretch to its first land hex, even beyond normal range. That first shore is revealed but does not extend the line further. Islands stop the extension; rivers do not start it. At a tied contact, land stops the water extension. Another visited source can independently reveal land behind a blocker or island.
 
+An inland visited hex above elevation 1 can also look over lower land to reach open water beyond its ordinary radius. Each elevation level above 1 adds one hex to the distance at which the first ocean/lake hex may be reached: elevation 2 adds one, elevation 3 adds two, and elevation 4 adds three. Normal landmark/settlement bonuses still apply. An elevation-3 source with a normal radius of two can therefore reach water four hexes away, then see along its continuous water stretch. Every intervening hex must be lower than the source; equal or higher terrain blocks this additional water view, including corner contacts. A source adjacent to any ocean/lake hex is coastal and receives no inland allowance; rivers do not make a source coastal.
+
+The additional inland view reveals only water. It does not uncover the skipped land, reveal a new far shore or hop over islands. Ordinary land visibility and water/shore visibility already available within the original rules remain unchanged. As with other sight, every visited source contributes; moving away from a visited high point retains its view until that visit is removed.
+
 ## Presentation and editing
 
 - **Undiscovered:** a complete blank elevation-1 hex in the palette's UI-background family, retaining borders and shadows. Its Inspector and dropdown expose only “Undiscovered hex” and coordinates, plus the action to mark it visited. Proximity rows and terrain/feature fields are hidden.

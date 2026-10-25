@@ -78,6 +78,9 @@ export function generateDressing(
               phase: ridgeRandom() * Math.PI * 2,
               angle: ridgeRandom() * Math.PI,
               heightScale: 0.6,
+              ...(world.generatorVersion >= 9
+                ? { profile: mountainLocks[range.id]?.profile ?? (mountainLocks[range.id] ? 0 : 1) }
+                : {}),
               ...mountainLocks[range.id],
             };
           })

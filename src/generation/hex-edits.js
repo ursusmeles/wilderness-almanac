@@ -88,6 +88,20 @@ function validateLock(value, key) {
       fail();
     if (source.temperature !== undefined && Math.abs(source.temperature) > 1) fail();
     if (source.foliageTone !== undefined && ![-1, 0, 1].includes(source.foliageTone)) fail();
+    if (source.cropStyle !== undefined) {
+      if (source.kind !== 'crops' || !['plots', 'grain', 'vineyard'].includes(source.cropStyle))
+        fail();
+      prop.cropStyle = source.cropStyle;
+    }
+    if (source.fruit !== undefined) {
+      if (
+        source.kind !== 'tree' ||
+        typeof source.fruit !== 'boolean' ||
+        (source.fruit && source.variant !== 1)
+      )
+        fail();
+      prop.fruit = source.fruit;
+    }
     if (
       source.storeys !== undefined &&
       (!Number.isInteger(source.storeys) || source.storeys < 1 || source.storeys > 4)
@@ -158,6 +172,10 @@ function validateLock(value, key) {
     lock.mountain = Object.fromEntries(
       ['phase', 'angle', 'heightScale'].map((field) => [field, value.mountain[field]]),
     );
+    if (value.mountain.profile !== undefined) {
+      if (![0, 1].includes(value.mountain.profile)) fail();
+      lock.mountain.profile = value.mountain.profile;
+    }
   }
   if (value.roadShape !== undefined) {
     if (

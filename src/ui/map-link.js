@@ -2,6 +2,7 @@ import { worldPreferences, PREFERENCE_NAMES } from '../generation/world-preferen
 import { GENERATOR_VERSION, SUPPORTED_GENERATOR_VERSIONS } from '../generation/world.js';
 import { hexAddress } from '../generation/hex.js';
 import { roadExitLabels } from './road-labels.js';
+import { isVineyard } from '../generation/farmland-patches.js';
 
 const validColors = (colors) =>
   colors?.length === 3 && colors.every((c) => /^#[0-9a-f]{6}$/i.test(c));
@@ -82,7 +83,11 @@ export function describeHex(cell) {
   if (cell.fogState === 'undiscovered') return `${hexAddress(cell)} · Undiscovered hex`;
   const label =
     cell.pointOfLight?.type ??
-    (cell.water === 'lake' ? 'lake' : (cell.forest?.name ?? cell.terrain));
+    (cell.water === 'lake'
+      ? 'lake'
+      : isVineyard(cell)
+        ? 'vineyards'
+        : (cell.forest?.name ?? cell.terrain));
   const articles = {
     ruins: 'ruins',
     encampment: 'an encampment',

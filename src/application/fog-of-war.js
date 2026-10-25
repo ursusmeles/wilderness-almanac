@@ -78,12 +78,17 @@ export function hexSightLine(source, target, byKey) {
     .sort((a, b) => a.t - b.t || a.cell.key.localeCompare(b.cell.key));
 }
 
-export function canSee(source, target, byKey) {
-  const range = sightRange(source),
-    line = hexSightLine(source, target, byKey);
-  if (line.some(({ cell }) => cell.key !== target.key && cell.elevation >= source.elevation + 2))
-    return false;
-  if (distance(source, target) <= range) return true;
+function waterSightRange(source, byKey, range) {
+  const allowance = Math.max(0, source.elevation - 1);
+  if (!allowance || isOpenWater(source)) return range;
+  const coast = DIRECTIONS.some(([q, r]) => {
+    const next = byKey.get(keyOf(source.q + q, source.r + r));
+    return next && isOpenWater(next);
+  });
+  return coast ? range : range + allowance;
+}
+
+function waterSight(source, target, line, range) {
   let sea = false;
   for (let i = 0; i < line.length;) {
     const group = [line[i++]];
@@ -100,6 +105,21 @@ export function canSee(source, target, byKey) {
   return sea;
 }
 
+export function canSee(source, target, byKey) {
+  const range = sightRange(source),
+    line = hexSightLine(source, target, byKey);
+  if (line.some(({ cell }) => cell.key !== target.key && cell.elevation >= source.elevation + 2))
+    return false;
+  if (distance(source, target) <= range || waterSight(source, target, line, range)) return true;
+  // Elevated inland viewpoints can reach water past lower land. This fallback
+  // never reveals land or extends the existing first-shore rule to new shores.
+  if (!isOpenWater(target)) return false;
+  const waterRange = waterSightRange(source, byKey, range);
+  if (waterRange === range || line.some(({ cell }) => cell.elevation >= source.elevation))
+    return false;
+  return waterSight(source, target, line, waterRange);
+}
+
 export function computeFogOfWar(world, hexEdits) {
   const states = new Map(
     world.cells.map((cell) => [
@@ -107,23 +127,27 @@ export function computeFogOfWar(world, hexEdits) {
       hexEdits?.cells[cell.key]?.visited ? 'visited' : 'undiscovered',
     ]),
   );
+  const byKey = new Map(world.cells.map((cell) => [cell.key, cell]));
+  const water = world.cells.filter(isOpenWater);
   const sources = world.cells
     .filter((cell) => states.get(cell.key) === 'visited')
     .map((cell) => {
       const range = sightRange(cell);
+      const waterRange = waterSightRange(cell, byKey, range);
       return {
         cell,
         range,
-        sea: world.cells.some((other) => isOpenWater(other) && distance(cell, other) <= range),
+        sea: water.some((other) => distance(cell, other) <= range),
+        inlandSea: waterRange > range && water.some((other) => distance(cell, other) <= waterRange),
       };
     });
-  const byKey = new Map(world.cells.map((cell) => [cell.key, cell]));
   for (const target of world.cells) {
     if (states.get(target.key) === 'visited') continue;
     if (
       sources.some(
-        ({ cell, range, sea }) =>
-          (sea || distance(cell, target) <= range) && canSee(cell, target, byKey),
+        ({ cell, range, sea, inlandSea }) =>
+          (sea || distance(cell, target) <= range || (inlandSea && isOpenWater(target))) &&
+          canSee(cell, target, byKey),
       )
     )
       states.set(target.key, 'unvisited');

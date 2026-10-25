@@ -9,6 +9,7 @@ import { explainDisabled } from './control-help.js';
 import { roadGraph } from '../generation/roads.js';
 import { ROAD_DIRECTIONS, roadExitLabels } from './road-labels.js';
 import { POI_OPTIONS, poiValue, poiFromValue } from './poi-options.js';
+import { isVineyard } from '../generation/farmland-patches.js';
 
 const title = (text) => (text ? text[0].toUpperCase() + text.slice(1) : 'None');
 export function createHexInspector(
@@ -149,6 +150,8 @@ export function createHexInspector(
   function setEditing(enabled) {
     enabled = enabled && !state?.fogOfWar;
     editing = enabled;
+    el('terrain').querySelector('[value="farmlands"]').textContent =
+      !editing && state && isVineyard(state.cell, state.dressed?.props) ? 'Vineyards' : 'Farmlands';
     dirty = false;
     roadDirty = false;
     el('fields').disabled = !enabled;
@@ -303,7 +306,11 @@ export function createHexInspector(
         previewTile = null;
       }
       state = next;
-      el('name').textContent = describeHex({ ...next.cell, forest: next.dressed?.forest })
+      el('name').textContent = describeHex({
+        ...next.cell,
+        forest: next.dressed?.forest,
+        props: next.dressed?.props,
+      })
         .split(' · ')
         .slice(2)
         .join(' · ');

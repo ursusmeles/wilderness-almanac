@@ -23,7 +23,7 @@ test('mountain dressing replays, changes by variant and stays on level-four foot
       assert.ok(!cell.water && !cell.islandId);
       const heights = data.surface.vertices.map((vertex) => vertex[1]);
       assert.ok(data.surface.vertices.flat().every(Number.isFinite));
-      assert.ok(Math.min(...heights) >= 0 && Math.max(...heights) <= 0.53);
+      assert.ok(Math.min(...heights) >= 0 && Math.max(...heights) <= 1.2);
       assert.ok(Math.max(...heights) > 0.2, 'Readable ridge silhouette');
       assert.deepEqual(data.shared, next.get(cell.key).shared);
       assert.deepEqual(data.corners, next.get(cell.key).corners);
@@ -31,6 +31,49 @@ test('mountain dressing replays, changes by variant and stays on level-four foot
     world.stages.props = false;
     assert.equal(prepareMountainRanges(world, generateDressing(world, 3)).size, 0);
   }
+});
+
+test('range profiles mix low rounded terrain with occasional prominent relief', () => {
+  const peaks = [];
+  for (const seed of ['0', '1', '2', '3', '7']) {
+    const world = generateWorld(seed);
+    const surfaces = prepareMountainRanges(world, generateDressing(world));
+    for (const range of world.elevation.ranges)
+      peaks.push(
+        Math.max(
+          ...range.hexKeys.flatMap((key) =>
+            surfaces.get(key).surface.vertices.map((vertex) => vertex[1]),
+          ),
+        ),
+      );
+  }
+  assert.ok(
+    peaks.some((height) => height < 0.55),
+    'Keep low rounded ranges',
+  );
+  assert.ok(
+    peaks.some((height) => height > 0.7),
+    'Some ranges have prominent summits',
+  );
+  assert.ok(Math.max(...peaks) - Math.min(...peaks) > 0.3, 'Range silhouettes vary substantially');
+});
+
+test('legacy mountain locks retain their old numeric shape in current campaigns', () => {
+  const world = generateWorld('7');
+  const oldWorld = { ...world, generatorVersion: 8 };
+  const mountainLocks = Object.fromEntries(
+    world.elevation.ranges.map((range) => [
+      range.id,
+      {
+        phase: 0.7,
+        angle: 1.2,
+        heightScale: 0.6,
+      },
+    ]),
+  );
+  const current = generateDressing(world, 2, { mountainLocks });
+  const legacy = generateDressing(oldWorld, 2, { mountainLocks });
+  assert.deepEqual(prepareMountainRanges(world, current), prepareMountainRanges(oldWorld, legacy));
 });
 
 test('connected mountain meshes share exact heights and taper to their outside perimeter', () => {

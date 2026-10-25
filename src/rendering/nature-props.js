@@ -1,8 +1,10 @@
 import * as THREE from 'three';
 import { randomStream } from '../generation/math.js';
 import { addMesh, geometryFrom } from './geometry.js';
+import { createFarmlandBuilder } from './farmland-props.js';
 
 export function createNatureBuilder({ materials, propMaterial }) {
+  const makeField = createFarmlandBuilder({ propMaterial });
   function makeTree(parent, prop) {
     const g = new THREE.Group();
     g.userData.tree = true;
@@ -36,6 +38,22 @@ export function createNatureBuilder({ materials, propMaterial }) {
         0.73,
         0,
       );
+      if (prop.fruit) {
+        const random = randomStream(prop.detailSeed);
+        for (let i = 0; i < 10; i++) {
+          const angle = (i * Math.PI * 2) / 10 + random() * 0.3;
+          const y = 0.45 + random() * 0.18;
+          const radius = 0.22 * Math.sqrt(1 - ((y - 0.52) / 0.29) ** 2);
+          addMesh(
+            g,
+            new THREE.IcosahedronGeometry(0.03, 1),
+            propMaterial('fruit', 0, prop.detailSeed % 3),
+            Math.cos(angle) * radius,
+            y,
+            Math.sin(angle) * radius * 0.9,
+          );
+        }
+      }
     } else {
       addMesh(
         g,
@@ -168,6 +186,7 @@ export function createNatureBuilder({ materials, propMaterial }) {
     parent.add(g);
   }
   function makeCrops(parent, prop) {
+    if (prop.cropStyle && prop.cropStyle !== 'plots') return makeField(parent, prop);
     const g = new THREE.Group();
     g.position.set(prop.x, prop.y, prop.z);
     g.rotation.y = prop.angle;

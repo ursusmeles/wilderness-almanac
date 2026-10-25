@@ -23,6 +23,10 @@ export const materialRoles = {
   reedHead: [2, 0.55, 0.45],
   soil: [0, 0.32, 0.65],
   crop: [2, 0.7, 0.8],
+  grain: [2, 0.79, 0.8],
+  grainStem: [2, 0.65, 0.6],
+  fruit: [2, 0.56, 1],
+  grape: [2, 0.43, 1],
   ridge: [0, 0.43, 0.8],
   ridgeLight: [0, 0.5, 0.55],
   ridgeDark: [0, 0.35, 0.85],
@@ -133,11 +137,30 @@ export function createMapPalette(seeds) {
   const activeL = separate(2, 0.94, 0.55, [ground, water], 2.5, 0.9, 0.96);
   const hoverL = separate(2, 0.83, 0.4, [ground, water], 1.8, 0.83, 0.96);
   const waveL = separate(1, 0.64 + shifts[1], 0.75, [water], 1.5, 0.55, 0.88);
+  const elementHue = (coordinates[2][2] * 180) / Math.PI;
+  const hueDelta = (hue) => ((hue - elementHue + 540) % 360) - 180;
+  // Pick the most legible fruit hue against both crown shades. Fixed saturation
+  // also keeps fruit recognisable in nearly neutral custom palettes.
+  const accent = createColorScale(['#e73f46', '#e73f46', '#e73f46'], { preserveChroma: true });
+  const accentHue = (hexToOklch('#e73f46')[2] * 180) / Math.PI;
+  const fruitColors = [25, 60, 95, 140, 310]
+    .flatMap((hue) =>
+      [0.52, 0.8].map((L) => {
+        const adjusted = hue - hueDelta(hue) * 0.12;
+        const hex = accent(0, L, 0.85, 0, adjusted - accentHue);
+        const contrast = Math.min(
+          ...[leafL, leafL + 0.09].map((shade) => contrastRatio(hex, vivid(2, shade, 1))),
+        );
+        return { hex, contrast };
+      }),
+    )
+    .sort((a, b) => b.contrast - a.contrast);
   const cache = new Map();
 
   return {
     background: fixed.background,
     role(name, temperature = 0, tone = 0) {
+      if (name === 'fruit') return fruitColors[clamp(tone, 0, 2)].hex;
       const key = `${name}:${temperature}:${tone}`;
       if (cache.has(key)) return cache.get(key);
       const [index, baseL, baseC] = materialRoles[name];
@@ -171,6 +194,14 @@ export function createMapPalette(seeds) {
       if (straw.has(name)) {
         L += tone * 0.008;
         hueShift = tone * 4;
+      }
+      if (name === 'grain' || name === 'grainStem') {
+        hueShift = hueDelta(85) * 0.8;
+        C = 0.1 / Math.max(coordinates[2][1], 0.000001);
+      }
+      if (name === 'grape') {
+        hueShift = hueDelta(305) * 0.85;
+        C = 0.12 / Math.max(coordinates[2][1], 0.000001);
       }
       if (name === 'active') L = activeL;
       if (name === 'hover') L = hoverL;

@@ -2,6 +2,7 @@ import { DIRECTIONS } from './hex.js';
 import { TOP_RADIUS } from './math.js';
 import { ridgeSurface } from './ridge-surface.js';
 import { randomFor } from './seed.js';
+import { mountainRidges } from './mountain-ridges.js';
 
 // Build broad, faceted ranges. A single height field per range
 // keeps neighbouring mountain tiles joined instead of placing isolated cones.
@@ -13,6 +14,7 @@ export function prepareMountainRanges(world, dressing) {
     const shape = shapes.get(range.id);
     if (!shape) continue;
     const cells = range.hexKeys.map((key) => byKey.get(key)).filter((cell) => cell.elevation === 4);
+    if (!cells.length) continue;
     const keys = new Set(cells.map((cell) => cell.key));
     const field = { ...shape, boundary: [], spines: [] };
     for (const cell of cells) {
@@ -38,6 +40,7 @@ export function prepareMountainRanges(world, dressing) {
         ]);
       }
     }
+    if (shape.profile === 1) field.ridges = mountainRidges(cells, shape, world.seed);
     for (const cell of cells) {
       const data = result.get(cell.key);
       data.surface = ridgeSurface({ ...cell, corners: data.corners }, field);
