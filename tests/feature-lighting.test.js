@@ -7,9 +7,24 @@ import { createMapMeshes } from '../src/rendering/map-meshes.js';
 import { generateWorld, generateDressing } from '../src/generation/world.js';
 import { prepareMap } from '../src/generation/presentation.js';
 import { createFogView } from '../src/application/fog-view.js';
+import { worldPosition } from '../src/generation/hex.js';
 
 const land = { key: '0,0', q: 0, r: 0, top: 0.5, terrain: 'meadow' };
 const sea = { key: '1,0', q: 1, r: 0, top: 0.2, terrain: 'open water', water: 'ocean' };
+const coast = [
+  land,
+  sea,
+  ...[
+    [2, 0],
+    [2, -1],
+    [1, 1],
+  ].map(([q, r]) => ({
+    ...sea,
+    key: `${q},${r}`,
+    q,
+    r,
+  })),
+];
 const source = (kind = 'warm', tile = land) => ({
   kind,
   tile,
@@ -23,6 +38,26 @@ function camera() {
   camera.lookAt(0, 0, 0);
   camera.updateMatrixWorld();
   return camera;
+}
+
+// Sample the actual batched glow/UV/texture at a world-space ground position.
+function glowAt(mesh, x, z) {
+  const { position, uv } = mesh.geometry.attributes;
+  const indices = mesh.geometry.index.array;
+  const at = (i) => new THREE.Vector3(position.getX(i), 0, position.getZ(i));
+  const sample = new THREE.Vector3(x, 0, z);
+  for (let i = 0; i < indices.length; i += 3) {
+    const [a, b, c] = indices.slice(i, i + 3);
+    const weights = THREE.Triangle.getBarycoord(sample, at(a), at(b), at(c), new THREE.Vector3());
+    if (Math.min(weights.x, weights.y, weights.z) < -1e-6) continue;
+    const u = uv.getX(a) * weights.x + uv.getX(b) * weights.y + uv.getX(c) * weights.z;
+    const v = uv.getY(a) * weights.x + uv.getY(b) * weights.y + uv.getY(c) * weights.z;
+    const { data, width, height } = mesh.material.map.image;
+    const tx = Math.max(0, Math.min(width - 1, Math.floor(u * width)));
+    const ty = Math.max(0, Math.min(height - 1, Math.floor(v * height)));
+    return (data[(ty * width + tx) * 4 + 3] / 255) * mesh.material.opacity;
+  }
+  return 0;
 }
 
 test('all night glows are batched, native light counts are bounded and modes reuse resources', () => {
@@ -73,13 +108,19 @@ test('every lighthouse gets a sweeping beam toward open water while native spotl
     view = camera();
   lighting.setSources(
     Array.from({ length: 4 }, () => source('lighthouse')),
-    [land, sea],
+    coast,
   );
   assert.equal(lighting.beamGroup.children.length, 4);
   lighting.setMode('night');
   lighting.update(0, view);
   const original = lighting.beams[0].target.position.clone();
   assert.ok(original.x > 1);
+  assert.ok(
+    Math.abs(Math.hypot(original.x, original.z - 0.05) - 2 * Math.sqrt(3)) < 0.01,
+    'the beam reaches two hex-centre spacings into visible open water',
+  );
+  assert.ok(lighting.beamGroup.children.every((mesh) => mesh.material.opacity > 0.15));
+  assert.ok(lighting.beams.filter((light) => light.visible).every((light) => light.intensity > 4));
   lighting.update(5, view);
   assert.notDeepEqual(lighting.beams[0].target.position, original);
   assert.ok(lighting.beams[0].target.position.distanceTo(original) <= 0.31);
@@ -87,6 +128,143 @@ test('every lighthouse gets a sweeping beam toward open water while native spotl
   lighting.update(5, view);
   assert.equal(lighting.beamGroup.visible, false);
   assert.ok(lighting.beams.every((light) => light.intensity === 0));
+  lighting.dispose();
+});
+
+test('lighthouse reach stops before a far bank, hidden water or the map boundary', () => {
+  const origin = new THREE.Vector3(0, 0.8, 0);
+  for (const obstruction of [
+    null,
+    { ...land, q: 2, key: '2,0' },
+    { ...sea, q: 2, key: '2,0', fogState: 'undiscovered' },
+  ]) {
+    const target = lighthouseTarget(origin, [land, sea, ...(obstruction ? [obstruction] : [])]);
+    assert.ok(target);
+    assert.ok(target.x > 1.7 && target.x < 2.6);
+    assert.equal(target.y, sea.top + 0.025);
+  }
+});
+
+test('settlement glow grows with population, stays inside its hex and does not stack per house', () => {
+  const lighting = createFeatureLighting(new THREE.Scene());
+  lighting.setMode('night');
+  const outerLight = [];
+  for (const type of ['village', 'town', 'city']) {
+    const tile = { ...land, pointOfLight: { type } };
+    const entries = Array.from({ length: 14 }, () => ({ ...source('warm', tile), feature: type }));
+    lighting.setSources(entries, [tile]);
+    lighting.update(0, camera());
+    const ground = lighting.group.getObjectByName('warm:ground');
+    assert.equal(ground.geometry.index.count, 18, 'one pool for the whole settlement');
+    assert.ok(glowAt(ground, 0, 0.05) > 0.5, 'a strong steady core remains at map scale');
+    outerLight.push(glowAt(ground, 0.65, 0.05));
+    assert.equal(glowAt(ground, 0.9, 0.05), 0, 'light cannot spill onto an adjacent hex');
+    assert.equal(
+      lighting.points.filter((light) => light.visible).length,
+      0,
+      'warm buildings never gain a camera-dependent native light',
+    );
+  }
+  assert.equal(outerLight[0], 0, 'village light does not fill the whole hex');
+  assert.ok(outerLight[1] > 0.04);
+  assert.ok(outerLight[2] > outerLight[1] * 1.5, 'cities illuminate more of the tile than towns');
+  lighting.dispose();
+});
+
+test('corner landmarks spread light inward and use their own size even on a city tile', () => {
+  const lighting = createFeatureLighting(new THREE.Scene());
+  const tile = { ...land, pointOfLight: { type: 'city' } };
+  lighting.setMode('night');
+  const spread = [];
+  for (const feature of ['watchtower', 'abbey', 'stronghold']) {
+    lighting.setSources(
+      [{ ...source('warm', tile), feature, position: [0.64, 0.3, 0.05] }],
+      [tile],
+    );
+    lighting.update(0, camera());
+    const ground = lighting.group.getObjectByName('warm:ground');
+    spread.push(glowAt(ground, 0.24, 0.05));
+    assert.equal(glowAt(ground, 0.86, 0.05), 0);
+  }
+  assert.ok(spread[0] > 0.05, 'a corner light is no longer reduced to its small edge clearance');
+  assert.ok(spread[0] < spread[1] && spread[1] < spread[2]);
+  lighting.dispose();
+});
+
+test('all settlement glows stay bright away from the camera centre through the entire pulse', () => {
+  const lighting = createFeatureLighting(new THREE.Scene());
+  const tiles = Array.from({ length: 9 }, (_, i) => ({
+    ...land,
+    key: `${i * 2},0`,
+    q: i * 2,
+    pointOfLight: { type: 'town' },
+  }));
+  lighting.setSources(
+    tiles.flatMap((tile) => {
+      const { wx, wz } = worldPosition(tile);
+      return ['warm', 'mystic'].map((kind) => ({
+        ...source(kind, tile),
+        feature: kind === 'warm' ? 'town' : 'mystic',
+        matrix: new THREE.Matrix4().makeTranslation(wx, 0.5, wz + (kind === 'mystic' ? 0.4 : 0)),
+      }));
+    }),
+    tiles,
+  );
+  lighting.setMode('night');
+  const view = camera();
+  lighting.update(0, view);
+  const ground = lighting.group.getObjectByName('warm:ground');
+  const geometry = ground.geometry;
+  const positions = lighting.points.map((light) => light.position.clone());
+  const initial = tiles.map((tile) => glowAt(ground, worldPosition(tile).wx, 0.05));
+  view.position.x += 25;
+  view.lookAt(25, 0, 0);
+  view.updateMatrixWorld();
+  lighting.update(0, view);
+  assert.notDeepEqual(
+    lighting.points.map((light) => light.position),
+    positions,
+  );
+  assert.ok(
+    lighting.points.every((light) => light.position.z > 0.4),
+    'only non-building sources use the camera-centred native pool',
+  );
+  assert.equal(ground.geometry, geometry);
+  assert.deepEqual(
+    tiles.map((tile) => glowAt(ground, worldPosition(tile).wx, 0.05)),
+    initial,
+    'every settlement keeps the same visible glow when native lights move elsewhere',
+  );
+  for (let time = 0; time < 15; time += 0.25) {
+    lighting.update(time, view);
+    for (const tile of tiles) assert.ok(glowAt(ground, worldPosition(tile).wx, 0.05) > 0.55);
+    assert.ok(ground.material.opacity >= 0.65 * 0.96);
+  }
+  lighting.dispose();
+});
+
+test('ground glows follow exact relief and road tops, and do not bridge river water', () => {
+  const lighting = createFeatureLighting(new THREE.Scene());
+  const surface = {
+    vertices: [
+      [0, 0.1, 0],
+      [0.7, 0.25, 0],
+      [0, 0.3, 0.7],
+    ],
+    triangles: [[0, 1, 2]],
+  };
+  for (const field of ['surface', 'riverSurface', 'roadSurface']) {
+    const tile = { ...land, [field]: { ...surface, materialIndices: [2] } };
+    lighting.setSources([source('warm', tile)], [tile]);
+    lighting.update(0, camera());
+    const ground = lighting.group.getObjectByName('warm:ground');
+    const positions = ground.geometry.attributes.position;
+    for (let i = 0; i < 3; i++) {
+      const expected = surface.vertices[i][1] + (field === 'roadSurface' ? 0 : land.top) + 0.012;
+      assert.ok(Math.abs(positions.getY(i) - expected) < 1e-6);
+    }
+    assert.equal(glowAt(ground, -0.1, -0.1), 0, 'no light plane spans a missing bank triangle');
+  }
   lighting.dispose();
 });
 
@@ -137,6 +315,19 @@ test('source positions follow actual model transforms and the fog projection wit
     const position = new THREE.Vector3().fromArray(light.position).applyMatrix4(light.matrix);
     assert.ok(position.toArray().every(Number.isFinite));
     assert.ok(position.y > light.tile.top);
+    assert.ok(
+      [
+        'village',
+        'town',
+        'city',
+        'watchtower',
+        'abbey',
+        'stronghold',
+        'mystic',
+        'dungeon',
+      ].includes(light.feature),
+      'source metadata distinguishes settlement population from co-located landmarks',
+    );
   }
   const key = meshes.lightSources[0].tile.key;
   const states = new Map(

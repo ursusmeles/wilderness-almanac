@@ -21,7 +21,9 @@ export function createMapMeshes({
   const cells = [];
   const lightSources = [];
   let pendingLights = [];
-  const registerLight = (parent, source) => pendingLights.push({ parent, ...source });
+  let lightFeature;
+  const registerLight = (parent, source) =>
+    pendingLights.push({ parent, feature: lightFeature, ...source });
   const makeTerrain = createTerrainBuilder({
     materials,
     makeCrossing: createCrossingBuilder(materials),
@@ -57,6 +59,7 @@ export function createMapMeshes({
       content.add(propRoot);
       makeRoads(propRoot, data);
       for (const prop of data.props) {
+        lightFeature = prop.kind === 'poi' ? prop.poiKind : data.pointOfLight?.type;
         if (prop.kind === 'tree') makeTree(propRoot, prop);
         else if (prop.kind === 'house') makeHouse(propRoot, prop);
         else if (prop.kind === 'tower') makeTower(propRoot, prop);
