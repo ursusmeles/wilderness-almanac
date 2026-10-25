@@ -185,8 +185,8 @@ export function createNatureBuilder({ materials, propMaterial }) {
     }
     parent.add(g);
   }
-  function makeCrops(parent, prop) {
-    if (prop.cropStyle && prop.cropStyle !== 'plots') return makeField(parent, prop);
+  function makeCrops(parent, prop, cell) {
+    if (prop.cropStyle && prop.cropStyle !== 'plots') return makeField(parent, prop, cell);
     const g = new THREE.Group();
     g.position.set(prop.x, prop.y, prop.z);
     g.rotation.y = prop.angle;

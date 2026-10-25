@@ -25,6 +25,7 @@ export const materialRoles = {
   crop: [2, 0.7, 0.8],
   grain: [2, 0.79, 0.8],
   grainStem: [2, 0.65, 0.6],
+  grainGround: [2, 0.65, 0.6],
   fruit: [2, 0.56, 1],
   grape: [2, 0.43, 1],
   ridge: [0, 0.43, 0.8],
@@ -195,7 +196,7 @@ export function createMapPalette(seeds) {
         L += tone * 0.008;
         hueShift = tone * 4;
       }
-      if (name === 'grain' || name === 'grainStem') {
+      if (name === 'grain' || name === 'grainStem' || name === 'grainGround') {
         hueShift = hueDelta(85) * 0.8;
         C = 0.1 / Math.max(coordinates[2][1], 0.000001);
       }

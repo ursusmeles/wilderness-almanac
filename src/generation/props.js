@@ -6,6 +6,8 @@ import { poiAnchor } from './points-of-interest.js';
 import { TOKEN_ANCHOR, isForest, populateForests } from './forest-props.js';
 import { settlementBarriers, isBarrier, barrierDistance } from './settlement-props.js';
 import { roadAllowsProp, roadBarrierPieces } from './road-geometry.js';
+import { generateGrainFields } from './grain-fields.js';
+import { fieldDistance } from './farmland-patches.js';
 
 export { TOKEN_ANCHOR } from './forest-props.js';
 
@@ -123,9 +125,11 @@ export function generatePropDressing(
         return false;
       if (
         props.some((prop) =>
-          isBarrier(prop)
-            ? barrierDistance(prop, x, z) < footprint + prop.footprint + 0.025
-            : Math.hypot(x - prop.x, z - prop.z) < minimumSpacing(candidate, prop),
+          prop.patch
+            ? fieldDistance(prop, x, z) < footprint + 0.025
+            : isBarrier(prop)
+              ? barrierDistance(prop, x, z) < footprint + prop.footprint + 0.025
+              : Math.hypot(x - prop.x, z - prop.z) < minimumSpacing(candidate, prop),
         )
       )
         return false;
@@ -257,27 +261,35 @@ export function generatePropDressing(
         `farmland:${cell.key}:${variant}:${revisions[cell.key] ?? 0}`,
       );
       const cropStyle =
-        cell.elevation > 0 && farmRandom() < 0.35
+        cell.elevation > 0 && farmRandom() < 0.2
           ? 'vineyard'
-          : farmRandom() < 0.5
+          : farmRandom() < 0.6
             ? 'grain'
             : 'plots';
-      for (let n = 0, count = integer(2, 3); n < count; n++) {
-        const scale = modern ? 1.1 + random() * 0.18 : 0.85 + random() * 0.2;
-        place('crops', 0.28 * scale, {
-          scale,
-          angle: (Math.floor(random() * 3) * Math.PI) / 3,
-          variant: integer(0, 2),
-          ...(modern ? { cropStyle } : {}),
-        });
-      }
-      if (random() < 0.25) {
-        const fruit = modern && farmRandom() < 0.5;
-        place('tree', 0.12, {
-          scale: 0.5,
-          variant: fruit ? 1 : cell.treeVariant,
-          ...(modern ? { fruit } : {}),
-        });
+      if (modern && cropStyle === 'grain') {
+        if (random() < 0.25) {
+          const fruit = farmRandom() < 0.5;
+          place('tree', 0.12, { scale: 0.5, variant: fruit ? 1 : cell.treeVariant, fruit });
+        }
+        props.push(...generateGrainFields(cell, Math.floor(farmRandom() * 1000000), props));
+      } else {
+        for (let n = 0, count = integer(2, 3); n < count; n++) {
+          const scale = modern ? 1.1 + random() * 0.18 : 0.85 + random() * 0.2;
+          place('crops', 0.28 * scale, {
+            scale,
+            angle: (Math.floor(random() * 3) * Math.PI) / 3,
+            variant: integer(0, 2),
+            ...(modern ? { cropStyle } : {}),
+          });
+        }
+        if (random() < 0.25) {
+          const fruit = modern && farmRandom() < 0.5;
+          place('tree', 0.12, {
+            scale: 0.5,
+            variant: fruit ? 1 : cell.treeVariant,
+            ...(modern ? { fruit } : {}),
+          });
+        }
       }
     } else if (surface) {
       for (let n = 0; n < 3; n++) {

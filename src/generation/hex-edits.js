@@ -1,5 +1,7 @@
 import { TERRAIN_TYPES } from './terrain-types.js';
 import rules from '../data/world-rules.json' with { type: 'json' };
+import { fieldInset, polygonArea } from './farmland-patches.js';
+import { fitsHex } from './prop-placement.js';
 
 export const SETTLEMENT_TYPES = ['village', 'town', 'city'];
 export const POI_TYPES = rules.pointsOfInterest
@@ -92,6 +94,40 @@ function validateLock(value, key) {
       if (source.kind !== 'crops' || !['plots', 'grain', 'vineyard'].includes(source.cropStyle))
         fail();
       prop.cropStyle = source.cropStyle;
+    }
+    if (source.patch !== undefined) {
+      if (
+        source.kind !== 'crops' ||
+        source.cropStyle !== 'grain' ||
+        source.scale !== 1 ||
+        source.angle !== 0 ||
+        !Array.isArray(source.patch) ||
+        source.patch.length < 3 ||
+        source.patch.length > 24
+      )
+        fail();
+      const points = source.patch;
+      if (
+        !points.every(
+          (point) =>
+            Array.isArray(point) &&
+            point.length === 2 &&
+            point.every(Number.isFinite) &&
+            Math.hypot(...point) <= prop.footprint + 1e-6 &&
+            fitsHex(point[0] + prop.x, point[1] + prop.z, 0),
+        )
+      )
+        fail();
+      if (
+        polygonArea(points) < 0.01 ||
+        points.some((a, i) => {
+          const b = points[(i + 1) % points.length];
+          return Math.hypot(b[0] - a[0], b[1] - a[1]) < 1e-6;
+        }) ||
+        points.some(([x, z]) => fieldInset(points, x, z) < -1e-7)
+      )
+        fail();
+      prop.patch = points.map((point) => point.slice());
     }
     if (source.fruit !== undefined) {
       if (

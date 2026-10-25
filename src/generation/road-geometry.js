@@ -3,6 +3,7 @@ import { DIRECTIONS, directionTo } from './hex.js';
 import { TOP_RADIUS, surfaceHeight } from './math.js';
 import { poiAnchor } from './points-of-interest.js';
 import { roadKey } from './roads.js';
+import { fieldIntersectsSegment } from './farmland-patches.js';
 
 const APOTHEM = Math.sqrt(3) / 2;
 const clamp = (value, low = 0, high = 1) => Math.max(low, Math.min(high, value));
@@ -246,6 +247,14 @@ export function roadDistance(paths, x, z) {
 
 export function roadAllowsProp(paths, prop) {
   if (!paths?.length || ['poi', 'rock', 'grass'].includes(prop.kind)) return true;
+  if (prop.patch)
+    return paths.every((path) =>
+      path.points
+        .slice(1)
+        .every(
+          (point, i) => !fieldIntersectsSegment(prop, path.points[i], point, path.width + 0.035),
+        ),
+    );
   return (
     roadDistance(paths, prop.x, prop.z) > (prop.kind === 'tree' ? 0.035 : prop.footprint) + 0.035
   );

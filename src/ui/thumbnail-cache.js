@@ -1,5 +1,5 @@
 const LIMIT = 32;
-const CACHE_VERSION = 5;
+const CACHE_VERSION = 6;
 const memory = new Map();
 let database;
 

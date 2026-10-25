@@ -69,7 +69,7 @@ export function createMapMeshes({
         else if (prop.kind === 'grass') makeGrass(propRoot, prop);
         else if (prop.kind === 'puddle') makePuddle(propRoot, prop);
         else if (prop.kind === 'reeds') makeReeds(propRoot, prop);
-        else if (prop.kind === 'crops') makeCrops(propRoot, prop);
+        else if (prop.kind === 'crops') makeCrops(propRoot, prop, data);
         else if (prop.kind === 'wave') makeWave(propRoot, prop);
         else if (prop.kind === 'poi') makePoi(propRoot, prop);
         else {

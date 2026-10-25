@@ -15,6 +15,24 @@ import { fitsHex, fitsTree, lowProp, minimumSpacing } from '../src/generation/pr
 import { TOKEN_ANCHOR } from '../src/generation/props.js';
 import { isBarrier, barrierEnds, barrierDistance } from '../src/generation/settlement-props.js';
 import { createColorScale, palettes } from '../src/palette.js';
+import { fieldDistance } from '../src/generation/farmland-patches.js';
+
+function fieldsSeparate(a, b) {
+  const points = (p) => p.patch.map(([x, z]) => [x + p.x, z + p.z]);
+  const A = points(a),
+    B = points(b);
+  return [A, B].some((polygon) =>
+    polygon.some((p, i) => {
+      const next = polygon[(i + 1) % polygon.length],
+        nx = next[1] - p[1],
+        nz = p[0] - next[0];
+      const project = (vertices) => vertices.map(([x, z]) => x * nx + z * nz);
+      const av = project(A),
+        bv = project(B);
+      return Math.max(...av) <= Math.min(...bv) + 1e-8 || Math.max(...bv) <= Math.min(...av) + 1e-8;
+    }),
+  );
+}
 
 test('names replay in sentence case from the 30-by-30 vocabulary', () => {
   assert.equal(NAME_WORDS.adjectives.length, 30);
@@ -227,16 +245,32 @@ test('dressing retains crown clusters, links, spacing, token clearance and terra
           continue;
         }
         assert.ok(
-          prop.kind === 'tree' && woodland
-            ? fitsTree({ links: data.links }, prop.x, prop.z, prop.footprint)
-            : fitsHex(prop.x, prop.z, prop.footprint),
+          prop.patch
+            ? prop.patch.every(([x, z]) => fitsHex(x + prop.x, z + prop.z, 0))
+            : prop.kind === 'tree' && woodland
+              ? fitsTree({ links: data.links }, prop.x, prop.z, prop.footprint)
+              : fitsHex(prop.x, prop.z, prop.footprint),
         );
         if (!lowProp(prop.kind))
           assert.ok(
-            Math.hypot(prop.x - TOKEN_ANCHOR.x, prop.z - TOKEN_ANCHOR.z) >=
-              TOKEN_ANCHOR.r + prop.footprint * 0.48,
+            prop.patch
+              ? fieldDistance(prop, TOKEN_ANCHOR.x, TOKEN_ANCHOR.z) >= TOKEN_ANCHOR.r + 0.03
+              : Math.hypot(prop.x - TOKEN_ANCHOR.x, prop.z - TOKEN_ANCHOR.z) >=
+                  TOKEN_ANCHOR.r + prop.footprint * 0.48,
           );
         for (const other of data.props.slice(0, i)) {
+          if (prop.patch || other.patch) {
+            if (prop.patch && other.patch)
+              assert.ok(fieldsSeparate(prop, other), 'Field interiors cannot overlap');
+            else {
+              const field = prop.patch ? prop : other,
+                circle = prop.patch ? other : prop;
+              assert.ok(
+                fieldDistance(field, circle.x, circle.z) >= circle.footprint + 0.025 - 1e-8,
+              );
+            }
+            continue;
+          }
           if (isBarrier(other)) {
             assert.ok(
               barrierDistance(other, prop.x, prop.z) >=

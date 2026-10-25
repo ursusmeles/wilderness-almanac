@@ -2,9 +2,12 @@ import * as THREE from 'three';
 import { cropHeight } from '../generation/farmland-patches.js';
 import { randomStream } from '../generation/math.js';
 import { addMesh, geometryFrom } from './geometry.js';
+import { createGrainBuilder } from './grain-props.js';
 
 export function createFarmlandBuilder({ propMaterial }) {
-  return function makeField(parent, prop) {
+  const makeGrain = createGrainBuilder({ propMaterial });
+  return function makeField(parent, prop, cell) {
+    if (prop.patch) return makeGrain(parent, prop, cell);
     const group = new THREE.Group();
     group.position.set(prop.x, prop.y, prop.z);
     group.rotation.y = prop.angle;
