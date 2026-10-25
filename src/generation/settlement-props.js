@@ -64,7 +64,7 @@ export function settlementBarriers(world, variant) {
       cities.get(id).push(cell);
     } else if (type === 'village') {
       const random = randomFor(world.seed, `village-fence:${id}:${variant}`);
-      if (random() >= 0.35) continue;
+      if (random() >= 0.6) continue;
       const start = Math.floor(random() * 6);
       for (let k = 0; k < 6; k++) {
         const prop = edge(cell, (start + k) % 6, 'fence', random);

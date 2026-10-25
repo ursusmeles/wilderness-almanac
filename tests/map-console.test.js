@@ -37,7 +37,7 @@ test('action feedback survives hover updates, then restores the current coordina
 
 test('new actions replace expiry timers; world changes clear old coordinates and feedback', () => {
   const f = consoleFixture();
-  f.status.notify('Wind turned off');
+  f.status.notify('Movement turned off');
   f.status.notify('Palette changed');
   assert.equal(f.pending.size, 1);
   assert.deepEqual(f.value(), { text: 'Palette changed', kind: 'action' });

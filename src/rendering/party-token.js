@@ -3,6 +3,7 @@ import { surfaceHeight } from '../generation/math.js';
 import { PARTY_STYLES } from '../application/party-token.js';
 import { createPartyPiece } from './party-piece.js';
 import { partyColor } from './party-color.js';
+import { createDaylight } from './daylight.js';
 
 // Grounded nudge: a right sway, a much smaller left rebound, then rest.
 export function partyNudgeAngle(progress) {
@@ -16,10 +17,8 @@ export function partyNudgeAngle(progress) {
 export function createPartyToken({ host, draw, onMove, onSelect }) {
   const scene = new THREE.Scene(),
     root = new THREE.Group();
-  scene.add(root, new THREE.HemisphereLight(0xffffff, 0x777777, 1.8));
-  const sun = new THREE.DirectionalLight(0xffffff, 2.6);
-  sun.position.set(-15, 30, -18);
-  scene.add(sun);
+  scene.add(root);
+  const daylight = createDaylight(scene, { shadows: false, sunPatch: false });
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const listeners = new AbortController();
   const ray = new THREE.Raycaster(),
@@ -227,6 +226,7 @@ export function createPartyToken({ host, draw, onMove, onSelect }) {
     cancel: () => land(moved),
     deselect: () => select(false),
     setSelected: select,
+    setTimeOfDay: daylight.setMode,
     render(renderer, camera) {
       if (piece) {
         renderer.clearDepth();
@@ -239,6 +239,7 @@ export function createPartyToken({ host, draw, onMove, onSelect }) {
       host.style.removeProperty('cursor');
       delete host.dataset.partySelected;
       piece?.dispose();
+      daylight.dispose();
       scene.clear();
     },
   };

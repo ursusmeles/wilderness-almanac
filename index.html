@@ -586,18 +586,31 @@
             <h1 class="hp-title">The quiet frontier</h1>
           </hgroup>
           <div class="hp-tools cluster">
-            <button
-              type="button"
-              id="hp-fog"
-              class="hp-motion hp-fog"
-              role="switch"
-              aria-checked="false"
-              aria-label="Fog of war"
-              data-tooltip="Turn fog of war on"
+            <div
+              id="hp-view-controls"
+              class="hp-view-controls"
+              role="group"
+              aria-label="Map display"
             >
-              <span class="hp-motion-light" aria-hidden="true"></span>
-              <span>Fog of war <span id="hp-fog-state" aria-hidden="true">OFF</span></span>
-            </button>
+              <button
+                type="button"
+                id="hp-fog"
+                class="hp-motion hp-fog"
+                role="switch"
+                aria-checked="false"
+                aria-label="Fog of war"
+                data-tooltip="Turn fog of war on"
+              >
+                <span class="hp-motion-light" aria-hidden="true"></span>
+                <span>Fog of war <span id="hp-fog-state" aria-hidden="true">OFF</span></span>
+              </button>
+              <select id="hp-time-of-day" class="hp-time-of-day" aria-label="Time of day">
+                <option value="dawn">Dawn</option>
+                <option value="day" selected>Day</option>
+                <option value="dusk">Dusk</option>
+                <option value="night">Night</option>
+              </select>
+            </div>
             <button
               type="button"
               id="hp-find-party"
@@ -756,11 +769,11 @@
                   class="hp-motion"
                   role="switch"
                   aria-checked="true"
-                  aria-label="Wind"
-                  data-tooltip="Turn wind animation off"
+                  aria-label="Movement"
+                  data-tooltip="Pause wind, waves, light pulses and lighthouse sweeps"
                 >
                   <span class="hp-motion-light" aria-hidden="true"></span>
-                  <span>Wind <span id="hp-motion-state" aria-hidden="true">ON</span></span>
+                  <span>Movement <span id="hp-motion-state" aria-hidden="true">ON</span></span>
                 </button>
               </div>
               <div class="hp-panel-actions">

@@ -142,6 +142,28 @@ test('battlefields always have a banner and one to five larger skulls', () => {
   assert.equal(counts.size, 5);
 });
 
+test('watchtower cosmetics include roofed and battlemented models with a banner above the parapet', () => {
+  const styles = new Set();
+  for (let seed = 0; seed < 12; seed++) {
+    const tower = buildPoi('watchtower', 'watchtower', seed);
+    const battlements = tower.parts('battlement');
+    const banners = tower.parts('banner');
+    styles.add(battlements.length ? 'battlements' : 'roof');
+    if (battlements.length) {
+      assert.equal(banners.length, 1);
+      const parapet = new THREE.Box3();
+      for (const part of battlements) parapet.expandByObject(part);
+      assert.ok(new THREE.Box3().setFromObject(banners[0]).min.y > parapet.max.y);
+    } else assert.equal(banners.length, 0);
+    tower.dispose();
+  }
+  assert.equal(styles.size, 2);
+  const lighthouse = buildPoi('watchtower', 'lighthouse');
+  assert.equal(lighthouse.parts('battlement').length, 0);
+  assert.equal(lighthouse.parts('banner').length, 0);
+  lighthouse.dispose();
+});
+
 test('cave, mine and dungeon entrances have recessed openings occluded by their surroundings', () => {
   for (const [kind, variant] of [
     ['lair', 'cave'],

@@ -82,7 +82,7 @@ test('building roofs reuse deterministic cosmetic seeds and share the finish acr
   material.dispose();
 });
 
-test('villages have roughly three straw-roof cottages and occasional fences; cities are denser and taller', () => {
+test('villages have roughly three straw-roof cottages and frequent fences; cities are denser and taller', () => {
   const counts = { village: 0, town: 0, city: 0, fenced: 0, tall: 0 };
   for (const type of ['village', 'town', 'city']) {
     const world = fixture(type);
@@ -112,7 +112,7 @@ test('villages have roughly three straw-roof cottages and occasional fences; cit
     assert.deepEqual(world, before);
   }
   assert.ok(counts.village / 80 > 2.7 && counts.village / 80 < 3.3);
-  assert.ok(counts.fenced > 12 && counts.fenced < 45);
+  assert.ok(counts.fenced > 38 && counts.fenced < 60);
   // The previous dressing averaged 10.125 successfully placed cottages here.
   assert.ok(counts.city / 80 > 11, 'Cities gain buildings after wall clearance is reserved');
   assert.ok(counts.tall / counts.city > 0.75);
@@ -196,7 +196,7 @@ test('settlement geometry stays inside reserved shapes and city buildings gain h
   for (const variant of [0, 1, 2]) {
     const base = { x: 0, y: 0, z: 0, angle: 0.7, scale: 0.55, variant };
     const town = measure(makeHouse, base);
-    measure(makeHouse, { ...base, roof: 'straw' });
+    assert.ok(measure(makeHouse, { ...base, roof: 'straw' }) < town - 0.02);
     assert.ok(measure(makeHouse, { ...base, storeys: 3 }) > town + 0.25);
   }
   for (const [kind, footprint] of [

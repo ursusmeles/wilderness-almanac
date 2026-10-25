@@ -18,7 +18,12 @@ test('failed writes remain visible through action notices, hovering and map/menu
   });
   status.update('campaigns', false);
   const failure = warning;
-  for (const action of ['Hex updated', 'Dressing regenerated', 'Seed copied', 'Wind turned on']) {
+  for (const action of [
+    'Hex updated',
+    'Dressing regenerated',
+    'Seed copied',
+    'Movement turned on',
+  ]) {
     console.notify(action);
     assert.equal(feedback, action);
     assert.equal(warning, failure);

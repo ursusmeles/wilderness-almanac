@@ -177,7 +177,7 @@ export function createCampaignSession({ persist }) {
     multiEdit = false;
     selectedKeys = new Set();
     partySelected = false;
-    if (!world.cells.some((cell) => cell.key === selected)) selected = world.cells[0].key;
+    selected = record.partyToken.key;
     save();
     return result('open');
   }

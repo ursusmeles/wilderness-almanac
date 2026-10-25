@@ -7,6 +7,9 @@ import { createPartyToken } from './party-token.js';
 import { createPartyPiece } from './party-piece.js';
 import { PARTY_STYLES } from '../application/party-token.js';
 import { createPartyKeyHints } from './party-key-hints.js';
+import { createDaylight } from './daylight.js';
+import { createFeatureLighting } from './feature-lighting.js';
+import { DAYLIGHT } from '../application/time-of-day.js';
 
 export function createMapRenderer(
   host,
@@ -45,24 +48,9 @@ export function createMapRenderer(
     'Interactive isometric hex map. Arrow keys jump two hexes; + and − zoom. Select a hex or the party with the map dropdown. With the party selected, Q W E and A S D move it to adjacent hexes. Drag to pan or move the party; scroll or pinch to zoom.',
   );
   const scene = new THREE.Scene();
-  const ambient = new THREE.HemisphereLight(0xffffff, 0x777777, 1.8);
-  scene.add(ambient);
-  const sun = new THREE.DirectionalLight(0xffffff, 2.6);
-  sun.position.set(-15, 30, -18);
-  sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
-  Object.assign(sun.shadow.camera, {
-    left: -24,
-    right: 24,
-    top: 24,
-    bottom: -24,
-    near: 1,
-    far: 90,
-  });
-  sun.shadow.normalBias = 0.035;
-  sun.shadow.bias = -0.0002;
-  sun.shadow.radius = 3;
-  scene.add(sun);
+  const daylight = createDaylight(scene);
+  const featureLighting = createFeatureLighting(scene);
+  let dayMode = 'day';
   const shadowFloor = new THREE.Mesh(
     new THREE.PlaneGeometry(100, 100),
     new THREE.ShadowMaterial({ opacity: 0.17 }),
@@ -96,6 +84,7 @@ export function createMapRenderer(
   });
   function draw() {
     renderer.domElement.dataset.zoom = String(controls.camera.zoom);
+    featureLighting.update(palette.ambientTime.value, controls.camera);
     renderer.clear();
     renderer.render(scene, controls.camera);
     party?.render(renderer, controls.camera);
@@ -110,12 +99,24 @@ export function createMapRenderer(
   if (loading) loading.hidden = true;
   return {
     setMotion: ambientLoop.setMotion,
+    setTimeOfDay(value) {
+      dayMode = daylight.setMode(value);
+      palette.setTimeOfDay(dayMode);
+      featureLighting.setMode(dayMode);
+      party?.setTimeOfDay(dayMode);
+      shadowFloor.material.opacity = DAYLIGHT[dayMode].shadowOpacity;
+      scene.background = new THREE.Color(palette.background());
+      renderer.domElement.dataset.timeOfDay = dayMode;
+      draw();
+      return dayMode;
+    },
     setMap(layout, options) {
       previewPiece?.group.removeFromParent();
       previewPiece?.dispose();
       previewPiece = null;
       if (options?.resetView) party?.deselect();
       meshes.setMap(layout);
+      featureLighting.setSources(meshes.lightSources, layout);
       controls.refresh(options);
     },
     cancelInteraction: controls.cancelInteraction,
@@ -139,6 +140,7 @@ export function createMapRenderer(
       previewPiece?.group.removeFromParent();
       previewPiece?.dispose();
       meshes.setMap([]);
+      featureLighting.setSources([], []);
       previewPiece = createPartyPiece(PARTY_STYLES.indexOf(style), color);
       meshes.group.add(previewPiece.group);
       controls.refresh({ resetView: true, fitContent: true });
@@ -162,10 +164,11 @@ export function createMapRenderer(
       previewPiece?.dispose();
       controls.dispose();
       meshes.dispose();
+      featureLighting.dispose();
+      daylight.dispose();
       palette.dispose();
       shadowFloor.geometry.dispose();
       shadowFloor.material.dispose();
-      sun.shadow.dispose();
       scene.clear();
       renderer.dispose();
       renderer.domElement.remove();

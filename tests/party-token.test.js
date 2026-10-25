@@ -32,9 +32,28 @@ test('existing campaigns gain a default Warden at the nearest settlement without
     Math.min(...world.cells.filter((cell) => cell.pointOfLight).map((cell) => distance(cell))),
   );
   assert.equal(record.hexEdits.cells[start.key].visited, true);
+  assert.equal(session.snapshot().selected, start.key);
+  assert.equal(session.snapshot().partySelected, false);
   assert.equal(campaign.partyToken, undefined);
   assert.equal(campaign.hexEdits, undefined);
   assert.equal(writes.length, 1);
+  assert.equal(session.snapshot().canUndo, false);
+});
+
+test('campaign entry and re-entry select the saved party hex and clear the previous selection', () => {
+  const session = createCampaignSession({
+    persist: () => ({ campaignSaved: true, preferencesSaved: true }),
+  });
+  const record = { ...campaign, partyToken: { key: '4,-5', style: 'warden' } };
+  session.open(record, world);
+  assert.equal(session.snapshot().selected, '4,-5');
+  session.select('0,0');
+  session.setMultiEdit(true);
+  session.open({ ...record, partyToken: { key: '1,0', style: 'cairn' } }, world);
+  assert.equal(session.snapshot().selected, '1,0');
+  assert.equal(session.snapshot().partySelected, false);
+  assert.equal(session.snapshot().multiEdit, false);
+  assert.deepEqual(session.snapshot().selectedKeys, []);
   assert.equal(session.snapshot().canUndo, false);
 });
 test('placement saves party and visited flags atomically, shares geometry and undoes as one action', () => {

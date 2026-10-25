@@ -2,10 +2,13 @@ import * as THREE from 'three';
 import { palettes, DEFAULT_PALETTE, paletteTheme } from '../palette.js';
 import { createMapPalette, materialRoles } from '../map-palette.js';
 import { installTreeSway, installWaveDrift } from './ambient-motion.js';
+import { applyNightColor } from './daylight.js';
+import { timeOfDay, windForTimeOfDay } from '../application/time-of-day.js';
 
 export function createMapMaterials() {
   let color = createMapPalette(palettes[DEFAULT_PALETTE]);
   let theme = paletteTheme(palettes[DEFAULT_PALETTE]);
+  let mode = 'day';
   const fogMaterials = new Map();
   const materials = {};
   Object.keys(materialRoles)
@@ -38,11 +41,12 @@ export function createMapMaterials() {
   });
   const tintedMaterials = new Map();
   const ambientTime = { value: 0 };
+  const wind = { strength: { value: 1.2 }, gustPeriod: { value: 18 } };
   const waveDirection = { value: new THREE.Vector2(1, 0) };
   for (const role of ['leaf', 'leafLight', 'leafDark', 'trunk', 'reeds', 'reedHead'])
-    installTreeSway(materials[role], ambientTime);
+    installTreeSway(materials[role], ambientTime, wind);
   const treeDepth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
-  installTreeSway(treeDepth, ambientTime);
+  installTreeSway(treeDepth, ambientTime, wind);
   materials.wave = new THREE.MeshBasicMaterial({
     color: color.role('wave'),
     transparent: true,
@@ -56,8 +60,9 @@ export function createMapMaterials() {
     const key = `${role}:${temperature}:${colorTone}`;
     if (!tintedMaterials.has(key)) {
       const material = materials[role].clone();
-      if (materials[role].userData.treeSway) installTreeSway(material, ambientTime);
+      if (materials[role].userData.treeSway) installTreeSway(material, ambientTime, wind);
       material.color.set(color.role(role, temperature, colorTone));
+      applyNightColor(material.color, mode);
       tintedMaterials.set(key, { material, role, temperature, colorTone });
     }
     return tintedMaterials.get(key).material;
@@ -70,6 +75,7 @@ export function createMapMaterials() {
     } else {
       material.color.set(base === materials.bevel ? theme.line : theme.bg);
       if (base === materials.side) material.color.multiplyScalar(0.55);
+      applyNightColor(material.color, mode);
     }
   }
   function fogMaterial(base, state) {
@@ -79,7 +85,7 @@ export function createMapMaterials() {
     const variants = fogMaterials.get(base);
     if (!variants.has(state)) {
       const material = base.clone();
-      if (base.userData.treeSway) installTreeSway(material, ambientTime);
+      if (base.userData.treeSway) installTreeSway(material, ambientTime, wind);
       if (base === materials.wave) installWaveDrift(material, ambientTime, waveDirection);
       updateFogMaterial(base, material, state);
       variants.set(state, material);
@@ -93,18 +99,18 @@ export function createMapMaterials() {
     treeDepth,
     ambientTime,
     waveDirection,
-    background: () => color.background(),
+    background: () => applyNightColor(new THREE.Color(color.background()), mode),
+    setTimeOfDay(value) {
+      mode = timeOfDay(value);
+      const profile = windForTimeOfDay(mode);
+      wind.strength.value = profile.strength;
+      wind.gustPeriod.value = profile.gustPeriod;
+      repaint();
+    },
     setPalette(seeds) {
       color = createMapPalette(seeds);
       theme = paletteTheme(seeds);
-      Object.keys(materialRoles).forEach((key) => materials[key].color.set(color.role(key)));
-      for (const { material, role, temperature, colorTone } of tintedMaterials.values())
-        material.color.set(color.role(role, temperature, colorTone));
-      materials.line.color.set(color.role('active'));
-      materials.hover.color.set(color.role('hover'));
-      materials.wave.color.set(color.role('wave'));
-      for (const [base, variants] of fogMaterials)
-        for (const [state, material] of variants) updateFogMaterial(base, material, state);
+      repaint();
     },
     dispose() {
       Object.values(materials).forEach((material) => material.dispose());
@@ -114,4 +120,20 @@ export function createMapMaterials() {
       treeDepth.dispose();
     },
   };
+  function repaint() {
+    Object.keys(materialRoles).forEach((key) => {
+      materials[key].color.set(color.role(key));
+      if (!['hover', 'wave'].includes(key)) applyNightColor(materials[key].color, mode);
+    });
+    for (const { material, role, temperature, colorTone } of tintedMaterials.values()) {
+      material.color.set(color.role(role, temperature, colorTone));
+      applyNightColor(material.color, mode);
+    }
+    materials.line.color.set(color.role('active'));
+    materials.hover.color.set(color.role('hover'));
+    materials.wave.color.set(color.role('wave'));
+    applyNightColor(materials.wave.color, mode);
+    for (const [base, variants] of fogMaterials)
+      for (const [state, material] of variants) updateFogMaterial(base, material, state);
+  }
 }

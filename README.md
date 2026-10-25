@@ -24,7 +24,7 @@ The party marker starts at the settlement nearest the map centre and saves its p
 
 ## Getting started
 
-Open the app and choose **New campaign** to preview a map, adjust open water, elevation, forests and settlements, choose a palette and name your campaign, then select **Create campaign**. Choose **Generate preview** after changing the seed or world preferences, or choose **Keep current map** to restore the preview settings. You can also import a previously exported campaign JSON file. Click a hex to inspect and edit it. Drag to pan, or press an **arrow key** to jump the view two hexes. Use the zoom controls, mouse wheel or **+ / −** keys to look closer.
+Open the app and choose **New campaign** to preview a map, adjust open water, elevation, forests and settlements, choose a palette and name your campaign, then select **Create campaign**. Choose **Generate preview** after changing the seed or world preferences, or choose **Keep current map** to restore the preview settings. You can also import a previously exported campaign JSON file. Campaigns open with the party’s hex selected and centred. Click another hex to inspect and edit it. Drag to pan, or press an **arrow key** to jump the view two hexes. Use the zoom controls, mouse wheel or **+ / −** keys to look closer.
 
 Open **Palette manager** in the main menu to add palettes, edit their three colours, rename them or choose a default for new campaigns. Choosing a different default also colours the main menu; Forbidden Lands keeps the original menu theme. Bundled palettes stay read-only. Deleting a custom palette keeps existing campaigns’ colours; deleting the default restores Forbidden Lands as the default. **Undo deletion** restores the palette. Palettes save in this browser alongside your settings.
 
@@ -36,9 +36,11 @@ Select connected town or city hexes to **Join town** or **Join city**. Villages 
 
 **Reset selected**, next to Undo, restores the selected hexes to their generated defaults after confirmation. It clears their edits, visited status and dressing locks. Undo restores the reset hexes.
 
-**Regenerate map**, next to Wind on mobile and above it on desktop in palette and settings, changes the map's cosmetic dressing while keeping its geography and locations. Create a different world through **New campaign** in the main menu. Hexes with locked dressing keep their appearance through map-wide regeneration.
+**Regenerate map**, next to Movement on mobile and above it on desktop in palette and settings, changes the map's cosmetic dressing while keeping its geography and locations. Create a different world through **New campaign** in the main menu. Hexes with locked dressing keep their appearance through map-wide regeneration.
 
 New campaigns include subtle roads connecting settlements, crossings and selected points of interest. Roads favour open terrain, avoid mountains and use existing bridges and ferries. Regenerate changes their shape while keeping their routes. The Hex Inspector lists road exits clockwise as N, NE, SE, S, SW and NW. In **Edit hex**, use the **Road exits** checkboxes to connect neighbouring hexes; unavailable exits explain their terrain restriction. Ordinary terrain with three or more exits is labelled “with crossroads”. Manual roads can extend beyond the generated road budget. Adding a settlement or POI leaves roads unchanged; removing a destination removes its generated links without rerouting other roads. Existing campaigns keep their original maps.
+
+The **Time of day** dropdown beside Fog of war previews **Dawn**, **Day**, **Dusk** and **Night**. Dawn is brighter and rose tinted, dusk has warm orange light and long shadows, and night is dark navy. At dusk and night, buildings glow yellow, mystic sites glow violet-blue, and dungeon/mine entrances glow red. Lighthouse beams slowly sweep toward nearby open water. **Movement ON/OFF** controls wind, water waves, light pulses and lighthouse sweeps. Reduced-motion settings pause them too. Day has 20% stronger wind sway and more frequent gusts; dawn, dusk and night keep their gentler wind. This testing choice lasts until page reload and is not saved in campaign exports.
 
 ### Fog of War
 

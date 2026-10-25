@@ -2,7 +2,14 @@ import * as THREE from 'three';
 import { randomStream } from '../generation/math.js';
 
 // Small dioramas share the existing material roles and building components.
-export function createPoiBuilder({ addMesh, propMaterial, makeHouse, makeTower, roofGeometry }) {
+export function createPoiBuilder({
+  addMesh,
+  propMaterial,
+  makeHouse,
+  makeTower,
+  roofGeometry,
+  registerLight = () => {},
+}) {
   return function makePoi(parent, prop) {
     const random = randomStream(prop.detailSeed);
     const integer = (lo, hi) => lo + Math.floor(random() * (hi - lo + 1));
@@ -176,22 +183,52 @@ export function createPoiBuilder({ addMesh, propMaterial, makeHouse, makeTower, 
       mesh(new THREE.ConeGeometry(0.034, 0.105, 5), 'roofLight', 0, 0.08, 0);
       box(0, 0.025, -0.17, 0.065, 0.05, 0.045, 'bridgeWood');
     } else if (prop.poiKind === 'watchtower') {
-      if (prop.variant === 'watchtower')
-        makeTower(model, {
-          x: 0,
-          y: 0,
-          z: 0,
-          angle: 0,
-          scale: 0.55,
-          temperature: prop.temperature,
-        });
-      else {
+      if (prop.variant === 'watchtower') {
+        if (random() < 0.5) {
+          box(0, 0.2, 0, 0.22, 0.4, 0.22, 'wall');
+          box(0, 0.4075, 0, 0.29, 0.035, 0.29, 'rockLight');
+          for (const side of [-1, 1]) {
+            box(side * 0.128, 0.4425, 0, 0.035, 0.055, 0.29);
+            box(0, 0.4425, side * 0.128, 0.22, 0.055, 0.035);
+            for (const x of [-0.11, 0, 0.11])
+              box(x, 0.4975, side * 0.128, 0.055, 0.055, 0.035).userData.poiPart = 'battlement';
+            box(side * 0.128, 0.4975, 0, 0.035, 0.055, 0.055).userData.poiPart = 'battlement';
+          }
+          box(0, 0.08, 0.116, 0.07, 0.16, 0.012, 'door');
+          box(0, 0.3, 0.116, 0.025, 0.075, 0.012, 'door');
+          cylinder(-0.035, 0.59, 0, 0.007, 0.3, 'trunk');
+          const flag = new THREE.Shape();
+          flag.moveTo(-0.027, 0.72);
+          flag.lineTo(0.14, 0.695);
+          flag.lineTo(0.105, 0.65);
+          flag.lineTo(0.14, 0.605);
+          flag.lineTo(-0.027, 0.63);
+          flag.closePath();
+          const banner = mesh(new THREE.ShapeGeometry(flag), 'roofLight', 0, 0, 0);
+          banner.material.side = THREE.DoubleSide;
+          banner.userData.poiPart = 'banner';
+          registerLight(model, { kind: 'warm', position: [0, 0.3, 0.124], size: [0.027, 0.075] });
+        } else
+          makeTower(model, {
+            x: 0,
+            y: 0,
+            z: 0,
+            angle: 0,
+            scale: 0.55,
+            temperature: prop.temperature,
+          });
+      } else {
         cylinder(0, 0.2, 0, 0.105, 0.4, 'wall', 0.073);
         cylinder(0, 0.405, 0, 0.12, 0.035, 'rockLight');
         cylinder(0, 0.48, 0, 0.07, 0.11, 'waterEdge');
         for (const x of [-0.064, 0.064])
           for (const z of [-0.045, 0.045]) box(x, 0.48, z, 0.014, 0.12, 0.014, 'door');
         mesh(new THREE.ConeGeometry(0.11, 0.09, 6), 'roof', 0, 0.58, 0);
+        registerLight(model, {
+          kind: 'lighthouse',
+          position: [0, 0.48, 0.073],
+          size: [0.09, 0.075],
+        });
       }
     } else if (prop.poiKind === 'stronghold') {
       const variant = Number(prop.variant) % 3;
@@ -207,6 +244,7 @@ export function createPoiBuilder({ addMesh, propMaterial, makeHouse, makeTower, 
         'rockLight',
       );
       box(0, 0.08, 0.13, 0.065, 0.14, 0.012, 'door');
+      registerLight(model, { kind: 'warm', position: [0, 0.09, 0.139], size: [0.065, 0.085] });
       for (let k = -2; k <= 2; k++) {
         box(k * 0.055, 0.21, -0.135, 0.028, 0.045, 0.04, 'rockLight');
         for (const x of [-0.145, 0.145]) box(x, 0.21, k * 0.05, 0.04, 0.045, 0.028, 'rockLight');
@@ -296,6 +334,11 @@ export function createPoiBuilder({ addMesh, propMaterial, makeHouse, makeTower, 
         skull(-0.125, 0.125, 0.65);
       }
     } else if (prop.poiKind === 'mystic') {
+      registerLight(model, {
+        kind: 'mystic',
+        position: prop.variant === 'altar' ? [0, 0.345, 0.05] : [0, 0.25, 0.05],
+        size: [0.12, 0.15],
+      });
       if (prop.variant === 'portal') {
         const ring = mesh(new THREE.TorusGeometry(0.135, 0.028, 4, 10), 'rockLight', 0, 0.22, 0);
         ring.rotation.z = 0;
@@ -355,6 +398,7 @@ export function createPoiBuilder({ addMesh, propMaterial, makeHouse, makeTower, 
       ];
       for (let k = 0, count = integer(1, 5); k < count; k++) skull(...sites[k]);
     } else if (prop.poiKind === 'dungeon') {
+      registerLight(model, { kind: 'dungeon', position: [0, 0.12, 0.025], size: [0.11, 0.14] });
       const mine = prop.variant === 'mine';
       const opening = mine ? new THREE.Shape() : archProfile(0.075, 0.15, 0.235);
       if (mine) {

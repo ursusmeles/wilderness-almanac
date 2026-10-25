@@ -10,6 +10,7 @@ import { createSaveStatus } from './ui/save-status.js';
 import { createCampaign, campaignIconCandidates } from './application/campaigns.js';
 import { createFogView } from './application/fog-view.js';
 import { createCampaignSession } from './application/campaign-session.js';
+import { timeOfDay } from './application/time-of-day.js';
 import { createCampaignMenu } from './ui/campaign-menu.js';
 import { createPaletteLibrary } from './application/palette-library.js';
 import { createPaletteManager } from './ui/palette-manager.js';
@@ -75,6 +76,7 @@ const session = createCampaignSession({ persist: persistCampaign });
 const initialVariant =
   linked.variant ?? (linked.seed && linked.seed !== saved.seed ? 0 : (saved.variant ?? 0));
 let movement = saved.motion ?? true;
+let dayMode = 'day';
 const selection = element('selection');
 const PARTY_SELECTION = '__party__';
 const movePartyDialog = element('move-party-dialog');
@@ -218,12 +220,12 @@ listen(document, 'keydown', (event) => {
   }
 });
 function syncMobileLayout() {
-  const fog = element('fog');
+  const viewControls = element('view-controls');
   if (mobileLayout.matches) {
-    root.querySelector('.hp-map-stage').append(fog);
+    root.querySelector('.hp-map-stage').append(viewControls);
     root.querySelector('.hp-mobile-map-controls').prepend(selection);
   } else {
-    root.querySelector('.hp-tools').prepend(fog);
+    root.querySelector('.hp-tools').prepend(viewControls);
     root.querySelector('.hp-status').prepend(selection);
   }
   if (!mobileLayout.matches) setExpanded(false);
@@ -392,9 +394,10 @@ function presentCampaign({ resetView = false } = {}) {
       },
     });
   renderer?.setMotion(movement);
+  renderer?.setTimeOfDay(dayMode);
   applyPalette();
   renderWorld({ resetView });
-  if (resetView) renderer?.zoom(mobileLayout.matches ? 1.6 : 1.4 * 1.2);
+  renderer?.focus(campaign.partyToken.key, { hexesWide: 9 / 1.2 ** 3 });
   root.querySelector('.hp-title').textContent = campaign.name;
   document.title = `${campaign.name} · Wilderness Almanac`;
   root.dataset.mapName = world.name;
@@ -700,16 +703,22 @@ function updateMovementToggle() {
   element('motion').setAttribute('aria-checked', String(movement));
   element('motion-state').textContent = movement ? 'ON' : 'OFF';
   element('motion').dataset.tooltip = movement
-    ? 'Turn wind animation off'
-    : 'Turn wind animation on';
+    ? 'Pause wind, waves, light pulses and lighthouse sweeps'
+    : 'Resume wind, waves, light pulses and lighthouse sweeps';
 }
 updateMovementToggle();
+listen(element('time-of-day'), 'change', () => {
+  dayMode = timeOfDay(element('time-of-day').value);
+  element('time-of-day').value = dayMode;
+  renderer?.setTimeOfDay(dayMode);
+  root.dataset.timeOfDay = dayMode;
+});
 listen(element('motion'), 'click', async () => {
   movement = !movement;
   updateMovementToggle();
   renderer?.setMotion(movement);
   if ((await session.save()).saved)
-    mapConsole.notify(movement ? 'Wind turned on' : 'Wind turned off');
+    mapConsole.notify(movement ? 'Movement turned on' : 'Movement turned off');
 });
 listen(element('fog'), 'click', (event) => {
   if (mapAction.isBusy()) return;

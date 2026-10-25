@@ -6,7 +6,12 @@ export const settlementRoofTone = (prop) =>
   prop.detailSeed === undefined ? 0 : (prop.detailSeed % 5) - 2;
 
 // Settlement models share building components and palette roles.
-export function createSettlementBuilder({ addMesh, propMaterial, roofGeometry }) {
+export function createSettlementBuilder({
+  addMesh,
+  propMaterial,
+  roofGeometry,
+  registerLight = () => {},
+}) {
   function makeFooting(parent, prop) {
     if (!prop.foundationHeights) return;
     addMesh(
@@ -25,8 +30,8 @@ export function createSettlementBuilder({ addMesh, propMaterial, roofGeometry })
     g.rotation.y = prop.angle;
     g.scale.setScalar(prop.scale);
     const storeys = prop.storeys ?? 1;
-    const height = (prop.variant === 2 ? 0.43 : 0.33) + (storeys - 1) * 0.27;
     const straw = prop.roof === 'straw';
+    const height = ((prop.variant === 2 ? 0.43 : 0.33) + (storeys - 1) * 0.27) * (straw ? 0.85 : 1);
     const roofHeight = prop.variant === 1 ? 0.19 : 0.27;
     addMesh(
       g,
@@ -100,6 +105,7 @@ export function createSettlementBuilder({ addMesh, propMaterial, roofGeometry })
           0.232,
         );
     }
+    registerLight(g, { kind: 'warm', position: [0.06, 0.125, 0.241], size: [0.06, 0.075] });
     parent.add(g);
   }
   function makeTower(parent, prop) {
@@ -136,6 +142,7 @@ export function createSettlementBuilder({ addMesh, propMaterial, roofGeometry })
       0.12,
       0.22,
     );
+    registerLight(g, { kind: 'warm', position: [0, 0.47, 0.24], size: [0.075, 0.1] });
     parent.add(g);
   }
   function makeHall(parent, prop) {

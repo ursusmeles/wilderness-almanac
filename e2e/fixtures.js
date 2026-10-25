@@ -88,6 +88,9 @@ export async function openCampaign(page, { expandInspector = true } = {}) {
   await expect(page.locator('#hp-scene canvas')).toBeVisible();
   await expect(page.locator('#campaign-menu')).toBeHidden();
   await expect(page.locator('#campaign-workspace')).not.toHaveAttribute('inert');
+  // Editing flows below use the origin explicitly; entry itself now selects
+  // and frames the party's saved hex.
+  await page.locator('#hp-selection').selectOption('0,0');
   const expand = page.getByRole('button', { name: 'Expand Hex Inspector', exact: true });
   if (expandInspector && (await expand.isVisible())) await expand.click();
 }

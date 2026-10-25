@@ -19,6 +19,9 @@ export function createMapMeshes({
 }) {
   const map = new THREE.Group();
   const cells = [];
+  const lightSources = [];
+  let pendingLights = [];
+  const registerLight = (parent, source) => pendingLights.push({ parent, ...source });
   const makeTerrain = createTerrainBuilder({
     materials,
     makeCrossing: createCrossingBuilder(materials),
@@ -29,16 +32,26 @@ export function createMapMeshes({
     addMesh,
     propMaterial,
     roofGeometry,
+    registerLight,
   });
-  const makePoi = createPoiBuilder({ addMesh, propMaterial, makeHouse, makeTower, roofGeometry });
+  const makePoi = createPoiBuilder({
+    addMesh,
+    propMaterial,
+    makeHouse,
+    makeTower,
+    roofGeometry,
+    registerLight,
+  });
   const makeRoads = createRoadBuilder({ propMaterial });
   function buildMap(layout) {
     clearGeometries(map);
     cells.length = 0;
+    lightSources.length = 0;
     const propBatches = new Map();
     const wave = layout.flatMap((cell) => cell.props).find((prop) => prop.kind === 'wave');
     if (wave) waveDirection.value.set(Math.cos(wave.angle), Math.sin(wave.angle));
     for (const data of layout) {
+      pendingLights = [];
       const { g, content } = makeTerrain(data);
       const propRoot = new THREE.Group();
       content.add(propRoot);
@@ -76,6 +89,9 @@ export function createMapMeshes({
       // Keep the existing component meshes, then bake static props by material.
       // Face ranges retain hex selection after merging across the whole map.
       propRoot.updateWorldMatrix(true, true);
+      if (!data.fogState || data.fogState === 'visited')
+        for (const { parent, ...source } of pendingLights)
+          lightSources.push({ ...source, matrix: parent.matrixWorld.clone(), tile: data });
       propRoot.traverse((object) => {
         if (!object.isMesh) return;
         const geometry = object.geometry.index
@@ -118,6 +134,7 @@ export function createMapMeshes({
       map.add(g);
       cells.push({ ...data, g });
     }
+    pendingLights = [];
     for (const batch of propBatches.values()) {
       const geometry = mergeGeometries(batch.geometries);
       batch.geometries.forEach((part) => part.dispose());
@@ -130,10 +147,13 @@ export function createMapMeshes({
   return {
     group: map,
     cells,
+    lightSources,
     setMap: buildMap,
     dispose() {
       clearGeometries(map);
       cells.length = 0;
+      lightSources.length = 0;
+      pendingLights = [];
     },
   };
 }

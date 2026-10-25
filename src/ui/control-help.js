@@ -49,7 +49,7 @@ export function createControlTooltips() {
     tooltip.style.left = `${Math.max(8, Math.min(innerWidth - rect.width - 8, anchor.left + (anchor.width - rect.width) / 2))}px`;
     tooltip.style.top = `${anchor.top > rect.height + 12 ? anchor.top - rect.height - 8 : Math.min(innerHeight - rect.height - 8, anchor.bottom + 8)}px`;
     clearTimeout(dismissTimer);
-    dismissTimer = touch ? setTimeout(hide, 2000) : undefined;
+    dismissTimer = touch ? setTimeout(hide, 1500) : undefined;
   }
   listen('pointerdown', (event) => {
     touch = event.pointerType === 'touch';

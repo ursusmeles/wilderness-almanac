@@ -7,8 +7,8 @@ import { prepareMap } from '../src/generation/presentation.js';
 import { createMapMeshes } from '../src/rendering/map-meshes.js';
 import { createMapMaterials } from '../src/rendering/map-materials.js';
 
-// Captured from the renderer before extraction. Check actual buffers, transforms,
-// material settings, wind attributes and picking ranges without a WebGL context.
+// Initially captured before renderer extraction and updated for approved visual
+// changes. Check buffers, transforms, materials, wind and picking without WebGL.
 function meshDigest(group) {
   const hash = createHash('sha256');
   let meshes = 0,
@@ -59,7 +59,7 @@ function meshDigest(group) {
 }
 const fixtures = JSON.parse(readFileSync(new URL('./fixtures/rendering.json', import.meta.url)));
 for (const { seed, variant, colors, expected } of fixtures)
-  test(`rendered geometry, colours and picking metadata match the original renderer: seed ${seed}`, () => {
+  test(`rendered geometry, colours and picking metadata match the approved fixtures: seed ${seed}`, () => {
     const world = generateWorld(seed, { generatorVersion: 7 });
     const registry = createMapMaterials();
     const meshes = createMapMeshes(registry);

@@ -1447,6 +1447,18 @@
     min-height: var(--control-compact-size);
     padding-inline: var(--space-8);
   }
+  .hp-view-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    min-width: 0;
+  }
+  .hp-time-of-day {
+    width: 6rem;
+    min-width: 0;
+    min-height: var(--control-compact-size);
+    padding-inline: var(--space-8);
+  }
   .hp-motion-light {
     width: var(--space-8);
     height: var(--space-8);
@@ -2104,14 +2116,17 @@
       width: var(--control-size);
       padding: 0;
     }
-    .hp-map-stage > .hp-fog {
+    .hp-map-stage > .hp-view-controls {
       position: absolute;
       top: max(var(--space-12), env(safe-area-inset-top));
       right: calc(
         max(var(--space-12), env(safe-area-inset-right)) + var(--control-compact-size) +
           var(--space-8)
       );
-      box-shadow: 0 3px 16px #0003;
+      max-width: calc(100% - var(--control-compact-size) - var(--space-8) - var(--space-12) * 2);
+      & > :is(button, select) {
+        box-shadow: 0 3px 16px #0003;
+      }
     }
     .hp-mobile-map-controls {
       position: absolute;

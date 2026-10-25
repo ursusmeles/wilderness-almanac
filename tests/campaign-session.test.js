@@ -22,6 +22,7 @@ function fixture() {
     },
   });
   session.open(campaign);
+  session.select('0,0');
   return {
     session,
     writes,
@@ -295,6 +296,7 @@ test('an unexpected persistence exception cannot turn an applied action into a d
     },
   });
   session.open(campaign);
+  session.select('0,0');
   assert.equal(session.visit().ok, true);
   assert.equal(session.snapshot().campaign.hexEdits.cells['0,0'].visited, true);
   assert.equal(session.snapshot().persistence.saved, false);
@@ -407,6 +409,28 @@ test('applying a cosmetic POI kind in a batch retains each existing variant and 
     );
     assert.equal(after.campaign.hexEdits.cells[cell.key].visited, true);
   }
+});
+
+test('watchtower rerolls change cosmetic seeds and preserve the subtype through saved locks', () => {
+  const { session } = fixture();
+  const before = session.snapshot();
+  const tower = before.world.cells.find(
+    (cell) => cell.pointsOfInterest[0]?.variant === 'watchtower',
+  );
+  const propAt = (snapshot) =>
+    snapshot.dressing.cells
+      .find((cell) => cell.key === tower.key)
+      .props.find((prop) => prop.kind === 'poi');
+  session.select(tower.key);
+  assert.equal(session.regenerateHex().ok, true);
+  const after = session.snapshot();
+  assert.equal(propAt(after).variant, 'watchtower');
+  assert.notEqual(propAt(after).detailSeed, propAt(before).detailSeed);
+  assert.deepEqual(after.world.pointsOfInterest, before.world.pointsOfInterest);
+  assert.equal(session.lock().ok, true);
+  const imported = importCampaign(exportCampaign(session.snapshot().campaign));
+  session.open(imported);
+  assert.deepEqual(propAt(session.snapshot()), propAt(after));
 });
 
 test('world icon selection persists without rebuilding the world or adding hex Undo history', () => {

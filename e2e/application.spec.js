@@ -189,7 +189,7 @@ test('storage errors remain visible, exports contain unsaved changes, and succes
   await expect(page.locator('#hp-save-warning')).toBeVisible();
   if (testInfo.project.name === 'mobile')
     await page.getByRole('button', { name: 'Open palette and settings', exact: true }).click();
-  await page.getByRole('switch', { name: 'Wind', exact: true }).click();
+  await page.getByRole('switch', { name: 'Movement', exact: true }).click();
   await expect(page.locator('#hp-save-warning')).toBeVisible();
   expect((await library(page)).campaigns[0].hexEdits?.cells['0,0']).toBeUndefined();
   const event = page.waitForEvent('download');

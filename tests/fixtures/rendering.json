@@ -4,9 +4,9 @@
     "variant": 0,
     "colors": ["#cdab8f", "#0b365e", "#11b329"],
     "expected": {
-      "meshes": 853,
-      "vertices": 825937,
-      "digest": "bc6f1106d1f4822c88847133bdae1295dbe1bdb940edd074c8aeb7aba7e1509a"
+      "meshes": 854,
+      "vertices": 826432,
+      "digest": "6d9dc066ab0342340ff0c90a1af6354f0988051fddc75dfac3a1830f24c2aad1"
     }
   },
   {
@@ -16,7 +16,7 @@
     "expected": {
       "meshes": 973,
       "vertices": 590970,
-      "digest": "7d2ab72f62f5aa75f520ee7637fe8f6dec72595040247a2c5fefed120b867f86"
+      "digest": "5075a12f77537a142d65814bf47bd1194bbc84a744043acb01222b8c1ca6324b"
     }
   },
   {
@@ -26,7 +26,7 @@
     "expected": {
       "meshes": 962,
       "vertices": 798193,
-      "digest": "c8f34dd63cb70c34e85b45e67f977d498f6295db2c13688c7d922d6d9d17d8db"
+      "digest": "e64856c1ef35c31b11a1a617af098a776979ea20e322ea71b0479687945d5d8f"
     }
   }
 ]
