@@ -1,4 +1,5 @@
 import { storageKey } from '../persistence/storage-namespace.js';
+import { TIMES_OF_DAY } from '../application/time-of-day.js';
 
 export const UI_PREFERENCES_KEY = 'wilderness-almanac:ui-v1';
 
@@ -6,6 +7,9 @@ export const UI_PREFERENCES_KEY = 'wilderness-almanac:ui-v1';
 function pick(value = {}) {
   return {
     ...(typeof value.motion === 'boolean' ? { motion: value.motion } : {}),
+    ...(TIMES_OF_DAY.includes(value.defaultTimeOfDay)
+      ? { defaultTimeOfDay: value.defaultTimeOfDay }
+      : {}),
     ...(typeof value.settingsOpen === 'boolean' ? { settingsOpen: value.settingsOpen } : {}),
     ...(Array.isArray(value.panelOrder) &&
     value.panelOrder.length === 2 &&

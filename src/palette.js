@@ -10,7 +10,7 @@ export const palettes = {
   forbidden: ['#cdab8f', '#0b365e', '#11b329'],
 };
 
-export const DEFAULT_PALETTE = 'forbidden';
+export const DEFAULT_PALETTE = 'classic';
 
 export const paletteNames = {
   forbidden: 'Forbidden Lands',
@@ -19,7 +19,7 @@ export const paletteNames = {
   moss: 'Moss & bone',
   classic: 'Verdant Kingdoms',
   thronefall: 'Thronefall',
-  glacial: 'Glacial mint',
+  glacial: 'Frozen synapse',
   autumn: 'Autumn copper',
   sand: 'Sands of time',
 };

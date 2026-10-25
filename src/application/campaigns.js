@@ -56,7 +56,7 @@ export function validateCampaign(value) {
   };
 }
 
-export function createCampaign(world, colors, paletteName, variant = 0) {
+export function createCampaign(world, colors, paletteName, variant = 0, defaultTimeOfDay = 'dawn') {
   return validateCampaign({
     id: crypto.randomUUID(),
     name: world.name,
@@ -68,7 +68,7 @@ export function createCampaign(world, colors, paletteName, variant = 0) {
     variant,
     colors,
     paletteName,
-    timeOfDay: 'day',
+    timeOfDay: defaultTimeOfDay,
     iconKey: chooseCampaignIcon(world),
   });
 }

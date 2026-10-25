@@ -48,7 +48,7 @@ test('time of day is saved per campaign without changing geometry or Undo histor
   assert.equal(session.snapshot().campaign.timeOfDay, 'dusk');
   const saved = importCampaign(exportCampaign(writes.at(-1)));
   session.open(campaign);
-  assert.equal(session.snapshot().campaign.timeOfDay, 'day');
+  assert.equal(session.snapshot().campaign.timeOfDay, 'dawn');
   session.open(saved);
   assert.equal(session.snapshot().campaign.timeOfDay, 'dusk');
   const invalidWrites = writes.length;

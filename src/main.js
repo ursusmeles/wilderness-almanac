@@ -1,10 +1,17 @@
 import { openDialog } from './ui/dialog-focus.js';
 import { generateWorld } from './generation/world.js';
 import { prepareMap } from './generation/presentation.js';
-import { palettes, paletteNames, paletteTheme, DEFAULT_PALETTE } from './palette.js';
+import {
+  palettes,
+  paletteNames,
+  paletteTheme,
+  createColorScale,
+  hexToOklch,
+  DEFAULT_PALETTE,
+} from './palette.js';
 import { readUIPreferences, saveUIPreferences } from './ui/ui-preferences.js';
 import { createBrowserStore } from './persistence/browser-store.js';
-import { readMapLink, mapLink, describeHex, shortCoordinates } from './ui/map-link.js';
+import { readMapLink, describeHex, shortCoordinates } from './ui/map-link.js';
 import { createMapConsole } from './ui/map-console.js';
 import { createSaveStatus } from './ui/save-status.js';
 import { createCampaign, campaignIconCandidates } from './application/campaigns.js';
@@ -14,6 +21,8 @@ import { timeOfDay, nextTimeOfDay } from './application/time-of-day.js';
 import { createCampaignMenu } from './ui/campaign-menu.js';
 import { createPaletteLibrary } from './application/palette-library.js';
 import { createPaletteManager } from './ui/palette-manager.js';
+import { createSettings } from './ui/settings.js';
+import { createCampaignHistory } from './ui/campaign-history.js';
 import { createCampaignCreator } from './ui/campaign-creator.js';
 import { createPanels } from './ui/panels.js';
 import { createHexInspector } from './ui/hex-inspector.js';
@@ -76,6 +85,8 @@ const session = createCampaignSession({ persist: persistCampaign });
 const initialVariant =
   linked.variant ?? (linked.seed && linked.seed !== saved.seed ? 0 : (saved.variant ?? 0));
 let movement = saved.motion ?? true;
+let defaultTimeOfDay = saved.defaultTimeOfDay ?? 'dawn';
+let campaignHistory;
 const selection = element('selection');
 const PARTY_SELECTION = '__party__';
 const movePartyDialog = element('move-party-dialog');
@@ -247,9 +258,10 @@ let campaignMenu;
 let preferencesRevision = 0;
 let preferencesFailed = false;
 function persistPreferences() {
-  // UI layout and motion are the only localStorage writes.
+  // Noncritical UI defaults and panel preferences stay in localStorage.
   return saveUIPreferences(storage, {
     motion: movement,
+    defaultTimeOfDay,
     ...panels.preferences(),
   });
 }
@@ -265,11 +277,7 @@ async function persistPalettes() {
 }
 
 async function persistCampaign(campaign) {
-  try {
-    history.replaceState(history.state, '', mapLink(window.location.href, campaign));
-  } catch {
-    /* Sandboxed embeddings can restrict history updates. */
-  }
+  campaignHistory?.update(campaign);
   persistPreferences();
   const revision = ++preferencesRevision;
   const campaignSaved = await campaignMenu.update(campaign, paletteLibrary.preferences());
@@ -281,15 +289,15 @@ async function persistCampaign(campaign) {
 }
 
 async function retrySaving() {
-  persistPreferences();
+  const uiSaved = persistPreferences();
   const revision = ++preferencesRevision;
   const success = await campaignMenu.save(
     paletteLibrary.preferences(),
     session.snapshot()?.campaign.id,
   );
   if (revision === preferencesRevision) {
-    preferencesFailed = !success;
-    saveStatus.update('preferences', success);
+    preferencesFailed = !success || !uiSaved;
+    saveStatus.update('preferences', success && uiSaved);
   }
 }
 listen(document.getElementById('retry-campaign-save'), 'click', retrySaving);
@@ -318,7 +326,7 @@ async function loadMapView() {
   return mapView;
 }
 
-async function openCampaign(campaign) {
+async function openCampaign(campaign, { fromHistory = false } = {}) {
   try {
     const opened = await navigation.show('forward', async () => {
       await loadMapView();
@@ -327,8 +335,11 @@ async function openCampaign(campaign) {
       panels.enterCampaign();
       session.open(campaign);
       presentCampaign({ resetView: !keepView });
+      if (!fromHistory) campaignHistory?.enter(session.snapshot().campaign);
     });
-    if (opened) inspector.refreshPreview();
+    if (opened) {
+      inspector.refreshPreview();
+    }
     return opened;
   } catch (error) {
     renderer?.setMotion(false);
@@ -360,7 +371,12 @@ function presentCampaign({ resetView = false } = {}) {
           return;
         }
         const { selected, multiEdit, partySelected } = session.snapshot();
-        if (fromMap && mobileLayout.matches && partySelected) {
+        if (
+          fromMap &&
+          mobileLayout.matches &&
+          partySelected &&
+          key !== session.snapshot().campaign.partyToken.key
+        ) {
           renderer.cancelInteraction();
           renderer.select(selected, { notify: false });
           syncSelection();
@@ -403,6 +419,7 @@ function presentCampaign({ resetView = false } = {}) {
         mapConsole.hover(shortCoordinates(cellsByKey.get(key)));
       },
     });
+  if (!renderer) throw new Error('This map needs WebGL support. Try again or use another browser.');
   renderer?.setMotion(movement);
   syncTimeOfDay();
   applyPalette();
@@ -555,7 +572,7 @@ function updatePaletteOptions() {
 
 function applyMenuTheme() {
   const palette = paletteLibrary.default();
-  const theme = palette.id === DEFAULT_PALETTE ? null : paletteTheme(palette.colors);
+  const theme = palette.id === 'forbidden' ? null : paletteTheme(palette.colors);
   const menu = document.getElementById('campaign-menu');
   const values = theme
     ? { ...theme, surface: theme.bg, 'page-bg': theme.bg, focus: theme.text, gold: theme.text }
@@ -574,6 +591,11 @@ function applyPalette() {
   syncParty();
   Object.entries(paletteTheme(colors)).forEach(([role, value]) =>
     root.style.setProperty(`--hp-${role}`, value),
+  );
+  const background = paletteTheme(colors).bg;
+  root.style.setProperty(
+    '--hp-panel-bg',
+    createColorScale([background])(0, hexToOklch(background)[0], 0.925),
   );
   ['ground', 'water', 'elements'].forEach((name, index) => {
     element(name).value = colors[index];
@@ -803,26 +825,18 @@ function toggleMultiEdit() {
   };
   if (!mapAction.isBusy() && activeInspector().beforeLeave(change)) change();
 }
-function returnToMenu() {
-  if (activeInspector().beforeLeave(showMenu)) showMenu();
-}
 async function showMenu() {
   setExpanded(false);
   session.save();
   renderer?.setMotion(false);
-  const url = new URL(window.location.href);
-  ['seed', 'variant', 'colors'].forEach((key) => url.searchParams.delete(key));
-  try {
-    history.replaceState(history.state, '', url);
-  } catch {
-    /* Sandboxed embeddings can restrict history updates. */
-  }
   document.title = 'The Wilderness Almanac';
   await navigation.show('back', () => {
     campaignMenu.show();
   });
 }
-listen(element('back-menu'), 'click', returnToMenu);
+listen(element('back-menu'), 'click', () => {
+  if (!mapAction.isBusy()) campaignHistory.back();
+});
 listen(element('download-unsaved'), 'click', () =>
   campaignMenu.download(session.snapshot().campaign),
 );
@@ -1049,6 +1063,7 @@ const campaignCreator = createCampaignCreator({
   library: paletteLibrary,
   loadMapView,
   freshSeed,
+  defaultTimeOfDay: () => defaultTimeOfDay,
   async onCreate(campaign) {
     await campaignMenu.add(campaign);
     return campaignMenu.enter(campaign);
@@ -1061,6 +1076,36 @@ const paletteManager = createPaletteManager({
     updatePaletteOptions();
     selectPalette(session.snapshot()?.campaign.colors ?? initialColors);
     return persistPalettes();
+  },
+});
+const settings = createSettings({
+  library: paletteLibrary,
+  read: () => ({ defaultTimeOfDay, motion: movement }),
+  async onSave(values, imported) {
+    paletteLibrary.setDefault(values.defaultPalette);
+    defaultTimeOfDay = values.defaultTimeOfDay;
+    movement = values.motion;
+    updateMovementToggle();
+    renderer?.setMotion(false);
+    const uiSaved = persistPreferences();
+    applyMenuTheme();
+    const revision = ++preferencesRevision;
+    const saved = imported
+      ? await campaignMenu.add(imported, paletteLibrary.preferences())
+      : await campaignMenu.save(paletteLibrary.preferences());
+    if (revision === preferencesRevision) {
+      preferencesFailed = !saved || !uiSaved;
+      saveStatus.update('preferences', saved && uiSaved);
+    }
+    campaignMenu.render();
+    const message = document.getElementById('campaign-message');
+    message.dataset.kind = saved && uiSaved ? 'status' : 'error';
+    message.textContent =
+      !saved || !uiSaved
+        ? 'Some settings could not be saved in this browser. Keep this page open and retry saving.'
+        : imported
+          ? `Settings saved. Imported “${imported.name}”.`
+          : 'Settings saved.';
   },
 });
 const accountButton = document.getElementById('open-account');
@@ -1087,14 +1132,49 @@ listen(accountButton, 'click', async () => {
     accountButton.disabled = false;
   }
 });
-if (linked.seed) {
+const replayState = {
+  seed: linked.seed,
+  generatorVersion: linked.generatorVersion ?? 6,
+  preferences: linked.preferences,
+  variant: initialVariant,
+  colors: initialColors,
+};
+const matchesLink = (campaign) =>
+  !linked.seed ||
+  campaignMenu.findReplay({ ...replayState, campaignId: campaign.id })?.id === campaign.id;
+campaignHistory = createCampaignHistory({
+  hasCampaign: (id) =>
+    browserStore.campaigns.some((campaign) => campaign.id === id && matchesLink(campaign)),
+  async onNavigate(id, retry) {
+    if (mapAction.isBusy() || document.querySelector('dialog[open]')) return false;
+    if (!root.hidden && !activeInspector().beforeLeave(retry)) return false;
+    if (id === null) {
+      await showMenu();
+      return true;
+    }
+    const campaign = campaignMenu.snapshotCampaigns().find((campaign) => campaign.id === id);
+    if (!campaign) return false;
+    try {
+      return root.hidden
+        ? await campaignMenu.enter(campaign, undefined, { fromHistory: true })
+        : await openCampaign(campaign, { fromHistory: true });
+    } catch (error) {
+      document.getElementById('campaign-message').textContent =
+        `Could not open the map. ${error.message}`;
+      return false;
+    }
+  },
+});
+const routedCampaign = campaignMenu
+  .snapshotCampaigns()
+  .find((campaign) => campaign.id === campaignHistory.initialCampaignId);
+if (routedCampaign && matchesLink(routedCampaign)) {
+  campaignMenu.show();
+  campaignMenu.enter(routedCampaign);
+} else if (linked.seed) {
   const state = {
-    seed: linked.seed,
-    generatorVersion: linked.generatorVersion ?? 6,
-    preferences: linked.preferences,
-    variant: initialVariant,
-    colors: initialColors,
-    campaignId: saved.campaignId,
+    ...replayState,
+    campaignId: campaignHistory.initialCampaignId ?? saved.campaignId,
   };
   let campaign = campaignMenu.findReplay(state);
   if (!campaign) {
@@ -1106,6 +1186,7 @@ if (linked.seed) {
       initialColors,
       paletteLabel(initialColors),
       initialVariant,
+      defaultTimeOfDay,
     );
     await campaignMenu.add(campaign);
   }
@@ -1117,6 +1198,7 @@ if (import.meta.hot)
     clearTimeout(iconCacheTimer);
     iconCacheRevision++;
     navigation.dispose();
+    campaignHistory.dispose();
     setExpanded(false);
     listeners.abort();
     mapAction.dispose();
@@ -1127,6 +1209,7 @@ if (import.meta.hot)
     browserStore.close();
     campaignCreator.dispose();
     paletteManager.dispose();
+    settings.dispose();
     accountPanel?.dispose();
     inspector.dispose();
     partyInspector.dispose();

@@ -161,6 +161,7 @@ export function createHexInspector(
     el('constraint').hidden = !enabled;
     el('edit').hidden = enabled;
     el('apply').hidden = el('cancel').hidden = !enabled;
+    el('undo').hidden = !enabled;
     for (const name of ['visited', 'lock', 'reset']) el(name).disabled = enabled;
     el('feedback').textContent = '';
     for (const input of el('fields').querySelectorAll('select'))
@@ -171,7 +172,7 @@ export function createHexInspector(
   function syncActionAvailability() {
     explainDisabled(
       el('undo'),
-      editing
+      dirty
         ? 'Finish editing first'
         : state?.undoReason || (!state?.canUndo ? 'Nothing to undo' : ''),
       `Undo ${state?.undoLabel || 'last action'}`,
@@ -196,6 +197,15 @@ export function createHexInspector(
       : state?.locked
         ? 'Unlock appearance'
         : 'Keep appearance when regenerating';
+    if (state) {
+      for (const [name, present] of [
+        ['settlement', Boolean(state.cell.pointOfLight)],
+        ['poi', Boolean(state.cell.pointsOfInterest.length)],
+        ['crossing', Boolean(state.cell.crossing)],
+      ])
+        el(name).closest('label').hidden = !editing && !present;
+      el('road').hidden = !editing && !state.cell.road?.exits;
+    }
   }
   function patch() {
     const terrain = el('terrain').value,
@@ -248,12 +258,16 @@ export function createHexInspector(
       .querySelectorAll('select')
       .forEach((control) => control.removeAttribute('aria-invalid'));
     constraints();
+    syncActionAvailability();
   });
   listen(el('visited'), 'click', onVisit);
   listen(el('lock'), 'click', onLock);
   listen(el('regenerate'), 'click', onRegenerate);
   listen(el('reset'), 'click', onReset);
-  listen(el('undo'), 'click', onUndo);
+  listen(el('undo'), 'click', async (event) => {
+    if (dirty) return;
+    if ((await onUndo(event)) !== false) setEditing(true);
+  });
   listen(el('icon'), 'click', onSetIcon);
   listen(el('multi-edit'), 'click', onMultiEdit);
   listen(unsaved, 'click', async (event) => {

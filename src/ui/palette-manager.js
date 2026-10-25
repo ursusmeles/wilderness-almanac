@@ -232,7 +232,7 @@ export function createPaletteManager({ library, onChange }) {
     undo.hidden = false;
     selectedId = library.all()[Math.max(0, index - 1)].id;
     render();
-    save(`“${palette.name}” deleted.${wasDefault ? ' Default: Forbidden Lands.' : ''}`);
+    save(`“${palette.name}” deleted.${wasDefault ? ` Default: ${library.default().name}.` : ''}`);
     focusSelection();
   });
   listen(defaultButton, 'click', () => {

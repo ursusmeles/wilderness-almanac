@@ -105,8 +105,7 @@ export function createPartyInspector(
       const nextStyle = PARTY_STYLES[(PARTY_STYLES.indexOf(style) + 1) % PARTY_STYLES.length];
       el('type').dataset.tooltip =
         `Change shape to ${nextStyle[0].toUpperCase() + nextStyle.slice(1)}`;
-      el('days').textContent = `${metadata.days} ${metadata.days === 1 ? 'day' : 'days'}`;
-      el('sessions').textContent = String(metadata.sessions);
+      el('weeks').textContent = String(metadata.weeks);
       el('preview').alt =
         `${next.campaign.partyToken.style[0].toUpperCase() + next.campaign.partyToken.style.slice(1)} party token`;
       refreshPreview();

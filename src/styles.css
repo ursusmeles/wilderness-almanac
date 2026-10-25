@@ -222,6 +222,14 @@
     & .save-warning {
       margin-top: var(--space-12);
     }
+    & dialog {
+      --surface: #211c36;
+      --text: #f1e8db;
+      --muted: #a39aac;
+      --line: #40374e;
+      --gold: #e5b96e;
+      --focus: var(--gold);
+    }
     @media (max-width: 640px) {
       padding: clamp(var(--space-24), 5vw, var(--space-32)) 0 var(--space-24);
     }
@@ -316,6 +324,60 @@
     width: var(--control-size);
     padding: 0;
     background: transparent;
+  }
+  .primary-button {
+    --button-hover-bg: #f0c985;
+    background: #e5b96e;
+    color: #211c36;
+    border-color: #e5b96e;
+    &:hover:not(:disabled) {
+      background: #f0c985;
+      border-color: #f0c985;
+    }
+  }
+  #settings-dialog {
+    --dialog-width: 30rem;
+    --dialog-padding: 0;
+    max-height: calc(100dvh - var(--space-32));
+    overflow: hidden;
+    box-shadow: 0 24px 100px #0006;
+    & form {
+      display: flex;
+      flex-direction: column;
+      max-height: calc(100dvh - var(--space-32) - 2px);
+    }
+    & .palette-manager-header {
+      min-height: calc(var(--control-size) + var(--space-16) + 1px);
+    }
+    & .dialog-actions {
+      padding: var(--space-16);
+      border-top: 1px solid var(--line);
+      justify-content: end;
+      flex-shrink: 0;
+    }
+  }
+  .settings-content {
+    padding: var(--space-16);
+    --stack-gap: var(--space-8);
+    min-height: 0;
+    overflow-y: auto;
+  }
+  .settings-note {
+    margin: 0 0 var(--space-12);
+    color: var(--muted);
+    font-size: var(--text-control);
+  }
+  .settings-link {
+    justify-self: start;
+    width: fit-content;
+  }
+  .settings-import {
+    --cluster-gap: var(--space-8);
+    & span {
+      min-width: 0;
+      overflow-wrap: anywhere;
+      font-size: var(--text-control);
+    }
   }
   .campaign-list {
     list-style: none;
@@ -1204,7 +1266,7 @@
     overflow: hidden;
     border: 1px solid var(--line);
     border-radius: var(--radius);
-    background: var(--surface);
+    background: var(--hp-panel-bg, var(--surface));
   }
   .hp-map-panel {
     height: 100%;
@@ -1829,6 +1891,25 @@
     padding-top: var(--space-12);
     & button {
       padding-inline: var(--space-8);
+    }
+  }
+  #hp-hex-form .hp-inspector-edit-actions {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--space-4);
+    & button {
+      gap: var(--space-4);
+      padding-inline: var(--space-4);
+      white-space: nowrap;
+    }
+  }
+  #hp-hex-form.is-editing .hp-inspector-edit-actions {
+    display: flex;
+    flex-wrap: wrap;
+  }
+  @container inspector (max-width: 420px) {
+    #hp-hex-form:not(.is-editing) .hp-inspector-edit-actions .ui-icon {
+      display: none;
     }
   }
   .hp-hex-feedback {

@@ -106,7 +106,8 @@ test('campaign time of day survives exports and older records remain valid', () 
   const legacy = { ...campaign };
   delete legacy.timeOfDay;
   assert.deepEqual(importCampaign(exportCampaign(legacy)), legacy);
-  assert.equal(createCampaign(world, colors, 'Custom').timeOfDay, 'day');
+  assert.equal(createCampaign(world, colors, 'Custom').timeOfDay, 'dawn');
+  assert.equal(createCampaign(world, colors, 'Custom', 0, 'night').timeOfDay, 'night');
   for (const timeOfDay of ['midnight', '', null, 0, {}])
     assert.throws(() => validateCampaign({ ...campaign, timeOfDay }), /invalid campaign data/);
 });

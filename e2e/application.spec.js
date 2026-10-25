@@ -121,11 +121,14 @@ test('campaign JSON export/import preserves edits and creates an independent sav
   const exported = JSON.parse(source).campaign;
   expect(exported.hexEdits.cells['0,0'].visited).toBe(true);
   expect(exported.hexEdits.cells['0,0'].lock.props.length).toBeGreaterThan(0);
+  await page.locator('#open-settings').click();
   const chooser = page.waitForEvent('filechooser');
   await page.getByRole('button', { name: 'Import campaign', exact: true }).click();
   await (
     await chooser
   ).setFiles({ name: 'campaign.json', mimeType: 'application/json', buffer: Buffer.from(source) });
+  await expect(page.locator('#settings-save')).toBeEnabled();
+  await page.locator('#settings-save').click();
   await expect(page.locator('.campaign-card')).toHaveCount(2);
   const records = (await library(page)).campaigns;
   expect(records[1].id).not.toBe(records[0].id);
@@ -138,7 +141,7 @@ test('unapplied edits can be kept or applied before changing selection; Undo res
   page,
 }) => {
   await openCampaign(page);
-  await page.getByRole('button', { name: 'Edit hex', exact: true }).click();
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
   await page.getByRole('combobox', { name: 'Terrain', exact: true }).selectOption('meadow');
   await page
     .getByRole('combobox', { name: 'Selected hex or party', exact: true })
@@ -152,13 +155,14 @@ test('unapplied edits can be kept or applied before changing selection; Undo res
   await dialog.getByRole('button', { name: 'Apply changes', exact: true }).click();
   await expect(page.locator('#hp-selection')).toHaveValue('1,0');
   expect((await library(page)).campaigns[0].hexEdits.cells['0,0'].terrain).toBe('meadow');
-  await page.getByRole('button', { name: 'Undo', exact: true }).click();
+  await page.locator('#hp-hex-edit').click();
+  await page.locator('#hp-hex-undo').click();
   expect((await library(page)).campaigns[0].hexEdits).toBeUndefined();
 });
 
 test('leaving the map protects a draft and retains saved edits', async ({ page }) => {
   await openCampaign(page);
-  await page.getByRole('button', { name: 'Edit hex', exact: true }).click();
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
   await page.getByRole('combobox', { name: 'Terrain', exact: true }).selectOption('meadow');
   await page.locator('#hp-back-menu').click();
   const dialog = page.getByRole('dialog', { name: 'Unsaved edits', exact: true });

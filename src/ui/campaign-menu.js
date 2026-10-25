@@ -3,16 +3,15 @@ import { generateWorld } from '../generation/world.js';
 import { campaignWorld } from '../generation/campaign-world.js';
 import { cloneTemplate } from './templates.js';
 import { loadThumbnails } from './thumbnail-cache.js';
+import { campaignWeek } from '../application/party-token.js';
 import { copyText, mapLink } from './map-link.js';
 import {
   createCampaign,
   campaignStats,
-  importCampaign,
   exportCampaign,
   campaignFilename,
   findCampaignReplay,
   chooseCampaignIcon,
-  MAX_CAMPAIGN_BYTES,
 } from '../application/campaigns.js';
 
 export function createCampaignMenu({ store, defaultPalette, onEnter, onNewCampaign, saveStatus }) {
@@ -24,7 +23,6 @@ export function createCampaignMenu({ store, defaultPalette, onEnter, onNewCampai
     status.textContent = text;
     status.dataset.kind = error ? 'error' : 'status';
   }
-  const fileInput = document.getElementById('campaign-file');
   const undoDelete = document.getElementById('undo-delete-campaign');
   const deleteDialog = document.getElementById('delete-campaign-dialog');
   const listeners = new AbortController();
@@ -36,7 +34,6 @@ export function createCampaignMenu({ store, defaultPalette, onEnter, onNewCampai
   let storageAvailable = true;
   let pendingDeleteId;
   let opening = false;
-  let importing = false;
   let releaseBusy = () => {};
   let saveRevision = 0;
 
@@ -135,7 +132,7 @@ export function createCampaignMenu({ store, defaultPalette, onEnter, onNewCampai
     const images = ready ?? (await loadThumbnails(campaign, { allowStale: true }));
     if (!card.isConnected || card.iconRequest !== request) return;
     card.iconEntries = images;
-    shuffle.disabled = opening || importing || images.length < 2;
+    shuffle.disabled = opening || images.length < 2;
     const img = card.querySelector('.campaign-icon img');
     const placeholder = card.querySelector('.campaign-icon-placeholder');
     const previous =
@@ -200,8 +197,7 @@ export function createCampaignMenu({ store, defaultPalette, onEnter, onNewCampai
         day: 'numeric',
       }).format(new Date(campaign.createdAt));
       card.querySelector('.campaign-palette').textContent = campaign.paletteName;
-      card.querySelector('.campaign-settlements').textContent = data.stats.settlements;
-      card.querySelector('.campaign-pois').textContent = data.stats.pois;
+      card.querySelector('.campaign-week').textContent = String(campaignWeek(campaign));
       const ratio = card.querySelector('.campaign-ratio');
       ratio.querySelector('dd').textContent =
         `${data.stats.waterPercent}% / ${data.stats.landPercent}%`;
@@ -213,17 +209,17 @@ export function createCampaignMenu({ store, defaultPalette, onEnter, onNewCampai
     list.replaceChildren(...cards);
   }
 
-  async function add(campaign) {
+  async function add(campaign, palettes) {
     expireUndo();
     campaigns.push(campaign);
-    return save();
+    return save(palettes);
   }
 
-  async function enter(campaign, button = newButton) {
-    if (opening || importing || menu.hidden || listeners.signal.aborted) return false;
+  async function enter(campaign, button = newButton, options) {
+    if (opening || menu.hidden || listeners.signal.aborted) return false;
     opening = true;
     const creating = !campaign;
-    const controls = [...menu.querySelectorAll('button, input')].map((control) => [
+    const controls = [...menu.querySelectorAll('button, input, select')].map((control) => [
       control,
       control.disabled,
     ]);
@@ -262,7 +258,7 @@ export function createCampaignMenu({ store, defaultPalette, onEnter, onNewCampai
         campaign = createCampaign(world, palette.colors, palette.paletteName);
         await add(campaign);
       }
-      return (await onEnter(campaign)) !== false;
+      return (await onEnter(campaign, options)) !== false;
     } catch (error) {
       if (!listeners.signal.aborted) {
         menu.hidden = false;
@@ -375,7 +371,7 @@ export function createCampaignMenu({ store, defaultPalette, onEnter, onNewCampai
     });
   listen(list, 'click', async (event) => {
     const button = event.target.closest('[data-action]');
-    if (!button || opening || importing || menu.hidden) return;
+    if (!button || opening || menu.hidden) return;
     const campaign = campaigns.find(
       (item) => item.id === button.closest('.campaign-card').dataset.id,
     );
@@ -425,7 +421,7 @@ export function createCampaignMenu({ store, defaultPalette, onEnter, onNewCampai
         true,
       );
     } finally {
-      button.disabled = opening || importing;
+      button.disabled = opening;
       button.removeAttribute('aria-busy');
       button.classList.remove('hp-working');
     }
@@ -460,61 +456,13 @@ export function createCampaignMenu({ store, defaultPalette, onEnter, onNewCampai
       [Math.min(index, campaigns.length - 1)]?.focus({ preventScroll: true });
   });
   listen(newButton, 'click', () => (onNewCampaign ? onNewCampaign() : enter()));
-  listen(document.getElementById('import-campaign'), 'click', () => {
-    if (opening || importing) return;
-    expireUndo();
-    fileInput.click();
-  });
-  listen(fileInput, 'change', async () => {
-    const file = fileInput.files[0];
-    if (!file || importing || opening) return;
-    importing = true;
-    const importButton = document.getElementById('import-campaign');
-    const original = importButton.innerHTML;
-    const controls = [...menu.querySelectorAll('button, input')].map((control) => [
-      control,
-      control.disabled,
-    ]);
-    controls.forEach(([control]) => {
-      control.disabled = true;
-    });
-    importButton.textContent = 'Importing…';
-    importButton.setAttribute('aria-busy', 'true');
-    importButton.classList.add('hp-working');
-    setMessage('Reading and validating campaign…');
-    try {
-      if (file.size > MAX_CAMPAIGN_BYTES)
-        throw new Error('Choose a campaign JSON file smaller than 4 MB.');
-      const campaign = importCampaign(await file.text());
-      // Import as a separate local save; an existing campaign is never overwritten.
-      campaign.id = crypto.randomUUID();
-      await add(campaign);
-      render();
-      if (storageAvailable) setMessage(`Imported “${campaign.name}”`);
-    } catch (error) {
-      setMessage(error.message, true);
-    } finally {
-      fileInput.value = '';
-      importing = false;
-      if (!listeners.signal.aborted) {
-        controls.forEach(([control, disabled]) => {
-          if (control.isConnected) control.disabled = disabled;
-        });
-        importButton.innerHTML = original;
-        importButton.removeAttribute('aria-busy');
-        importButton.classList.remove('hp-working');
-        list.querySelectorAll('[data-action="shuffle"]').forEach((button) => {
-          button.disabled = (button.closest('.campaign-card').iconEntries?.length ?? 0) < 2;
-        });
-      }
-    }
-  });
 
   return {
     add,
+    render,
     snapshotCampaigns: () => campaigns.map((campaign) => structuredClone(campaign)),
     async applyRemote(campaign, expected = null) {
-      if (opening || importing) throw new Error('Wait for the current campaign action to finish.');
+      if (opening) throw new Error('Wait for the current campaign action to finish.');
       const index = campaigns.findIndex((item) => item.id === campaign.id);
       const current = index < 0 ? null : campaigns[index];
       if (JSON.stringify(current) !== JSON.stringify(expected))

@@ -52,27 +52,18 @@
               </button>
               <button
                 type="button"
-                id="open-palette-manager"
+                id="open-settings"
+                class="menu-icon-button"
+                aria-label="Settings"
+                data-tooltip="Settings"
                 aria-haspopup="dialog"
-                aria-controls="palette-manager-dialog"
+                aria-controls="settings-dialog"
               >
                 <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
-                  <use href="/icons/pixelarticons.svg#colors-swatch"></use>
+                  <use href="/icons/pixelarticons.svg#settings-cog"></use>
                 </svg>
-                Palette manager
-              </button>
-              <button
-                type="button"
-                id="import-campaign"
-                data-tooltip="Upload a JSON file with previously exported campaign"
-              >
-                <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
-                  <use href="/icons/pixelarticons.svg#upload"></use>
-                </svg>
-                Import campaign
               </button>
             </div>
-            <input type="file" id="campaign-file" accept=".json,application/json" hidden />
           </header>
           <ul id="campaign-list" class="campaign-list stack" aria-label="Saved campaigns"></ul>
           <button
@@ -116,6 +107,79 @@
             </button>
           </div>
         </section>
+        <dialog id="settings-dialog" aria-labelledby="settings-title">
+          <form id="settings-form">
+            <header class="palette-manager-header"><h2 id="settings-title">Settings</h2></header>
+            <div class="settings-content stack">
+              <label class="cc-field" for="settings-palette">
+                Default palette
+                <select id="settings-palette" aria-describedby="settings-palette-note"></select>
+              </label>
+              <p id="settings-palette-note" class="settings-note">
+                New campaigns start with this palette. You can change it anytime.
+              </p>
+              <button
+                type="button"
+                id="open-palette-manager"
+                class="settings-link"
+                aria-haspopup="dialog"
+                aria-controls="palette-manager-dialog"
+              >
+                Manage palettes
+              </button>
+              <label class="cc-field" for="settings-time">
+                Default time of day
+                <select id="settings-time" aria-describedby="settings-time-note">
+                  <option value="dawn">Dawn</option>
+                  <option value="day">Day</option>
+                  <option value="dusk">Dusk</option>
+                  <option value="night">Night</option>
+                </select>
+              </label>
+              <p id="settings-time-note" class="settings-note">
+                New campaigns start at this time. You can change it anytime.
+              </p>
+              <button
+                type="button"
+                id="settings-motion"
+                class="hp-motion"
+                role="switch"
+                aria-label="Movement"
+                aria-checked="true"
+                aria-describedby="settings-motion-note"
+              >
+                <span class="hp-motion-light" aria-hidden="true"></span>
+                <span>Movement <span id="settings-motion-state" aria-hidden="true">ON</span></span>
+              </button>
+              <p id="settings-motion-note" class="settings-note">
+                Animate wind, waves, light pulses and lighthouse beams. Reduced-motion preferences
+                still apply.
+              </p>
+              <div class="settings-import cluster">
+                <button type="button" id="import-campaign">
+                  <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <use href="/icons/pixelarticons.svg#upload"></use></svg
+                  >Import campaign
+                </button>
+                <span id="settings-filename">No file selected</span>
+                <input type="file" id="campaign-file" accept=".json,application/json" hidden />
+              </div>
+              <p class="settings-note">
+                Choose an exported campaign JSON file. Save imports it as a separate campaign.
+              </p>
+              <output
+                id="settings-message"
+                class="campaign-message"
+                role="status"
+                aria-live="polite"
+              ></output>
+            </div>
+            <footer class="dialog-actions cluster">
+              <button type="button" id="settings-cancel">Cancel</button>
+              <button type="submit" id="settings-save" class="primary-button" disabled>Save</button>
+            </footer>
+          </form>
+        </dialog>
         <dialog
           id="account-dialog"
           aria-labelledby="account-title"
@@ -490,16 +554,12 @@
                 <dd><time class="campaign-date"></time></dd>
               </div>
               <div>
+                <dt>Week</dt>
+                <dd class="campaign-week"></dd>
+              </div>
+              <div>
                 <dt>Palette</dt>
                 <dd class="campaign-palette"></dd>
-              </div>
-              <div>
-                <dt>Settlements</dt>
-                <dd class="campaign-settlements"></dd>
-              </div>
-              <div>
-                <dt>POIs</dt>
-                <dd class="campaign-pois"></dd>
               </div>
               <div class="campaign-ratio">
                 <dt>Water / land</dt>
@@ -726,7 +786,7 @@
                   <option value="moss">Moss &amp; bone</option>
                   <option value="classic">Verdant Kingdoms</option>
                   <option value="thronefall">Thronefall</option>
-                  <option value="glacial">Glacial mint</option>
+                  <option value="glacial">Frozen synapse</option>
                   <option value="autumn">Autumn copper</option>
                   <option value="sand">Sands of time</option>
                   <option value="custom" hidden>Custom</option>
@@ -993,12 +1053,8 @@
               <dd id="hp-party-visited"></dd>
             </div>
             <div>
-              <dt><span>Days travelled</span></dt>
-              <dd id="hp-party-days"></dd>
-            </div>
-            <div>
-              <dt><span>Sessions played</span></dt>
-              <dd id="hp-party-sessions"></dd>
+              <dt><span>Weeks</span></dt>
+              <dd id="hp-party-weeks"></dd>
             </div>
           </dl>
           <p id="hp-party-keyboard-help" class="hp-field-note">Move: Q/W/E · A/S/D</p>
@@ -1094,15 +1150,21 @@
         <output id="hp-hex-feedback" class="hp-hex-feedback" role="alert" tabindex="-1"></output>
         <div class="hp-inspector-action-cluster">
           <div class="hp-inspector-edit-actions">
-            <button type="button" id="hp-hex-edit">
+            <button type="button" id="hp-hex-edit" class="primary-button">
               <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <use href="/icons/pixelarticons.svg#pencil"></use>
               </svg>
-              Edit hex
+              Edit
             </button>
             <button type="submit" id="hp-hex-apply" hidden>Apply changes</button>
             <button type="button" id="hp-hex-cancel" hidden>Cancel</button>
-            <button type="button" id="hp-hex-undo">
+            <button type="button" id="hp-hex-multi-edit">
+              <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <use href="/icons/pixelarticons.svg#grid-2x2-2"></use>
+              </svg>
+              Edit many
+            </button>
+            <button type="button" id="hp-hex-undo" hidden>
               <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <use href="/icons/pixelarticons.svg#undo"></use>
               </svg>
@@ -1116,10 +1178,8 @@
               <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <use href="/icons/pixelarticons.svg#close"></use>
               </svg>
-              Reset hex
+              Reset
             </button>
-          </div>
-          <div class="hp-inspector-actions">
             <button
               type="button"
               id="hp-hex-regenerate"
@@ -1128,8 +1188,10 @@
               <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <use href="/icons/pixelarticons.svg#refresh"></use>
               </svg>
-              Regenerate hex
+              Regenerate
             </button>
+          </div>
+          <div class="hp-inspector-actions">
             <button
               type="button"
               id="hp-hex-lock"
@@ -1147,14 +1209,6 @@
                 <use href="/icons/pixelarticons.svg#image"></use>
               </svg>
               Use as campaign icon
-            </button>
-          </div>
-          <div class="hp-inspector-actions">
-            <button type="button" id="hp-hex-multi-edit">
-              <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <use href="/icons/pixelarticons.svg#grid-2x2-2"></use>
-              </svg>
-              Turn on multiselect
             </button>
           </div>
         </div>

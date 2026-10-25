@@ -15,6 +15,7 @@ test('localStorage only receives validated noncritical UI preferences', () => {
   assert.equal(
     saveUIPreferences(storage, {
       motion: false,
+      defaultTimeOfDay: 'night',
       settingsOpen: true,
       panelOrder: ['inspector', 'tracker'],
       panelsCollapsed: { tracker: true, inspector: false },
@@ -30,6 +31,7 @@ test('localStorage only receives validated noncritical UI preferences', () => {
   assert.deepEqual(JSON.parse(values.get(UI_PREFERENCES_KEY)), {
     version: 1,
     motion: false,
+    defaultTimeOfDay: 'night',
     settingsOpen: true,
     panelOrder: ['inspector', 'tracker'],
     panelsCollapsed: { tracker: true, inspector: false },
@@ -37,6 +39,7 @@ test('localStorage only receives validated noncritical UI preferences', () => {
   assert.equal(readUIPreferences(storage).motion, false);
   saveUIPreferences(storage, {
     motion: 'yes',
+    defaultTimeOfDay: 'midnight',
     panelOrder: ['tracker', 'tracker'],
     panelsHorizontal: { tracker: true },
   });

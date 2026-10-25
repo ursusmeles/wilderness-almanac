@@ -18,7 +18,7 @@ export function validatePartyToken(value) {
     (value.name !== undefined &&
       (typeof value.name !== 'string' || !value.name.trim() || value.name.length > 100)) ||
     (value.color !== undefined && !PARTY_COLORS.includes(value.color)) ||
-    ['daysTravelled', 'sessionsPlayed'].some(
+    ['weeks', 'daysTravelled', 'sessionsPlayed'].some(
       (key) =>
         value[key] !== undefined &&
         (!Number.isSafeInteger(value[key]) || value[key] < 1 || value[key] > 1000000),
@@ -31,7 +31,7 @@ export function validatePartyToken(value) {
     ...(value.name !== undefined ? { name: value.name.trim() } : {}),
     ...(value.color !== undefined ? { color: value.color } : {}),
     ...Object.fromEntries(
-      ['daysTravelled', 'sessionsPlayed']
+      ['weeks', 'daysTravelled', 'sessionsPlayed']
         .filter((key) => value[key] !== undefined)
         .map((key) => [key, value[key]]),
     ),
@@ -82,10 +82,12 @@ export function partyMetadata(world, campaign, { visibleWorld = world } = {}) {
     visitedKeys,
     land: land.length,
     percent: land.length ? Math.round((visited / land.length) * 100) : 0,
-    days: party.daysTravelled ?? 1,
-    sessions: party.sessionsPlayed ?? 1,
+    weeks: campaignWeek(campaign),
   };
 }
+
+// Legacy days/sessions remain valid backup data; weeks start independently at 1.
+export const campaignWeek = (campaign) => campaign.partyToken?.weeks ?? 1;
 
 export function initialPartyToken(world) {
   const nearest = (cells) =>

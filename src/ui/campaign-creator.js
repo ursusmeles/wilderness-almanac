@@ -11,7 +11,13 @@ const preferenceLabels = {
   settlements: ['Wilderness', 'Mostly wild', 'Default', 'Settled', 'Densely settled'],
 };
 
-export function createCampaignCreator({ library, loadMapView, freshSeed, onCreate }) {
+export function createCampaignCreator({
+  library,
+  loadMapView,
+  freshSeed,
+  defaultTimeOfDay,
+  onCreate,
+}) {
   const dialog = document.getElementById('create-campaign-dialog');
   const discardDialog = document.getElementById('discard-campaign-draft-dialog');
   const el = (name) => dialog.querySelector(`#cc-${name}`);
@@ -290,7 +296,13 @@ export function createCampaignCreator({ library, loadMapView, freshSeed, onCreat
   listen(createButton, 'click', async () => {
     if (!draft || createButton.disabled) return;
     const palette = library.get(paletteInput.value);
-    const campaign = createCampaign(draft.world, palette.colors, palette.name);
+    const campaign = createCampaign(
+      draft.world,
+      palette.colors,
+      palette.name,
+      0,
+      defaultTimeOfDay?.(),
+    );
     campaign.name = nameInput.value.trim();
     campaign.nameEdited = draft.nameEdited;
     draft.busy = draft.creating = true;

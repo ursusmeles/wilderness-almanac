@@ -91,7 +91,7 @@ export async function openCampaign(page, { expandInspector = true } = {}) {
   // Editing flows below use the origin explicitly; entry itself now selects
   // and frames the party's saved hex.
   await page.locator('#hp-selection').selectOption('0,0');
-  const expand = page.getByRole('button', { name: 'Expand Hex Inspector', exact: true });
+  const expand = page.getByRole('button', { name: 'Open Hex Inspector', exact: true });
   if (expandInspector && (await expand.isVisible())) await expand.click();
 }
 export async function exportFromMenu(page) {

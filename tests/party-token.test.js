@@ -152,6 +152,7 @@ test('party profile edits survive export, reload and hex Undo without changing g
       name: '  Wayfarers  ',
       color: '#13d9f2',
       style: 'cairn',
+      weeks: 4,
       daysTravelled: 3,
       sessionsPlayed: 2,
     }).ok,
@@ -164,11 +165,14 @@ test('party profile edits survive export, reload and hex Undo without changing g
   session.open(imported, world);
   assert.equal(session.snapshot().campaign.partyToken.name, 'Wayfarers');
   assert.equal(session.snapshot().campaign.partyToken.color, '#13d9f2');
+  assert.equal(session.snapshot().campaign.partyToken.weeks, 4);
   assert.equal(session.snapshot().campaign.partyToken.daysTravelled, 3);
   assert.equal(session.snapshot().campaign.partyToken.sessionsPlayed, 2);
   assert.equal(session.partyDetails({ name: ' ' }).ok, false);
   assert.equal(session.partyDetails({ color: 'invalid' }).ok, false);
   assert.equal(session.partyDetails({ daysTravelled: 0 }).ok, false);
+  for (const weeks of [0, -1, 1.5, '2', 1000001])
+    assert.equal(session.partyDetails({ weeks }).ok, false);
 });
 
 test('party metadata includes the current settlement, POI name and only non-open-water visited coverage', () => {
@@ -209,8 +213,18 @@ test('party metadata includes the current settlement, POI name and only non-open
   assert.deepEqual(metadata.visitedKeys, ['0,0', '1,0']);
   assert.equal(metadata.land, 3);
   assert.equal(metadata.percent, 67);
-  assert.equal(metadata.days, 1);
-  assert.equal(metadata.sessions, 1);
+  assert.equal(metadata.weeks, 1);
+  assert.equal(
+    partyMetadata(
+      { cells },
+      { ...record, partyToken: { ...record.partyToken, daysTravelled: 30, sessionsPlayed: 8 } },
+    ).weeks,
+    1,
+  );
+  assert.equal(
+    partyMetadata({ cells }, { ...record, partyToken: { ...record.partyToken, weeks: 3 } }).weeks,
+    3,
+  );
   const empty = partyMetadata({ cells: [cells[3]] }, { ...record, partyToken: { key: '-1,0' } });
   assert.equal(empty.percent, 0);
   assert.equal(empty.poi, null);

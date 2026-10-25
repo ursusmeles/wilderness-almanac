@@ -821,11 +821,13 @@ test('retry saving after deleting the last-opened campaign commits deletion and 
 
   // A later palette-only failure must also retry while the old map session
   // still refers to the deleted campaign.
+  await page.locator('#open-settings').click();
   await page.locator('#open-palette-manager').click();
   await page.evaluate(() => sessionStorage.setItem('fail-save', '1'));
   await page.locator('#add-palette').click();
   await expect(page.locator('#palette-manager-message')).toContainText('aren’t saved');
   await page.locator('#close-palette-manager').click();
+  await page.locator('#settings-cancel').click();
   await page.evaluate(() => sessionStorage.removeItem('fail-save'));
   await page.locator('#retry-campaign-save').click();
   await expect(page.locator('#campaign-save-warning')).toBeHidden();
@@ -833,6 +835,7 @@ test('retry saving after deleting the last-opened campaign commits deletion and 
   expect((await stored()).campaigns).toHaveLength(0);
   await page.reload();
   await expect(page.locator('#campaign-count')).toHaveText('0');
+  await page.locator('#open-settings').click();
   await page.locator('#open-palette-manager').click();
   await expect(page.locator('.palette-row.is-custom')).toHaveCount(1);
   expect(errors).toEqual([]);
