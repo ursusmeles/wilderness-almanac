@@ -146,16 +146,13 @@ function syncAppearanceLayout() {
   const modes = root.querySelector('.hp-map-modes');
   const picker = element('palette-picker');
   const time = element('time-of-day');
-  const motion = element('motion');
   const focused = document.activeElement;
   const timeParent = settingsOpen && !mobileLayout.matches ? modes : picker;
-  const motionParent = settingsOpen && mobileLayout.matches ? picker : modes;
   if (time.parentElement !== timeParent) {
     if (timeParent === modes) modes.prepend(time);
     else picker.append(time);
   }
-  if (motion.parentElement !== motionParent) motionParent.append(motion);
-  if ((focused === time || focused === motion) && document.activeElement !== focused)
+  if (focused === time && document.activeElement !== focused)
     focused.focus({ preventScroll: true });
 }
 

@@ -1174,7 +1174,6 @@
     --focus: var(--text);
     --palette-swatch-width: 6.25rem;
     --palette-controls-width: 17rem;
-    --compact-actions-width: 7rem;
     --palette-gap: clamp(var(--space-12), 2.5cqi, var(--space-24));
     --palette-columns: var(--palette-swatch-width) minmax(0, var(--palette-controls-width))
       minmax(12rem, 1fr);
@@ -1431,10 +1430,6 @@
       min-width: 0;
       overflow: hidden;
       text-overflow: ellipsis;
-    }
-    & > #hp-motion {
-      grid-column: 2;
-      grid-row: 2;
     }
   }
   .hp-seed-action {
@@ -2109,16 +2104,21 @@
     }
     #campaign-workspace {
       --mobile-map-height: calc(100dvh - var(--panel-bar-size) * 2 - 2px);
+      --mobile-palette-columns: 4.375rem minmax(0, 1fr) 7rem var(--control-compact-size);
       display: flex;
       flex-direction: column;
       height: auto;
       gap: 0;
     }
     .hp-map-panel {
-      height: var(--mobile-map-height);
-      flex: 0 0 var(--mobile-map-height);
+      --appearance-extra-height: 0px;
+      height: calc(var(--mobile-map-height) + var(--appearance-extra-height));
+      flex: 0 0 calc(var(--mobile-map-height) + var(--appearance-extra-height));
       border: 0;
       border-radius: 0;
+      &:has(.hp-map-options:not(.is-collapsed)) {
+        --appearance-extra-height: calc(var(--control-size) + var(--space-8));
+      }
     }
     .hp-top {
       flex-shrink: 0;
@@ -2184,61 +2184,75 @@
     .hp-status {
       display: none;
     }
-    .hp-map-options:not(.is-collapsed) {
-      max-height: 46dvh;
-      overflow-y: auto;
-      overscroll-behavior: contain;
-    }
     .hp-palette {
-      grid-template-columns: var(--palette-swatch-width) minmax(0, 1fr) var(--compact-actions-width);
-      padding: var(--space-8) max(var(--space-8), env(safe-area-inset-right))
-        max(var(--space-8), env(safe-area-inset-bottom))
+      grid-template-columns: var(--mobile-palette-columns);
+      grid-template-rows: var(--control-size);
+      grid-auto-rows: var(--control-size);
+      padding: var(--space-8) max(var(--space-8), env(safe-area-inset-right)) var(--space-8)
         max(var(--space-8), env(safe-area-inset-left));
       gap: var(--space-8);
     }
-    .hp-palette-controls {
-      max-width: none;
-      grid-column: 2 / -1;
-    }
-    .hp-map-navigation {
-      grid-column: 1 / -1;
-      width: 100%;
-      grid-template-columns: minmax(0, 1fr) var(--control-compact-size);
-      align-items: center;
-      border-top: 1px solid var(--line);
-      padding-top: var(--space-12);
-    }
-    .hp-map-modes {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-    .hp-panel-actions {
-      grid-template-columns: var(--control-compact-size);
-    }
-    .hp-map-options.is-collapsed {
-      & .hp-palette {
-        grid-template-columns: 4.375rem minmax(0, 1fr) var(--control-compact-size);
-        padding-block: var(--space-8);
-        gap: var(--space-8);
+    .hp-map-options {
+      & :is(.hp-palette-controls, .hp-palette-picker, .hp-map-navigation, .hp-panel-actions) {
+        display: contents;
+      }
+      &:not(.is-collapsed) .hp-map-modes {
+        display: contents;
       }
       & .hp-colors {
+        display: flex;
+        align-items: center;
         gap: var(--space-4);
+        grid-column: 1;
+        grid-row: 1;
       }
       & .hp-color {
+        justify-content: center;
         width: 1.375rem;
+        min-height: var(--control-size);
+        flex-shrink: 0;
+        & > span:not(.hp-swatch) {
+          display: none;
+        }
       }
       & .hp-swatch {
         width: 1.125rem;
         height: 1.375rem;
       }
-      & .hp-map-navigation {
-        grid-column: 3;
-        width: var(--control-compact-size);
-        grid-template-columns: var(--control-compact-size);
-        border-top: 0;
-        padding-top: 0;
-      }
-      & .hp-palette-controls {
+      & #hp-preset {
         grid-column: 2;
+        grid-row: 1;
+      }
+      & #hp-time-of-day {
+        grid-column: 3;
+        grid-row: 1;
+      }
+      & #hp-toggle-settings {
+        grid-column: 4;
+        grid-row: 1;
+      }
+      & #hp-motion {
+        grid-column: 2;
+        grid-row: 2;
+        min-width: 0;
+        padding-inline: var(--space-8);
+        & > span:last-child {
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+      }
+      & #hp-regenerate {
+        grid-column: 3 / 5;
+        grid-row: 2;
+        min-width: 0;
+        padding-inline: var(--space-8);
+      }
+    }
+    .hp-map-options.is-collapsed {
+      & .hp-palette {
+        grid-template-columns: var(--mobile-palette-columns);
+        grid-template-rows: var(--control-size);
       }
     }
     .hp-side-panels {

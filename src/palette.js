@@ -21,7 +21,7 @@ export const paletteNames = {
   thronefall: 'Thronefall',
   glacial: 'Glacial mint',
   autumn: 'Autumn copper',
-  sand: 'Sand & sage',
+  sand: 'Sands of time',
 };
 
 function linear(v) {
