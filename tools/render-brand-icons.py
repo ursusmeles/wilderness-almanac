@@ -15,7 +15,7 @@ PUBLIC = Path(__file__).resolve().parent.parent / "public"
 source = ET.parse(PUBLIC / "brand/wilderness-antler-mark.svg")
 mark = source.find("{http://www.w3.org/2000/svg}path").attrib["d"]
 
-# Retain the original box: 1.4em, border = .076em, padding = .038em.
+# Match the menu: box = 1.4em, i-stem border = .076em, padding = .038em.
 # Favicons use the default menu's gold on its dark page background.
 svg = f'''<svg
   xmlns="http://www.w3.org/2000/svg"

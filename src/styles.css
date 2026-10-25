@@ -203,7 +203,7 @@
   /* Theme aliases let shared controls follow either the library or campaign. */
   .campaign-menu {
     --almanac-title-size: clamp(2.5rem, 4.125vw, 3rem);
-    --almanac-mark-size: calc(var(--almanac-title-size) * 1.4 - 2px);
+    --almanac-mark-size: calc(var(--almanac-title-size) * 1.4);
     --almanac-mark-gap: var(--space-16);
     --surface: #211c36;
     --text: #f1e8db;
@@ -240,7 +240,6 @@
     }
     @media (max-width: 640px) {
       --almanac-title-size: clamp(2.5rem, 10.8vw, 3rem);
-      --almanac-mark-size: calc(var(--almanac-title-size) * 1.4);
       margin-inline: auto;
       padding: clamp(var(--space-24), 5vw, var(--space-32)) 0 var(--space-24);
     }
@@ -282,9 +281,9 @@
     width: var(--almanac-mark-size);
     height: var(--almanac-mark-size);
     padding: 0.038em;
-    /* One CSS pixel thinner than Geist Pixel Square's 76/1000-em i stem. */
-    border: calc(0.076em - 1px) solid currentColor;
-    border-width: calc(round(nearest, 0.076em, 1px) - 1px);
+    /* Geist Pixel Square's i stem is 76 of its 1000 font units. */
+    border: 0.076em solid currentColor;
+    border-width: round(nearest, 0.076em, 1px);
     color: var(--gold);
     fill: currentColor;
     font-size: var(--almanac-title-size);
