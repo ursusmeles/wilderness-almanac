@@ -78,6 +78,10 @@
 }
 
 @layer base {
+  html,
+  body {
+    overscroll-behavior-y: none;
+  }
   html {
     background: var(--page-bg);
     color-scheme: dark;
