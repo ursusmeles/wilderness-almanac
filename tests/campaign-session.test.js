@@ -32,6 +32,34 @@ function fixture() {
   };
 }
 
+test('time of day is saved per campaign without changing geometry or Undo history', () => {
+  const { session, writes, fail } = fixture();
+  const initial = session.snapshot(),
+    count = writes.length;
+  assert.equal(session.setTimeOfDay('night').ok, true);
+  assert.equal(writes.length, count + 1);
+  assert.equal(writes.at(-1).timeOfDay, 'night');
+  assert.equal(session.snapshot().world, initial.world);
+  assert.equal(session.snapshot().dressing, initial.dressing);
+  assert.equal(session.snapshot().canUndo, false);
+  session.visit();
+  session.setTimeOfDay('dusk');
+  session.undo();
+  assert.equal(session.snapshot().campaign.timeOfDay, 'dusk');
+  const saved = importCampaign(exportCampaign(writes.at(-1)));
+  session.open(campaign);
+  assert.equal(session.snapshot().campaign.timeOfDay, 'day');
+  session.open(saved);
+  assert.equal(session.snapshot().campaign.timeOfDay, 'dusk');
+  const invalidWrites = writes.length;
+  assert.equal(session.setTimeOfDay('invalid').ok, false);
+  assert.equal(writes.length, invalidWrites);
+  fail({ campaignSaved: false, preferencesSaved: true });
+  session.setTimeOfDay('dawn');
+  assert.equal(session.snapshot().campaign.timeOfDay, 'dawn');
+  assert.equal(session.snapshot().persistence.saved, false);
+});
+
 test('asynchronous saves retain live edits and ignore older completion results', async () => {
   const completions = [];
   const session = createCampaignSession({

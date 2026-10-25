@@ -3,6 +3,7 @@ import { worldPreferences } from '../generation/world-preferences.js';
 import { validateHexEdits } from '../generation/hex-edits.js';
 import { campaignWorld, campaignDressing } from '../generation/campaign-world.js';
 import { validatePartyToken } from './party-token.js';
+import { TIMES_OF_DAY } from './time-of-day.js';
 
 export const MAX_CAMPAIGN_BYTES = 4 * 1024 * 1024;
 const text = (value, max) =>
@@ -27,6 +28,7 @@ export function validateCampaign(value) {
     !value.colors.every((color) => typeof color === 'string' && /^#[0-9a-f]{6}$/i.test(color)) ||
     !text(value.paletteName, 60) ||
     (value.fogOfWar !== undefined && typeof value.fogOfWar !== 'boolean') ||
+    (value.timeOfDay !== undefined && !TIMES_OF_DAY.includes(value.timeOfDay)) ||
     (value.nameEdited !== undefined && typeof value.nameEdited !== 'boolean') ||
     (value.iconKey !== undefined &&
       (typeof value.iconKey !== 'string' || !/^-?\d{1,2},-?\d{1,2}$/.test(value.iconKey)))
@@ -38,6 +40,7 @@ export function validateCampaign(value) {
   return {
     ...(value.preferences !== undefined ? { preferences } : {}),
     ...(value.fogOfWar !== undefined ? { fogOfWar: value.fogOfWar } : {}),
+    ...(value.timeOfDay !== undefined ? { timeOfDay: value.timeOfDay } : {}),
     id: value.id,
     name: value.name.trim(),
     createdAt: new Date(value.createdAt).toISOString(),
@@ -65,6 +68,7 @@ export function createCampaign(world, colors, paletteName, variant = 0) {
     variant,
     colors,
     paletteName,
+    timeOfDay: 'day',
     iconKey: chooseCampaignIcon(world),
   });
 }

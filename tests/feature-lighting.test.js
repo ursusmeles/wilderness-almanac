@@ -8,23 +8,11 @@ import { generateWorld, generateDressing } from '../src/generation/world.js';
 import { prepareMap } from '../src/generation/presentation.js';
 import { createFogView } from '../src/application/fog-view.js';
 import { worldPosition } from '../src/generation/hex.js';
+import { glowPulse } from '../src/rendering/feature-glow.js';
+import { surfaceHeight } from '../src/generation/math.js';
 
 const land = { key: '0,0', q: 0, r: 0, top: 0.5, terrain: 'meadow' };
 const sea = { key: '1,0', q: 1, r: 0, top: 0.2, terrain: 'open water', water: 'ocean' };
-const coast = [
-  land,
-  sea,
-  ...[
-    [2, 0],
-    [2, -1],
-    [1, 1],
-  ].map(([q, r]) => ({
-    ...sea,
-    key: `${q},${r}`,
-    q,
-    r,
-  })),
-];
 const source = (kind = 'warm', tile = land) => ({
   kind,
   tile,
@@ -41,9 +29,11 @@ function camera() {
 }
 
 // Sample the actual batched glow/UV/texture at a world-space ground position.
-function glowAt(mesh, x, z) {
+function glowAt(mesh, x, z, time = 0) {
   const { position, uv } = mesh.geometry.attributes;
-  const indices = mesh.geometry.index.array;
+  const indices = mesh.geometry.index?.array ?? Array.from({ length: position.count }, (_, i) => i);
+  const sampled = new Set();
+  let result = 0;
   const at = (i) => new THREE.Vector3(position.getX(i), 0, position.getZ(i));
   const sample = new THREE.Vector3(x, 0, z);
   for (let i = 0; i < indices.length; i += 3) {
@@ -55,9 +45,15 @@ function glowAt(mesh, x, z) {
     const { data, width, height } = mesh.material.map.image;
     const tx = Math.max(0, Math.min(width - 1, Math.floor(u * width)));
     const ty = Math.max(0, Math.min(height - 1, Math.floor(v * height)));
-    return (data[(ty * width + tx) * 4 + 3] / 255) * mesh.material.opacity;
+    const phase = mesh.geometry.attributes.glowPhase?.getX(a);
+    const rate = mesh.geometry.attributes.glowRate?.getX(a);
+    const key = phase === undefined ? 'landing' : `${phase}:${rate}`;
+    if (sampled.has(key)) continue;
+    sampled.add(key);
+    const pulse = phase === undefined ? 1 : glowPulse(time, { phase, rate });
+    result += (data[(ty * width + tx) * 4 + 3] / 255) * mesh.material.opacity * pulse;
   }
-  return 0;
+  return result;
 }
 
 test('all night glows are batched, native light counts are bounded and modes reuse resources', () => {
@@ -102,32 +98,57 @@ test('all night glows are batched, native light counts are bounded and modes reu
   assert.equal(scene.children.length, 0);
 });
 
-test('every lighthouse gets a sweeping beam toward open water while native spotlights stay capped', () => {
-  const scene = new THREE.Scene(),
-    lighting = createFeatureLighting(scene),
+test('every lighthouse has a broad sweeping shaft and a round water landing while native spots stay capped', () => {
+  const lighting = createFeatureLighting(new THREE.Scene()),
     view = camera();
+  const water = [];
+  for (let q = -4; q <= 4; q++)
+    for (let r = -4; r <= 4; r++) {
+      const { wx } = worldPosition({ q, r });
+      water.push({ ...(wx > 0.9 ? sea : land), key: `${q},${r}`, q, r });
+    }
   lighting.setSources(
     Array.from({ length: 4 }, () => source('lighthouse')),
-    coast,
+    water,
   );
   assert.equal(lighting.beamGroup.children.length, 4);
   lighting.setMode('night');
-  lighting.update(0, view);
-  const original = lighting.beams[0].target.position.clone();
-  assert.ok(original.x > 1);
+  const positions = [];
+  for (let time = 0; time <= 40; time += 1) {
+    lighting.update(time, view);
+    positions.push(lighting.beams[0].target.position.clone());
+    for (const node of lighting.beamGroup.children) {
+      assert.ok(node.getObjectByName('lighthouse:shaft').material.opacity >= 0.16 * 0.4);
+      assert.ok(node.getObjectByName('lighthouse:landing').material.opacity >= 0.7 * 0.4);
+    }
+  }
   assert.ok(
-    Math.abs(Math.hypot(original.x, original.z - 0.05) - 2 * Math.sqrt(3)) < 0.01,
-    'the beam reaches two hex-centre spacings into visible open water',
+    Math.max(...positions.map((a) => Math.max(...positions.map((b) => a.distanceTo(b))))) >
+      Math.sqrt(3),
+    'the water landing sweeps across more than one hex',
   );
-  assert.ok(lighting.beamGroup.children.every((mesh) => mesh.material.opacity > 0.15));
-  assert.ok(lighting.beams.filter((light) => light.visible).every((light) => light.intensity > 4));
-  lighting.update(5, view);
-  assert.notDeepEqual(lighting.beams[0].target.position, original);
-  assert.ok(lighting.beams[0].target.position.distanceTo(original) <= 0.31);
+  const node = lighting.beamGroup.children[0],
+    landing = node.getObjectByName('lighthouse:landing');
+  const target = lighting.beams[0].target.position;
+  assert.ok(glowAt(landing, target.x, target.z) > 0.2);
+  assert.ok(
+    Math.abs(
+      glowAt(landing, target.x + 0.2, target.z) - glowAt(landing, target.x, target.z + 0.2),
+    ) < 0.04,
+    'the soft water footprint is circular',
+  );
+  assert.equal(glowAt(landing, target.x + 0.5, target.z), 0);
+  assert.equal(glowAt(landing, 0, 0), 0, 'no landing geometry covers the lighthouse land hex');
+  let disposed = 0;
+  landing.geometry.addEventListener('dispose', () => disposed++);
+  landing.material.addEventListener('dispose', () => disposed++);
+  node.getObjectByName('lighthouse:shaft').material.addEventListener('dispose', () => disposed++);
   lighting.setMode('day');
   lighting.update(5, view);
   assert.equal(lighting.beamGroup.visible, false);
   assert.ok(lighting.beams.every((light) => light.intensity === 0));
+  lighting.setSources([], []);
+  assert.equal(disposed, 3);
   lighting.dispose();
 });
 
@@ -145,29 +166,33 @@ test('lighthouse reach stops before a far bank, hidden water or the map boundary
   }
 });
 
-test('settlement glow grows with population, stays inside its hex and does not stack per house', () => {
+test('each building has its own stronger glow instead of one settlement-wide pool', () => {
   const lighting = createFeatureLighting(new THREE.Scene());
+  const tile = { ...land, pointOfLight: { type: 'town' } };
+  const entries = [-0.46, 0.46].map((x) => ({
+    ...source('warm', tile),
+    feature: 'town',
+    position: [x, 0.3, 0.05],
+  }));
+  lighting.setSources(entries, [tile]);
   lighting.setMode('night');
-  const outerLight = [];
+  lighting.update(0, camera());
+  const ground = lighting.group.getObjectByName('warm:ground');
+  assert.equal(lighting.group.getObjectByName('warm:window').geometry.attributes.position.count, 8);
+  assert.equal(new Set(ground.geometry.attributes.glowPhase.array).size, 2);
+  assert.equal(glowAt(ground, 0, 0.05), 0, 'there is no blanket glow at the settlement centre');
+  for (const x of [-0.46, 0.46]) assert.ok(glowAt(ground, x, 0.05) > 0.18);
+  assert.ok(ground.material.opacity > 0.22 * 2, 'peak glow is over twice the original intensity');
+  assert.equal(glowAt(ground, 0.9, 0.05), 0);
+  assert.ok(lighting.points.every((light) => !light.visible));
+  const spread = [];
   for (const type of ['village', 'town', 'city']) {
-    const tile = { ...land, pointOfLight: { type } };
-    const entries = Array.from({ length: 14 }, () => ({ ...source('warm', tile), feature: type }));
-    lighting.setSources(entries, [tile]);
+    lighting.setSources([{ ...source('warm', tile), feature: type }], [tile]);
     lighting.update(0, camera());
-    const ground = lighting.group.getObjectByName('warm:ground');
-    assert.equal(ground.geometry.index.count, 18, 'one pool for the whole settlement');
-    assert.ok(glowAt(ground, 0, 0.05) > 0.5, 'a strong steady core remains at map scale');
-    outerLight.push(glowAt(ground, 0.65, 0.05));
-    assert.equal(glowAt(ground, 0.9, 0.05), 0, 'light cannot spill onto an adjacent hex');
-    assert.equal(
-      lighting.points.filter((light) => light.visible).length,
-      0,
-      'warm buildings never gain a camera-dependent native light',
-    );
+    spread.push(glowAt(lighting.group.getObjectByName('warm:ground'), 0.34, 0.05));
   }
-  assert.equal(outerLight[0], 0, 'village light does not fill the whole hex');
-  assert.ok(outerLight[1] > 0.04);
-  assert.ok(outerLight[2] > outerLight[1] * 1.5, 'cities illuminate more of the tile than towns');
+  assert.equal(spread[0], 0);
+  assert.ok(spread[1] > spread[0] && spread[2] > spread[1]);
   lighting.dispose();
 });
 
@@ -183,10 +208,10 @@ test('corner landmarks spread light inward and use their own size even on a city
     );
     lighting.update(0, camera());
     const ground = lighting.group.getObjectByName('warm:ground');
-    spread.push(glowAt(ground, 0.24, 0.05));
+    spread.push(glowAt(ground, 0.34, 0.05));
     assert.equal(glowAt(ground, 0.86, 0.05), 0);
   }
-  assert.ok(spread[0] > 0.05, 'a corner light is no longer reduced to its small edge clearance');
+  assert.ok(spread[0] > 0.01, 'a corner light is no longer reduced to its small edge clearance');
   assert.ok(spread[0] < spread[1] && spread[1] < spread[2]);
   lighting.dispose();
 });
@@ -237,8 +262,7 @@ test('all settlement glows stay bright away from the camera centre through the e
   );
   for (let time = 0; time < 15; time += 0.25) {
     lighting.update(time, view);
-    for (const tile of tiles) assert.ok(glowAt(ground, worldPosition(tile).wx, 0.05) > 0.55);
-    assert.ok(ground.material.opacity >= 0.65 * 0.96);
+    for (const tile of tiles) assert.ok(glowAt(ground, worldPosition(tile).wx, 0.05, time) > 0.18);
   }
   lighting.dispose();
 });
@@ -259,8 +283,11 @@ test('ground glows follow exact relief and road tops, and do not bridge river wa
     lighting.update(0, camera());
     const ground = lighting.group.getObjectByName('warm:ground');
     const positions = ground.geometry.attributes.position;
-    for (let i = 0; i < 3; i++) {
-      const expected = surface.vertices[i][1] + (field === 'roadSurface' ? 0 : land.top) + 0.012;
+    for (let i = 0; i < positions.count; i++) {
+      const expected =
+        surfaceHeight(surface, positions.getX(i), positions.getZ(i)) +
+        (field === 'roadSurface' ? 0 : land.top) +
+        0.012;
       assert.ok(Math.abs(positions.getY(i) - expected) < 1e-6);
     }
     assert.equal(glowAt(ground, -0.1, -0.1), 0, 'no light plane spans a missing bank triangle');

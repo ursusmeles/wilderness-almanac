@@ -1,4 +1,4 @@
-// Presentation only: this testing control never changes campaign replay data.
+// Saved campaign presentation; these presets never change map replay data.
 export const TIMES_OF_DAY = ['dawn', 'day', 'dusk', 'night'];
 export const timeOfDay = (value) => (TIMES_OF_DAY.includes(value) ? value : 'day');
 const dayWind = { strength: 1.2, gustPeriod: 18 };

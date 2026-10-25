@@ -3,20 +3,27 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { TOP_RADIUS } from '../generation/math.js';
 import { worldPosition } from '../generation/hex.js';
 import { DAYLIGHT, timeOfDay } from '../application/time-of-day.js';
+import { addGlowTiming, glowTiming, glowPulse, installGlowPulse } from './feature-glow.js';
+import {
+  lighthouseSweep,
+  sweepTarget,
+  createWaterLanding,
+  updateWaterLanding,
+  softenBeamEnd,
+} from './lighthouse-beams.js';
+export { lighthouseTarget } from './lighthouse-beams.js';
 
 const COLORS = { warm: '#ffd269', mystic: '#9b79ff', dungeon: '#f65b49' };
 const POINT_LIMIT = 4,
   BEAM_LIMIT = 2;
-const BEAM_LENGTH = 2 * Math.sqrt(3);
-const BEAM_SWEEP = Math.atan(0.3 / BEAM_LENGTH);
 const GLOW_RADIUS = {
-  village: 0.58,
-  town: 0.78,
-  city: 0.98,
-  watchtower: 0.5,
-  abbey: 0.6,
-  stronghold: 0.68,
-  warm: 0.5,
+  village: 0.36,
+  town: 0.4,
+  city: 0.44,
+  watchtower: 0.42,
+  abbey: 0.48,
+  stronghold: 0.52,
+  warm: 0.38,
   mystic: 0.45,
   dungeon: 0.23,
 };
@@ -25,69 +32,6 @@ const point = (cell) => {
   const { wx, wz } = worldPosition(cell);
   return new THREE.Vector3(wx, 0, wz);
 };
-
-const isWater = (cell) =>
-  cell.terrain === 'open water' || cell.water === 'ocean' || cell.water === 'lake';
-
-// Extend seaward for two hex spacings, stopping at land, fog or the map edge.
-export function lighthouseTarget(position, cells) {
-  const locations = cells.map((cell) => ({ cell, position: point(cell) }));
-  const water = locations.filter(({ cell }) => cell.fogState !== 'undiscovered' && isWater(cell));
-  const nearest = water.sort(
-    (a, b) => a.position.distanceToSquared(position) - b.position.distanceToSquared(position),
-  )[0];
-  if (!nearest) return null;
-  const direction = nearest.position.clone().sub(position).setY(0);
-  if (direction.length() > BEAM_LENGTH || direction.lengthSq() < 1e-8) return null;
-  direction.normalize();
-  const across = new THREE.Vector3(-direction.z, 0, direction.x);
-  function cellAt(sample) {
-    const closest = locations.reduce(
-      (best, entry) =>
-        !best || entry.position.distanceToSquared(sample) < best.position.distanceToSquared(sample)
-          ? entry
-          : best,
-      null,
-    );
-    const x = sample.x - closest.position.x,
-      z = sample.z - closest.position.z;
-    // Nearest-centre lookup alone would extend a beam beyond the map boundary.
-    return Math.max(
-      ...Array.from(
-        { length: 6 },
-        (_, k) => x * Math.cos((k * Math.PI) / 3) + z * Math.sin((k * Math.PI) / 3),
-      ),
-    ) <=
-      Math.sqrt(3) / 2 + 1e-6
-      ? closest.cell
-      : null;
-  }
-  let target = null,
-    clearWater = false;
-  const steps = 48;
-  for (let k = 0; k <= steps; k++) {
-    const distance = (BEAM_LENGTH * k) / steps;
-    const sample = position.clone().setY(0).addScaledVector(direction, distance);
-    const cell = cellAt(sample);
-    if (!cell || cell.fogState === 'undiscovered' || (target && !isWater(cell))) break;
-    // Include the cone width and maximum sweep, not just its centre line.
-    const width = distance * 0.1 + (0.3 * distance) / BEAM_LENGTH;
-    const edges = [-1, 1].map((side) =>
-      cellAt(sample.clone().addScaledVector(across, width * side)),
-    );
-    if (
-      edges.some(
-        (edge) => !edge || edge.fogState === 'undiscovered' || (clearWater && !isWater(edge)),
-      )
-    )
-      break;
-    if (isWater(cell)) {
-      target = sample.setY(cell.top + 0.025);
-      clearWater ||= edges.every(isWater);
-    }
-  }
-  return target;
-}
 
 // Use the tile's actual top triangles: the texture clips the radius while the
 // geometry clips the light to dry ground, including slopes and river banks.
@@ -108,25 +52,54 @@ function groundGlow(tile, position, radius) {
       )
     : Array.from({ length: 6 }, (_, k) => [0, k + 1, ((k + 1) % 6) + 1]);
   const height = surface && surface === tile.roadSurface ? 0 : tile.top;
+  const x = position.x - centre.x,
+    z = position.z - centre.z;
+  const bounds = [
+    [0, x - radius, 1],
+    [0, x + radius, -1],
+    [2, z - radius, 1],
+    [2, z + radius, -1],
+  ];
+  const clipped = [];
+  for (const face of triangles) {
+    let polygon = face.map((i) => vertices[i]);
+    for (const [axis, limit, sign] of bounds) {
+      const output = [];
+      for (let i = 0; i < polygon.length; i++) {
+        const a = polygon[i],
+          b = polygon[(i + 1) % polygon.length];
+        const da = (a[axis] - limit) * sign,
+          db = (b[axis] - limit) * sign;
+        if (da >= 0) output.push(a);
+        if (da >= 0 !== db >= 0) {
+          const t = da / (da - db);
+          output.push(a.map((value, k) => value + (b[k] - value) * t));
+        }
+      }
+      polygon = output;
+    }
+    for (let i = 1; i < polygon.length - 1; i++)
+      clipped.push(polygon[0], polygon[i], polygon[i + 1]);
+  }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute(
     'position',
     new THREE.Float32BufferAttribute(
-      vertices.flatMap(([x, y, z]) => [centre.x + x, height + y + 0.012, centre.z + z]),
+      clipped.flatMap(([x, y, z]) => [centre.x + x, height + y + 0.012, centre.z + z]),
       3,
     ),
   );
   geometry.setAttribute(
     'uv',
     new THREE.Float32BufferAttribute(
-      vertices.flatMap(([x, , z]) => [
+      clipped.flatMap(([x, , z]) => [
         0.5 + (centre.x + x - position.x) / (2 * radius),
         0.5 + (centre.z + z - position.z) / (2 * radius),
       ]),
       2,
     ),
   );
-  geometry.setIndex(triangles.flat());
+  geometry.setIndex(Array.from({ length: clipped.length }, (_, i) => i));
   geometry.computeVertexNormals();
   return geometry;
 }
@@ -142,7 +115,7 @@ function glowTexture() {
       data[i + 3] =
         x === 0 || y === 0 || x === size - 1 || y === size - 1
           ? 0
-          : Math.round(Math.max(0, 1 - radius) ** 1.3 * 255);
+          : Math.round(Math.max(0, 1 - radius) ** 2 * 255);
     }
   const texture = new THREE.DataTexture(data, size, size);
   texture.magFilter = texture.minFilter = THREE.LinearFilter;
@@ -158,6 +131,7 @@ export function createFeatureLighting(scene) {
   scene.add(group, beamGroup);
   const texture = glowTexture();
   const materials = new Map();
+  const clock = { value: 0 };
   for (const [kind, color] of Object.entries(COLORS))
     for (const layer of ['window', 'ground']) {
       const material = new THREE.MeshBasicMaterial({
@@ -169,18 +143,10 @@ export function createFeatureLighting(scene) {
         side: THREE.DoubleSide,
         toneMapped: false,
       });
+      installGlowPulse(material, clock);
       materials.set(`${kind}:${layer}`, material);
     }
-  const beamMaterial = new THREE.MeshBasicMaterial({
-    color: COLORS.warm,
-    transparent: true,
-    opacity: 0.16,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-    side: THREE.DoubleSide,
-    toneMapped: false,
-  });
-  const cone = new THREE.CylinderGeometry(0, 0.1, 1, 12, 1, true);
+  const cone = new THREE.CylinderGeometry(0, 0.1, 1, 24, 8, true);
   cone.translate(0, -0.5, 0);
   const points = Array.from(
     { length: POINT_LIMIT },
@@ -201,6 +167,11 @@ export function createFeatureLighting(scene) {
   function clear() {
     for (const mesh of group.children) mesh.geometry.dispose();
     group.clear();
+    for (const source of lighthouses) {
+      source.landing.geometry.dispose();
+      source.landing.material.dispose();
+      source.mesh.material.dispose();
+    }
     beamGroup.clear();
     sources = [];
     lighthouses = [];
@@ -208,7 +179,6 @@ export function createFeatureLighting(scene) {
   function setSources(entries, cells) {
     clear();
     const batches = new Map();
-    const pools = new Map();
     function add(key, geometry) {
       if (!batches.has(key)) batches.set(key, []);
       batches.get(key).push(geometry);
@@ -221,31 +191,34 @@ export function createFeatureLighting(scene) {
         source.kind === 'lighthouse'
           ? 'warm'
           : (source.feature ?? (kind === 'warm' ? source.tile.pointOfLight?.type : null) ?? kind);
-      const record = { position, kind, radius: GLOW_RADIUS[feature] ?? GLOW_RADIUS[kind] };
-      const key = `${source.tile.key}:${feature}:${kind}`;
-      if (!pools.has(key))
-        pools.set(key, { ...record, tile: source.tile, position: new THREE.Vector3(), count: 0 });
-      const pool = pools.get(key);
-      pool.position.add(position);
-      pool.count++;
+      const record = { position, kind, ...glowTiming(source, position) };
+      sources.push(record);
       const window = new THREE.PlaneGeometry(...source.size);
       window.translate(...source.position).applyMatrix4(source.matrix);
-      add(`${kind}:window`, window);
+      add(`${kind}:window`, addGlowTiming(window, record));
+      const halo = groundGlow(source.tile, position, GLOW_RADIUS[feature] ?? GLOW_RADIUS[kind]);
+      add(`${kind}:ground`, addGlowTiming(halo, record));
       if (source.kind === 'lighthouse') {
-        const target = lighthouseTarget(position, cells);
-        if (target) {
-          const mesh = new THREE.Mesh(cone, beamMaterial);
-          beamGroup.add(mesh);
-          lighthouses.push({ ...record, target, mesh, aim: new THREE.Vector3() });
+        const sweep = lighthouseSweep(position, cells);
+        if (sweep) {
+          const material = new THREE.MeshBasicMaterial({
+            color: COLORS.warm,
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            side: THREE.DoubleSide,
+            toneMapped: false,
+          });
+          softenBeamEnd(material);
+          const mesh = new THREE.Mesh(cone, material);
+          mesh.name = 'lighthouse:shaft';
+          const landing = createWaterLanding(position, cells, texture, COLORS.warm);
+          const node = new THREE.Group();
+          node.add(mesh, landing);
+          beamGroup.add(node);
+          lighthouses.push({ ...record, sweep, mesh, landing, aim: new THREE.Vector3() });
         }
       }
-    }
-    // One broad pool per settlement/POI keeps every location lit across the
-    // viewport, without stacking fourteen house halos into a white city centre.
-    for (const pool of pools.values()) {
-      pool.position.divideScalar(pool.count);
-      sources.push(pool);
-      add(`${pool.kind}:ground`, groundGlow(pool.tile, pool.position, pool.radius));
     }
     for (const [key, geometries] of batches) {
       const geometry = mergeGeometries(geometries);
@@ -259,10 +232,10 @@ export function createFeatureLighting(scene) {
     const strength = DAYLIGHT[mode].glow;
     group.visible = strength > 0;
     beamGroup.visible = strength > 0;
-    const pulse = 0.98 + Math.sin(time * 0.85) * 0.02;
+    clock.value = time;
     for (const [key, material] of materials)
       material.opacity =
-        strength * pulse * (key.endsWith('ground') ? (key.startsWith('dungeon') ? 0.3 : 0.65) : 1);
+        strength * (key.endsWith('ground') ? (key.startsWith('dungeon') ? 0.35 : 0.55) : 1);
     camera.getWorldDirection(direction);
     focus
       .copy(camera.position)
@@ -279,24 +252,29 @@ export function createFeatureLighting(scene) {
     points.forEach((light, i) => {
       const source = nearest[i];
       light.visible = Boolean(source);
-      light.intensity = source ? strength * pulse * (source.kind === 'dungeon' ? 0.055 : 0.18) : 0;
+      light.intensity = source
+        ? strength * glowPulse(time, source) * (source.kind === 'dungeon' ? 0.055 : 0.18)
+        : 0;
       if (source) {
         light.color.set(COLORS[source.kind]);
         light.position.copy(source.position);
       }
     });
-    for (const source of lighthouses) {
-      const mesh = source.mesh;
-      const distance = source.position.distanceTo(source.target);
-      const sweep = Math.sin((time * Math.PI) / 10) * BEAM_SWEEP;
-      direction.copy(source.target).sub(source.position);
-      direction.applyAxisAngle(Y, sweep);
-      aim.copy(source.position).add(direction);
-      source.aim.copy(aim);
-      mesh.position.copy(source.position);
-      mesh.scale.set(distance, distance, distance);
-      mesh.quaternion.setFromUnitVectors(Y, direction.normalize().negate());
-    }
+    if (strength > 0)
+      for (const source of lighthouses) {
+        const mesh = source.mesh;
+        sweepTarget(source.sweep, 0.5 + Math.sin((time * Math.PI) / 20 + source.phase) * 0.5, aim);
+        source.aim.copy(aim);
+        const distance = source.position.distanceTo(aim);
+        direction.copy(aim).sub(source.position);
+        const pulse = glowPulse(time, source);
+        mesh.material.opacity = strength * pulse * 0.16;
+        source.landing.material.opacity = strength * pulse * 0.7;
+        updateWaterLanding(source.landing, aim);
+        mesh.position.copy(source.position);
+        mesh.scale.set(distance, distance, distance);
+        mesh.quaternion.setFromUnitVectors(Y, direction.normalize().negate());
+      }
     const nearby = strength
       ? lighthouses.toSorted(
           (a, b) => a.position.distanceToSquared(focus) - b.position.distanceToSquared(focus),
@@ -305,13 +283,12 @@ export function createFeatureLighting(scene) {
     beams.forEach((light, i) => {
       const source = nearby[i];
       light.visible = Boolean(source);
-      light.intensity = source ? strength * pulse * 4.4 : 0;
+      light.intensity = source ? strength * glowPulse(time, source) * 4.4 : 0;
       if (source) {
         light.position.copy(source.position);
         light.target.position.copy(source.aim);
       }
     });
-    beamMaterial.opacity = strength * pulse * 0.16;
   }
   return {
     group,
@@ -334,7 +311,6 @@ export function createFeatureLighting(scene) {
         light.shadow.dispose();
       }
       cone.dispose();
-      beamMaterial.dispose();
       texture.dispose();
       for (const material of materials.values()) material.dispose();
     },

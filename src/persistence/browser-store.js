@@ -236,7 +236,7 @@ export async function createBrowserStore({
             value: { ...unknownFields(original, baseline.get(value.id) ?? value), ...value },
           };
           // Known fields removed by reset/replacement must stay removed.
-          for (const key of ['hexEdits', 'partyToken', 'fogOfWar', 'preferences'])
+          for (const key of ['hexEdits', 'partyToken', 'fogOfWar', 'timeOfDay', 'preferences'])
             if (!Object.hasOwn(value, key)) delete row.value[key];
           stores.campaigns.put(row);
           updates.campaigns.set(value.id, row);

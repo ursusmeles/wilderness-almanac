@@ -97,6 +97,20 @@ test('campaign import rejects malformed, oversized, incompatible and incomplete 
   assert.deepEqual(validateCampaign({ ...campaign, unexpectedGeometry: {} }), campaign);
 });
 
+test('campaign time of day survives exports and older records remain valid', () => {
+  for (const timeOfDay of ['dawn', 'day', 'dusk', 'night']) {
+    const record = { ...campaign, timeOfDay };
+    assert.equal(importCampaign(exportCampaign(record)).timeOfDay, timeOfDay);
+    assert.equal(replaceCampaignMap(record, world).timeOfDay, timeOfDay);
+  }
+  const legacy = { ...campaign };
+  delete legacy.timeOfDay;
+  assert.deepEqual(importCampaign(exportCampaign(legacy)), legacy);
+  assert.equal(createCampaign(world, colors, 'Custom').timeOfDay, 'day');
+  for (const timeOfDay of ['midnight', '', null, 0, {}])
+    assert.throws(() => validateCampaign({ ...campaign, timeOfDay }), /invalid campaign data/);
+});
+
 test('local campaign saves retain multiple independent maps and tolerate unavailable storage', () => {
   const values = new Map();
   const storage = {

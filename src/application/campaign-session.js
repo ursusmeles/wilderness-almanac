@@ -9,6 +9,7 @@ import {
 } from '../generation/campaign-world.js';
 import { validateHexEdits, variantsFor } from '../generation/hex-edits.js';
 import { replaceCampaignMap } from './campaigns.js';
+import { TIMES_OF_DAY } from './time-of-day.js';
 import { settlementJoin, joinSettlements } from '../generation/settlement-edits.js';
 import { hexAddress } from '../generation/hex.js';
 import {
@@ -185,6 +186,12 @@ export function createCampaignSession({ persist }) {
     snapshot,
     save,
     open,
+    setTimeOfDay(value) {
+      if (!TIMES_OF_DAY.includes(value)) return { ok: false, error: 'Choose a valid time of day.' };
+      state = { ...state, campaign: { ...state.campaign, timeOfDay: value } };
+      save();
+      return result('lighting');
+    },
     fogOfWar(enabled) {
       state = { ...state, campaign: { ...state.campaign, fogOfWar: Boolean(enabled) } };
       save();

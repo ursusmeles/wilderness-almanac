@@ -76,7 +76,6 @@ const session = createCampaignSession({ persist: persistCampaign });
 const initialVariant =
   linked.variant ?? (linked.seed && linked.seed !== saved.seed ? 0 : (saved.variant ?? 0));
 let movement = saved.motion ?? true;
-let dayMode = 'day';
 const selection = element('selection');
 const PARTY_SELECTION = '__party__';
 const movePartyDialog = element('move-party-dialog');
@@ -394,7 +393,7 @@ function presentCampaign({ resetView = false } = {}) {
       },
     });
   renderer?.setMotion(movement);
-  renderer?.setTimeOfDay(dayMode);
+  syncTimeOfDay();
   applyPalette();
   renderWorld({ resetView });
   renderer?.focus(campaign.partyToken.key, { hexesWide: 9 / 1.2 ** 3 });
@@ -467,7 +466,8 @@ function handleAction(result) {
     }
     return false;
   }
-  if (result.scope === 'world') renderWorld();
+  if (result.scope === 'lighting') syncTimeOfDay();
+  else if (result.scope === 'world') renderWorld();
   else {
     if (result.scope === 'palette') applyPalette();
     refreshPresentation();
@@ -707,11 +707,14 @@ function updateMovementToggle() {
     : 'Resume wind, waves, light pulses and lighthouse sweeps';
 }
 updateMovementToggle();
+function syncTimeOfDay() {
+  const value = timeOfDay(session.snapshot()?.campaign.timeOfDay);
+  element('time-of-day').value = value;
+  renderer?.setTimeOfDay(value);
+  root.dataset.timeOfDay = value;
+}
 listen(element('time-of-day'), 'change', () => {
-  dayMode = timeOfDay(element('time-of-day').value);
-  element('time-of-day').value = dayMode;
-  renderer?.setTimeOfDay(dayMode);
-  root.dataset.timeOfDay = dayMode;
+  handleAction(session.setTimeOfDay(element('time-of-day').value));
 });
 listen(element('motion'), 'click', async () => {
   movement = !movement;
