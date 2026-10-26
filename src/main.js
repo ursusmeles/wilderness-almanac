@@ -32,7 +32,9 @@ import { createMapAction } from './ui/map-action.js';
 import { loadThumbnails, saveThumbnails } from './ui/thumbnail-cache.js';
 import { createViewNavigation } from './ui/view-navigation.js';
 import { createControlTooltips } from './ui/control-help.js';
-import { PARTY_KEYS, partyDestinations } from './application/party-navigation.js';
+import { createWorkspaceControls } from './ui/workspace-controls.js';
+import { createMapSelection, PARTY_SELECTION } from './ui/map-selection.js';
+import { hexAddress } from './generation/hex.js';
 
 const root = document.getElementById('campaign-workspace');
 const navigation = createViewNavigation(document.getElementById('campaign-menu'), root);
@@ -88,10 +90,6 @@ let movement = saved.motion ?? true;
 let defaultTimeOfDay = saved.defaultTimeOfDay ?? 'dawn';
 let campaignHistory;
 const selection = element('selection');
-const PARTY_SELECTION = '__party__';
-const movePartyDialog = element('move-party-dialog');
-let pendingPartyMove;
-let movePartyPressedButton = null;
 const preset = element('preset');
 const message = element('message');
 const saveStatus = createSaveStatus(({ campaigns, preferences, message }) => {
@@ -123,138 +121,28 @@ const mapConsole = createMapConsole({
     element('announcement').textContent = text;
   },
 });
-const mobileLayout = window.matchMedia(
-  '(max-width: 760px), (max-width: 1024px) and (max-height: 500px)',
-);
-const mapOptions = element('map-options');
-const expandMap = element('expand-map');
-let settingsOpen = false;
-let expanded = false;
-let keyboardNavigation = false;
 const controlTooltips = createControlTooltips();
-
-function setSettingsOpen(enabled) {
-  settingsOpen = enabled;
-  mapOptions.classList.toggle('is-collapsed', !enabled);
-  const button = element('toggle-settings');
-  const label = `${enabled ? 'Close' : 'Open'} palette and settings`;
-  button.setAttribute('aria-expanded', String(enabled));
-  button.setAttribute('aria-label', label);
-  button.dataset.tooltip = enabled ? 'Close panel' : 'Open panel';
-  button
-    .querySelector('use')
-    .setAttribute('href', `/icons/pixelarticons.svg#${enabled ? 'collapse' : 'expand'}`);
-  element('motion').hidden = !enabled;
-  element('regenerate').hidden = !enabled || Boolean(session.snapshot()?.campaign.fogOfWar);
-  syncAppearanceLayout();
-}
-setSettingsOpen(settingsOpen);
-listen(element('toggle-settings'), 'click', () => {
-  setSettingsOpen(!settingsOpen);
+const workspaceControls = createWorkspaceControls(root, {
+  getState: session.snapshot,
+  getRenderer: () => renderer,
+  getLayout: () => displayView.layout,
+  isBusy: mapAction.isBusy,
+  onPartyMove: (key) => handleAction(session.moveParty(key)),
+  notify: (text) => mapConsole.notify(text),
+  refreshPreview: () => inspector?.refreshPreview(),
 });
-
-function syncAppearanceLayout() {
-  const modes = root.querySelector('.hp-map-modes');
-  const picker = element('palette-picker');
-  const time = element('time-of-day');
-  const focused = document.activeElement;
-  const timeParent = settingsOpen && !mobileLayout.matches ? modes : picker;
-  if (time.parentElement !== timeParent) {
-    if (timeParent === modes) modes.prepend(time);
-    else picker.append(time);
-  }
-  if (focused === time && document.activeElement !== focused)
-    focused.focus({ preventScroll: true });
-}
-
-function setExpanded(enabled) {
-  expanded = enabled;
-  root.classList.toggle('hp-map-expanded', enabled);
-  document.body.classList.toggle('hp-map-expanded', enabled);
-  const label = enabled ? 'Exit expanded map' : 'Expand map to viewport';
-  expandMap.setAttribute('aria-label', label);
-  expandMap.setAttribute('aria-pressed', String(enabled));
-  expandMap.dataset.tooltip = enabled ? 'Exit expanded map' : 'Expand map';
-  if (!enabled) inspector?.refreshPreview();
-}
-
-listen(expandMap, 'click', () => setExpanded(!expanded));
-listen(document, 'pointerdown', () => {
-  if (document.documentElement.dataset.mapInput !== 'pointer')
-    document.documentElement.dataset.mapInput = 'pointer';
-  keyboardNavigation = false;
-  if (!root.hidden) renderer?.setPartyKeys(false);
+const mapSelection = createMapSelection(root, {
+  session,
+  getRenderer: () => renderer,
+  getInspectors: () => ({ hex: inspector, batch: batchInspector, party: partyInspector }),
+  isBusy: mapAction.isBusy,
+  isMobile: workspaceControls.isMobile,
+  syncSelection,
+  updateInspector,
+  onAction: handleAction,
+  onHover: (key) => mapConsole.hover(shortCoordinates(cellsByKey.get(key))),
+  notify: (text) => mapConsole.notify(text),
 });
-listen(document, 'keydown', (event) => {
-  if (document.documentElement.dataset.mapInput !== 'keyboard')
-    document.documentElement.dataset.mapInput = 'keyboard';
-  if (event.key === 'Tab' && !root.hidden && !document.querySelector('dialog[open]')) {
-    keyboardNavigation = true;
-    renderer?.setPartyKeys(Boolean(session.snapshot()?.partySelected));
-  }
-  if (event.key === 'Escape' && expanded) {
-    event.preventDefault();
-    setExpanded(false);
-  }
-  if (
-    root.hidden ||
-    event.defaultPrevented ||
-    event.ctrlKey ||
-    event.metaKey ||
-    event.altKey ||
-    document.querySelector('dialog[open]') ||
-    event.target.closest(
-      'input, textarea, select, [contenteditable]:not([contenteditable="false"])',
-    )
-  )
-    return;
-  if (event.key === 'Tab' || Object.hasOwn(PARTY_KEYS, event.key.toLowerCase())) {
-    keyboardNavigation = true;
-    renderer?.setPartyKeys(Boolean(session.snapshot()?.partySelected));
-  }
-  const shortcut = event.key.toLowerCase();
-  if (session.snapshot()?.partySelected && Object.hasOwn(PARTY_KEYS, shortcut)) {
-    event.preventDefault();
-    if (event.repeat || mapAction.isBusy() || renderer?.isInteracting()) return;
-    const target = partyDestinations(
-      session.snapshot().campaign.partyToken.key,
-      displayView.layout,
-    ).find((entry) => entry.shortcut === shortcut);
-    if (target) handleAction(session.moveParty(target.key));
-    else mapConsole.notify('Map edge: no adjacent hex in that direction.');
-    return;
-  }
-  const pan = {
-    ArrowLeft: [-1, 0],
-    ArrowRight: [1, 0],
-    ArrowUp: [0, 1],
-    ArrowDown: [0, -1],
-  }[event.key];
-  if (pan) {
-    event.preventDefault();
-    if (!event.repeat && !mapAction.isBusy()) renderer?.pan(...pan);
-    return;
-  }
-  const factor = event.key === '+' || event.key === '=' ? 1.2 : event.key === '-' ? 1 / 1.2 : 0;
-  if (factor) {
-    event.preventDefault();
-    if (!mapAction.isBusy()) renderer?.zoom(factor);
-  }
-});
-function syncMobileLayout() {
-  const viewControls = element('view-controls');
-  if (mobileLayout.matches) {
-    root.querySelector('.hp-map-stage').append(viewControls);
-    root.querySelector('.hp-mobile-map-controls').prepend(selection);
-  } else {
-    root.querySelector('.hp-tools').prepend(viewControls);
-    root.querySelector('.hp-status').prepend(selection);
-  }
-  if (!mobileLayout.matches) setExpanded(false);
-  syncAppearanceLayout();
-}
-listen(mobileLayout, 'change', syncMobileLayout);
-syncMobileLayout();
 
 let campaignMenu;
 let preferencesRevision = 0;
@@ -352,7 +240,7 @@ async function openCampaign(campaign, { fromHistory = false } = {}) {
 
 function presentCampaign({ resetView = false } = {}) {
   const { campaign, world } = session.snapshot();
-  setSettingsOpen(false);
+  workspaceControls.setSettingsOpen(false);
   inspector.reset();
   batchInspector.reset();
   root.hidden = false;
@@ -360,64 +248,9 @@ function presentCampaign({ resetView = false } = {}) {
     renderer = mapView.createMapRenderer(element('scene'), {
       motion: movement,
       touchMultiSelect: true,
-      onPartyMove(key) {
-        if (mapAction.isBusy() || movePartyDialog.open || !session.snapshot()?.partySelected)
-          return false;
-        return handleAction(session.moveParty(key));
-      },
-      onPartySelect: selectParty,
-      onSelect(key, { additive = false, fromMap = false } = {}) {
-        if (!key) return;
-        if (mapAction.isBusy()) {
-          renderer.select(session.snapshot().selected, { notify: false });
-          syncSelection();
-          return;
-        }
-        const { selected, multiEdit, partySelected } = session.snapshot();
-        if (
-          fromMap &&
-          mobileLayout.matches &&
-          partySelected &&
-          key !== session.snapshot().campaign.partyToken.key
-        ) {
-          renderer.cancelInteraction();
-          renderer.select(selected, { notify: false });
-          syncSelection();
-          movePartyPressedButton = null;
-          pendingPartyMove = { key, campaignId: session.snapshot().campaign.id };
-          const name = session.snapshot().campaign.partyToken.name ?? 'Adventurers';
-          element('move-party-question').textContent =
-            `Move ${name} token to ${selection.querySelector(`option[value="${key}"]`).textContent}?`;
-          if (!movePartyDialog.open) openDialog(movePartyDialog);
-          return;
-        }
-        const enableMultiEdit = additive && !multiEdit;
-        const proceed = () => renderer.select(key, { additive });
-        const ready = enableMultiEdit
-          ? activeInspector().beforeLeave(proceed)
-          : multiEdit
-            ? batchInspector.beforeLeave(proceed)
-            : session.snapshot().partySelected
-              ? partyInspector.beforeLeave(proceed)
-              : inspector.beforeSelection(key, proceed);
-        if (!ready) {
-          renderer.select(selected, { notify: false });
-          selection.value = selected;
-          syncSelection();
-          return;
-        }
-        if (enableMultiEdit) {
-          session.setMultiEdit(true);
-          inspector.reset();
-          batchInspector.reset();
-        }
-        if (!enableMultiEdit || key !== selected) session.select(key);
-        selection.value = key;
-        root.dataset.selected = key;
-        mapConsole.hover(shortCoordinates(cellsByKey.get(key)));
-        updateInspector();
-        syncSelection();
-      },
+      onPartyMove: mapSelection.moveParty,
+      onPartySelect: mapSelection.selectParty,
+      onSelect: mapSelection.selectHex,
       onHover(key) {
         mapConsole.hover(shortCoordinates(cellsByKey.get(key)));
       },
@@ -511,18 +344,9 @@ function handleAction(result) {
   return true;
 }
 
-function syncFogControls() {
-  const enabled = Boolean(session.snapshot()?.campaign.fogOfWar);
-  element('fog').setAttribute('aria-checked', String(enabled));
-  element('fog-state').textContent = enabled ? 'ON' : 'OFF';
-  element('fog').dataset.tooltip = enabled ? 'Turn fog of war off' : 'Turn fog of war on';
-  root.dataset.fogOfWar = String(enabled);
-  element('regenerate').hidden = !settingsOpen || enabled;
-}
-
 function refreshPresentation({ resetView = false } = {}) {
   const { world, campaign, visibility } = session.snapshot();
-  syncFogControls();
+  workspaceControls.syncFog(Boolean(campaign.fogOfWar));
   const signature = visibility ? world.cells.map((cell) => visibility.get(cell.key)).join(',') : '';
   if (viewLayoutSource === layout && viewSignature === signature) return;
   displayView = createFogView(world, layout, visibility);
@@ -654,93 +478,6 @@ function paletteLabel(candidate) {
     : (savedPalettes.find((palette) => same(palette.colors))?.name ?? 'Custom');
 }
 
-function selectParty(afterSelect = () => {}) {
-  if (mapAction.isBusy()) {
-    syncSelection();
-    return false;
-  }
-  if (session.snapshot().partySelected) {
-    element('scene').querySelector('canvas')?.focus({ preventScroll: true });
-    afterSelect();
-    return true;
-  }
-  const change = () => {
-    session.selectParty();
-    inspector.reset();
-    batchInspector.reset();
-    partyInspector.reset();
-    syncSelection();
-    updateInspector();
-    element('scene').querySelector('canvas')?.focus({ preventScroll: true });
-    afterSelect();
-  };
-  if (!activeInspector().beforeLeave(change)) {
-    syncSelection();
-    return false;
-  }
-  change();
-  return true;
-}
-listen(element('find-party'), 'click', () => {
-  selectParty(() => {
-    const party = session.snapshot().campaign.partyToken;
-    renderer.focus(party.key, { hexesWide: 9 / 1.2 ** 3 });
-    mapConsole.notify(`Showing ${party.name ?? 'Adventurers'} token`);
-  });
-});
-listen(selection, 'change', () => {
-  if (selection.value === PARTY_SELECTION) selectParty();
-  else renderer?.select(selection.value, { additive: session.snapshot()?.multiEdit });
-});
-listen(movePartyDialog, 'pointerdown', (event) => {
-  movePartyPressedButton = event.button === 0 ? event.target.closest('button') : null;
-});
-listen(movePartyDialog, 'pointercancel', () => {
-  movePartyPressedButton = null;
-});
-movePartyDialog.addEventListener(
-  'click',
-  (event) => {
-    const button = event.target.closest('button');
-    const pressed = movePartyPressedButton;
-    movePartyPressedButton = null;
-    const pointerClick =
-      event.detail > 0 || Boolean(event.pointerType) || event.sourceCapabilities?.firesTouchEvents;
-    // Opening on map pointerup can retarget that tap's synthetic click to a modal button.
-    // Pointer activation must begin on the button after the dialog opens.
-    if (button && pointerClick && button !== pressed) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-    }
-  },
-  { capture: true, signal: listeners.signal },
-);
-function cancelPartyMove() {
-  const target = pendingPartyMove;
-  pendingPartyMove = undefined;
-  movePartyPressedButton = null;
-  renderer?.cancelInteraction();
-  movePartyDialog.close();
-  if (target && target.campaignId === session.snapshot()?.campaign.id) renderer.select(target.key);
-  element('scene').querySelector('canvas')?.focus({ preventScroll: true });
-}
-listen(element('move-party-cancel'), 'click', cancelPartyMove);
-listen(movePartyDialog, 'cancel', (event) => {
-  event.preventDefault();
-  cancelPartyMove();
-});
-listen(element('move-party-confirm'), 'click', () => {
-  const target = pendingPartyMove;
-  pendingPartyMove = undefined;
-  movePartyPressedButton = null;
-  renderer?.cancelInteraction();
-  if (target && target.campaignId === session.snapshot()?.campaign.id && !mapAction.isBusy())
-    handleAction(session.moveParty(target.key));
-  movePartyDialog.close();
-  element('scene').querySelector('canvas')?.focus({ preventScroll: true });
-});
-listen(element('in'), 'click', () => renderer?.zoom(1.2));
-listen(element('out'), 'click', () => renderer?.zoom(1 / 1.2));
 function updateMovementToggle() {
   element('motion').setAttribute('aria-checked', String(movement));
   element('motion-state').textContent = movement ? 'ON' : 'OFF';
@@ -806,7 +543,7 @@ function syncSelection() {
     'aria-label',
     state.multiEdit ? 'Add or remove a hex' : 'Select hex or party',
   );
-  renderer?.setPartyKeys(state.partySelected && keyboardNavigation);
+  workspaceControls.syncPartyKeys();
   singleInspectorHost.hidden = state.partySelected || state.multiEdit;
   batchInspectorHost.hidden = state.partySelected || !state.multiEdit;
   partyInspectorHost.hidden = !state.partySelected;
@@ -830,7 +567,7 @@ function toggleMultiEdit() {
 }
 async function showMenu() {
   renderer?.cancelInteraction();
-  setExpanded(false);
+  workspaceControls.setExpanded(false);
   session.save();
   renderer?.setMotion(false);
   document.title = 'The Wilderness Almanac';
@@ -1203,7 +940,8 @@ if (import.meta.hot)
     iconCacheRevision++;
     navigation.dispose();
     campaignHistory.dispose();
-    setExpanded(false);
+    workspaceControls.dispose();
+    mapSelection.dispose();
     listeners.abort();
     mapAction.dispose();
     mapConsole.dispose();

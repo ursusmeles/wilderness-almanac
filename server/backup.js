@@ -173,7 +173,7 @@ async function main() {
   }
   if (!['once', 'loop'].includes(action)) throw new Error('Unknown backup action.');
   const store = objectStore(env);
-  do {
+  for (;;) {
     let wait = interval(env);
     try {
       const result = await runBackup({
@@ -190,7 +190,7 @@ async function main() {
     }
     if (action === 'once') break;
     await delay(wait);
-  } while (true);
+  }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {

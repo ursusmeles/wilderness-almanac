@@ -10,7 +10,7 @@ import {
 import { chooseCitySize, generatePointsOfLight } from '../src/generation/points-of-light.js';
 import { settlementSuitability } from '../src/generation/settlement-placement.js';
 import { randomFor } from '../src/generation/seed.js';
-import { components, distance, neighbours, DIRECTIONS } from '../src/generation/hex.js';
+import { components, distance, DIRECTIONS } from '../src/generation/hex.js';
 import { fitsHex, fitsTree, lowProp, minimumSpacing } from '../src/generation/prop-placement.js';
 import { TOKEN_ANCHOR } from '../src/generation/props.js';
 import { isBarrier, barrierEnds, barrierDistance } from '../src/generation/settlement-props.js';

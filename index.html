@@ -3,8 +3,35 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta
+      name="description"
+      content="A sandbox campaign tool for creative GMs. Configure, create and explore hex worlds ready for points-of-light type hexcrawl campaigns."
+    />
+    <meta name="author" content="Mateusz Nowak" />
     <meta name="theme-color" content="#211c36" />
     <title>The Wilderness Almanac</title>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "@id": "https://www.wilderness.al/#website",
+        "name": "The Wilderness Almanac",
+        "alternateName": "Wilderness Almanac",
+        "url": "https://www.wilderness.al/",
+        "description": "A sandbox campaign tool for creative GMs. Configure, create and explore hex worlds ready for points-of-light type hexcrawl campaigns.",
+        "inLanguage": "en",
+        "author": {
+          "@type": "Person",
+          "name": "Mateusz Nowak",
+          "url": "https://h62.pl",
+          "sameAs": [
+            "https://www.linkedin.com/in/mateuszdnowak/",
+            "https://github.com/ursusmeles/",
+            "https://rpg.h62.pl/"
+          ]
+        }
+      }
+    </script>
     <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48 64x64 128x128 256x256" />
     <link rel="icon" href="/favicon-16.png" type="image/png" sizes="16x16" />
     <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32" />
@@ -98,6 +125,9 @@
           </button>
           <p class="campaign-storage-note">
             Saved on this device. Export a campaign to take it with you.
+          </p>
+          <p class="campaign-storage-note">
+            Created by <a href="https://h62.pl" rel="author">Mateusz Nowak</a>.
           </p>
           <div id="campaign-save-warning" class="save-warning" role="status" hidden>
             <p id="campaign-save-message"></p>

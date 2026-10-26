@@ -29,8 +29,8 @@ jobs:
       - run: npm ci
       - run: npm ci --prefix server
       - run: npx playwright install --with-deps chromium
-      - name: Formatting, unit tests and build
-        run: npm run format:check && npm test && npm run test:server && npm run build
+      - name: Lint, formatting, unit tests and build
+        run: npm run lint && npm run format:check && npm test && npm run test:server && npm run build
       - name: Account sync browser tests
         run: npm run test:account
       # Mobile map browser tests are paused until helpers handle collapsed panels and hidden controls.

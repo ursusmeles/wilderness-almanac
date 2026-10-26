@@ -6,7 +6,7 @@ import { createTopology } from '../src/map-data.js';
 import { generateWorld, generateDressing, GENERATOR_VERSION } from '../src/generation/world.js';
 import { planSettlements, settlementSuitability } from '../src/generation/settlement-placement.js';
 import { deepForestWeight, poiSuitability } from '../src/generation/points-of-interest.js';
-import { distance, neighbours } from '../src/generation/hex.js';
+import { distance } from '../src/generation/hex.js';
 import { prepareMountainRanges } from '../src/generation/mountain-surfaces.js';
 import { surfaceHeight } from '../src/generation/math.js';
 import { createCampaign, exportCampaign, importCampaign } from '../src/application/campaigns.js';

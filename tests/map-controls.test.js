@@ -196,6 +196,7 @@ test('touch holds on selected hexes or without a selection remain ordinary taps'
     t.mock.timers.tick(600);
     assert.equal(selections.length, 0);
     pointer('pointerup', { pointerType: 'touch' });
+    t.mock.timers.tick(300);
     assert.deepEqual(selections.pop(), { key: '0,0', additive: false, fromMap: true });
   }
 });
@@ -238,5 +239,6 @@ test('creation previews can retain ordinary touch selection without multiselect 
   t.mock.timers.tick(600);
   assert.deepEqual(selections, []);
   pointer('pointerup', { pointerType: 'touch' });
+  t.mock.timers.tick(300);
   assert.deepEqual(selections, [{ key: '0,0', additive: false, fromMap: true }]);
 });

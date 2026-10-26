@@ -109,8 +109,8 @@ test('the shared animation clock freezes for Movement off, reduced motion and hi
   assert.equal(frame, null);
   reduced.matches = false;
   reduced.dispatchEvent(new Event('change'));
-  document.hidden = true;
-  document.dispatchEvent(new Event('visibilitychange'));
+  globalThis.document.hidden = true;
+  globalThis.document.dispatchEvent(new Event('visibilitychange'));
   assert.equal(frame, null);
   loop.dispose();
 });

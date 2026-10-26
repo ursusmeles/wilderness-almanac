@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createTopology } from '../src/map-data.js';
 import { generateWorld, generateDressing } from '../src/generation/world.js';
-import { generateRoads, roadGraph, roadKey, roadCellKey } from '../src/generation/roads.js';
+import { generateRoads, roadGraph, roadCellKey } from '../src/generation/roads.js';
 import { roadPort, roadHeight, hexRadius } from '../src/generation/road-geometry.js';
 import { directionTo } from '../src/generation/hex.js';
 import {

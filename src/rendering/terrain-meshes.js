@@ -102,7 +102,7 @@ export function createTerrainBuilder({ materials, makeCrossing }) {
     const geometry = new THREE.BufferGeometry(),
       points = surface.vertices.flat(),
       normals = [];
-    for (const [x, y, z] of surface.vertices) {
+    for (const [x, , z] of surface.vertices) {
       const wx = x + cell.wx,
         wz = z + cell.wz;
       if (riverIslandValue(cell.river, wx, wz) > riverBankValue(cell.river, wx, wz)) {

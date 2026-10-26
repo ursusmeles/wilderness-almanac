@@ -453,7 +453,8 @@ export function createCampaignMenu({ store, defaultPalette, onEnter, onNewCampai
     if (saved) setMessage(`Restored “${campaign.name}”`);
     list
       .querySelectorAll('[data-action="delete"]')
-      [Math.min(index, campaigns.length - 1)]?.focus({ preventScroll: true });
+      .item(Math.min(index, campaigns.length - 1))
+      ?.focus({ preventScroll: true });
   });
   listen(newButton, 'click', () => (onNewCampaign ? onNewCampaign() : enter()));
 
