@@ -56,18 +56,19 @@ function fixture(t, party, touchMultiSelect = true) {
     controls,
     mesh,
     pointer(type, options = {}) {
-      host.dispatchEvent(
-        Object.assign(new Event(type), {
-          button: 0,
-          pointerId: 1,
-          pointerType: 'mouse',
-          clientX: 200,
-          clientY: 200,
-          ctrlKey: false,
-          metaKey: false,
-          ...options,
-        }),
-      );
+      const { timeStamp, ...pointerOptions } = options;
+      const event = Object.assign(new Event(type), {
+        button: 0,
+        pointerId: 1,
+        pointerType: 'mouse',
+        clientX: 200,
+        clientY: 200,
+        ctrlKey: false,
+        metaKey: false,
+        ...pointerOptions,
+      });
+      if (timeStamp !== undefined) Object.defineProperty(event, 'timeStamp', { value: timeStamp });
+      host.dispatchEvent(event);
     },
   };
 }
@@ -83,6 +84,92 @@ test('Command and Control map clicks request additive selection; plain clicks re
     { key: '0,0', additive: true, fromMap: true },
     { key: '0,0', additive: false, fromMap: true },
   ]);
+});
+
+test('ordinary touch taps select on release without waiting for the double-tap window', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const { pointer, selections } = fixture(t);
+  pointer('pointerdown', { pointerType: 'touch', timeStamp: 0 });
+  assert.deepEqual(selections, []);
+  pointer('pointerup', { pointerType: 'touch', timeStamp: 40 });
+  assert.deepEqual(selections, [{ key: '0,0', additive: false, fromMap: true }]);
+  t.mock.timers.tick(300);
+  assert.equal(selections.length, 1, 'no delayed duplicate selection');
+});
+
+test('a second touch tap does not repeat an immediate selection', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const { pointer, selections } = fixture(t);
+  for (const timeStamp of [0, 100]) {
+    pointer('pointerdown', { pointerType: 'touch', timeStamp });
+    pointer('pointerup', { pointerType: 'touch', timeStamp: timeStamp + 40 });
+  }
+  t.mock.timers.tick(300);
+  assert.deepEqual(selections, [{ key: '0,0', additive: false, fromMap: true }]);
+});
+
+test('double-tap slide still zooms after immediate selection without panning or selecting again', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const { pointer, selections, controls } = fixture(t);
+  const position = controls.camera.position.clone();
+  const zoom = controls.camera.zoom;
+  pointer('pointerdown', { pointerType: 'touch', timeStamp: 0 });
+  pointer('pointerup', { pointerType: 'touch', timeStamp: 40 });
+  pointer('pointerdown', { pointerType: 'touch', timeStamp: 100 });
+  pointer('pointermove', { pointerType: 'touch', clientY: 250, timeStamp: 180 });
+  t.mock.timers.tick(600);
+  pointer('pointerup', { pointerType: 'touch', clientY: 250, timeStamp: 700 });
+  assert.ok(controls.camera.zoom > zoom);
+  assert.ok(controls.camera.position.equals(position));
+  assert.deepEqual(selections, [{ key: '0,0', additive: false, fromMap: true }]);
+});
+
+test('multiselect and party destinations wait for the zoom window before notifying selection', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const { pointer, selections, controls } = fixture(t);
+  for (const [index, keys] of [[], ['1,0']].entries()) {
+    controls.setSelection(keys);
+    pointer('pointerdown', { pointerType: 'touch', timeStamp: index * 1000 });
+    pointer('pointerup', { pointerType: 'touch', timeStamp: index * 1000 + 40 });
+    assert.deepEqual(selections, []);
+    t.mock.timers.tick(299);
+    assert.deepEqual(selections, []);
+    t.mock.timers.tick(1);
+    assert.deepEqual(selections.pop(), { key: '0,0', additive: false, fromMap: true });
+  }
+});
+
+test('double-tap slide does not toggle multiselect or request a party destination', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const { pointer, selections, controls } = fixture(t);
+  for (const [index, keys] of [[], ['1,0']].entries()) {
+    controls.setSelection(keys);
+    const zoom = controls.camera.zoom;
+    const timeStamp = index * 1000;
+    pointer('pointerdown', { pointerType: 'touch', timeStamp });
+    pointer('pointerup', { pointerType: 'touch', timeStamp: timeStamp + 40 });
+    pointer('pointerdown', { pointerType: 'touch', timeStamp: timeStamp + 100 });
+    pointer('pointermove', { pointerType: 'touch', clientY: 250, timeStamp: timeStamp + 180 });
+    t.mock.timers.tick(600);
+    pointer('pointerup', { pointerType: 'touch', clientY: 250, timeStamp: timeStamp + 700 });
+    assert.ok(controls.camera.zoom > zoom);
+    assert.deepEqual(selections, []);
+  }
+});
+
+test('interaction cancellation clears double-tap zoom recognition after immediate selection', (t) => {
+  const { pointer, controls, selections } = fixture(t);
+  pointer('pointerdown', { pointerType: 'touch', timeStamp: 0 });
+  pointer('pointerup', { pointerType: 'touch', timeStamp: 40 });
+  controls.cancelInteraction();
+  const position = controls.camera.position.clone();
+  const zoom = controls.camera.zoom;
+  pointer('pointerdown', { pointerType: 'touch', timeStamp: 100 });
+  pointer('pointermove', { pointerType: 'touch', clientY: 250, timeStamp: 180 });
+  pointer('pointerup', { pointerType: 'touch', clientY: 250, timeStamp: 200 });
+  assert.equal(controls.camera.zoom, zoom);
+  assert.ok(!controls.camera.position.equals(position));
+  assert.equal(selections.length, 1);
 });
 
 test('clicking or dragging the party never pans or selects the map', (t) => {

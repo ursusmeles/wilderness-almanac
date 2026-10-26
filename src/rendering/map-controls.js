@@ -214,6 +214,7 @@ export function createMapControls({
     start = null,
     lastTap = null,
     slideZoom = false,
+    slideTapSelected = false,
     pinched = false,
     pinchDistance = 0,
     tapTimer,
@@ -238,6 +239,7 @@ export function createMapControls({
       lastTap &&
       e.timeStamp - lastTap.time <= 300 &&
       Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 24;
+    const secondTapSelected = secondTap && lastTap.selected;
     const revision = interactionRevision;
     if (secondTap) cancelTap();
     else flushTap();
@@ -261,6 +263,7 @@ export function createMapControls({
       last = { x: e.clientX, y: e.clientY };
       start = { ...last, time: e.timeStamp };
       slideZoom = Boolean(secondTap);
+      slideTapSelected = Boolean(secondTapSelected);
       pinched = false;
       longPressed = false;
       gestureMoved = false;
@@ -367,17 +370,27 @@ export function createMapControls({
       const key = hit(e.clientX, e.clientY);
       const additive = e.ctrlKey || e.metaKey;
       if (e.pointerType === 'touch' && !slideZoom && e.timeStamp - start.time <= 300) {
-        lastTap = { x: e.clientX, y: e.clientY, time: e.timeStamp };
-        // Let a second press claim zoom before a tap opens selection or move dialogs.
-        tapAction = () => {
+        const tap = { x: e.clientX, y: e.clientY, time: e.timeStamp };
+        if (selectionKeys === null && !additive) {
+          // Single selection can happen now; the second press only controls zoom.
+          const revision = interactionRevision;
           if (key) choose(key, { additive, fromMap: true });
-        };
-        tapTimer = setTimeout(flushTap, 300);
-      } else if (key) choose(key, { additive, fromMap: true });
+          if (revision === interactionRevision && !listeners.signal.aborted)
+            lastTap = { ...tap, selected: true };
+        } else {
+          // Wait only for toggles and party destinations, which zoom must not trigger.
+          lastTap = tap;
+          tapAction = () => {
+            if (key) choose(key, { additive, fromMap: true });
+          };
+          tapTimer = setTimeout(flushTap, 300);
+        }
+      } else if (key && !slideTapSelected) choose(key, { additive, fromMap: true });
     }
     last = null;
     start = null;
     slideZoom = false;
+    slideTapSelected = false;
     if (pointers.size === 1) last = [...pointers.values()][0];
   }
   listen(host, 'pointerup', release);
@@ -386,6 +399,7 @@ export function createMapControls({
     cancelTap();
     lastTap = null;
     slideZoom = false;
+    slideTapSelected = false;
     if (partyPointer === e.pointerId) {
       partyPointer = null;
       start = null;
@@ -446,6 +460,7 @@ export function createMapControls({
       last = start = null;
       lastTap = null;
       slideZoom = false;
+      slideTapSelected = false;
       pinched = longPressed = gestureMoved = false;
       party?.cancel();
     },
