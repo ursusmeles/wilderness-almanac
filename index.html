@@ -95,7 +95,7 @@
               <button
                 type="button"
                 id="open-settings"
-                class="menu-icon-button"
+                class="icon-button menu-icon-button"
                 aria-label="Settings"
                 data-tooltip="Settings"
                 aria-haspopup="dialog"
@@ -159,7 +159,7 @@
               <button
                 type="button"
                 id="settings-close"
-                class="menu-icon-button"
+                class="icon-button menu-icon-button"
                 aria-label="Close Settings"
               >
                 <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -260,7 +260,7 @@
             <button
               type="button"
               id="close-account"
-              class="menu-icon-button"
+              class="icon-button menu-icon-button"
               aria-label="Close account"
             >
               <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -324,7 +324,7 @@
             <button
               type="button"
               id="close-palette-manager"
-              class="menu-icon-button"
+              class="icon-button menu-icon-button"
               aria-label="Close palette manager"
               autofocus
             >
@@ -379,7 +379,7 @@
             <button
               type="button"
               id="cc-dismiss"
-              class="menu-icon-button"
+              class="icon-button menu-icon-button"
               aria-label="Close new campaign"
             >
               <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -395,6 +395,7 @@
               >
               <div class="cc-map-controls" role="group" aria-label="Preview controls">
                 <button
+                  class="icon-button"
                   type="button"
                   id="cc-expand"
                   aria-label="Expand map preview"
@@ -404,12 +405,22 @@
                     <use href="/icons/pixelarticons.svg#scale"></use>
                   </svg>
                 </button>
-                <button type="button" id="cc-zoom-in" aria-label="Zoom in on preview">
+                <button
+                  class="icon-button"
+                  type="button"
+                  id="cc-zoom-in"
+                  aria-label="Zoom in on preview"
+                >
                   <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                     <use href="/icons/pixelarticons.svg#plus"></use>
                   </svg>
                 </button>
-                <button type="button" id="cc-zoom-out" aria-label="Zoom out on preview">
+                <button
+                  class="icon-button"
+                  type="button"
+                  id="cc-zoom-out"
+                  aria-label="Zoom out on preview"
+                >
                   <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                     <use href="/icons/pixelarticons.svg#minus"></use>
                   </svg>
@@ -596,7 +607,7 @@
             </button>
             <button
               type="button"
-              class="menu-icon-button campaign-icon-refresh"
+              class="icon-button menu-icon-button campaign-icon-refresh"
               data-action="shuffle"
               aria-label="Next campaign icon"
             >
@@ -641,7 +652,7 @@
               <span>Seed <span class="campaign-seed"></span></span>
               <button
                 type="button"
-                class="menu-icon-button"
+                class="icon-button menu-icon-button"
                 data-action="copy"
                 data-tooltip="Copy seed"
                 aria-label="Copy seed"
@@ -652,7 +663,7 @@
               </button>
               <button
                 type="button"
-                class="menu-icon-button"
+                class="icon-button menu-icon-button"
                 data-action="share"
                 data-tooltip="Copy shareable URL with original seed"
                 aria-label="Share map"
@@ -666,7 +677,7 @@
           <div class="campaign-actions">
             <button
               type="button"
-              class="menu-icon-button campaign-enter"
+              class="icon-button menu-icon-button campaign-enter"
               data-action="enter"
               aria-label="Enter campaign"
             >
@@ -677,7 +688,7 @@
             </button>
             <button
               type="button"
-              class="menu-icon-button"
+              class="icon-button menu-icon-button"
               data-action="download"
               data-tooltip="Export this campaign to a JSON file"
               aria-label="Download campaign JSON"
@@ -688,7 +699,7 @@
             </button>
             <button
               type="button"
-              class="menu-icon-button campaign-delete"
+              class="icon-button menu-icon-button campaign-delete"
               data-action="delete"
               data-tooltip="Delete campaign"
               aria-label="Delete campaign"
@@ -705,7 +716,7 @@
           <button
             type="button"
             id="hp-back-menu"
-            class="hp-back-menu"
+            class="icon-button hp-back-menu"
             aria-label="Return to main menu"
             data-tooltip="Return to main menu"
           >
@@ -755,7 +766,7 @@
           </div>
           <span class="hp-zooms" role="group" aria-label="Map zoom">
             <button
-              class="hp-zoom"
+              class="icon-button hp-zoom"
               id="hp-in"
               type="button"
               aria-label="Zoom in"
@@ -766,7 +777,7 @@
               </svg>
             </button>
             <button
-              class="hp-zoom"
+              class="icon-button hp-zoom"
               id="hp-out"
               type="button"
               aria-label="Zoom out"
@@ -785,7 +796,7 @@
             <button
               type="button"
               id="hp-expand-map"
-              class="hp-mobile-only hp-expand-map"
+              class="icon-button hp-mobile-only hp-expand-map"
               aria-label="Expand map to viewport"
               aria-pressed="false"
               data-tooltip="Expand map"
@@ -903,6 +914,7 @@
               </div>
               <div class="hp-panel-actions">
                 <button
+                  class="icon-button hp-panel-button"
                   type="button"
                   id="hp-toggle-settings"
                   aria-label="Open palette and settings"
@@ -971,7 +983,7 @@
           <div class="hp-panel-buttons">
             <button
               type="button"
-              class="hp-panel-order hp-move-up"
+              class="icon-button hp-panel-button hp-panel-order hp-move-up"
               data-direction="-1"
               data-tooltip="Move panel up"
             >
@@ -981,7 +993,7 @@
             </button>
             <button
               type="button"
-              class="hp-panel-order hp-move-down"
+              class="icon-button hp-panel-button hp-panel-order hp-move-down"
               data-direction="1"
               data-tooltip="Move panel down"
             >
@@ -989,12 +1001,16 @@
                 <use href="/icons/pixelarticons.svg#arrow-bar-down"></use>
               </svg>
             </button>
-            <button type="button" class="hp-panel-horizontal" data-horizontal>
+            <button
+              type="button"
+              class="icon-button hp-panel-button hp-panel-horizontal"
+              data-horizontal
+            >
               <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <use href="/icons/pixelarticons.svg#arrow-bar-right"></use>
               </svg>
             </button>
-            <button type="button" data-collapse>
+            <button class="icon-button hp-panel-button" type="button" data-collapse>
               <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <use href="/icons/pixelarticons.svg#collapse"></use>
               </svg>
@@ -1016,6 +1032,7 @@
       <div class="hp-party-overview">
         <div class="hp-party-portrait hp-hex-preview-frame">
           <button
+            class="hp-party-reveal"
             type="button"
             id="hp-party-reveal"
             aria-label="Change token appearance"
@@ -1069,7 +1086,7 @@
             <button
               type="button"
               id="hp-party-locate-position"
-              class="hp-seed-action"
+              class="icon-button hp-seed-action"
               aria-label="Locate party hex"
               data-tooltip="Show party location"
             >
@@ -1085,7 +1102,7 @@
                 <button
                   type="button"
                   id="hp-party-locate-settlement"
-                  class="hp-seed-action"
+                  class="icon-button hp-seed-action"
                   aria-label="Locate nearest settlement"
                   data-tooltip="Show nearest settlement"
                 >
@@ -1102,7 +1119,7 @@
                 <button
                   type="button"
                   id="hp-party-locate-poi"
-                  class="hp-seed-action"
+                  class="icon-button hp-seed-action"
                   aria-label="Locate nearest point of interest"
                   data-tooltip="Show nearest point of interest"
                 >
@@ -1119,7 +1136,7 @@
                 <button
                   type="button"
                   id="hp-party-locate-visited"
-                  class="hp-seed-action"
+                  class="icon-button hp-seed-action"
                   aria-label="Select visited hexes"
                   data-tooltip="Select all visited hexes"
                 >
