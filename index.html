@@ -332,6 +332,7 @@
             <button
               type="button"
               id="default-palette"
+              class="primary-button"
               disabled
               data-tooltip="Choose default palette for new campaign and main menu"
             >
@@ -512,7 +513,7 @@
                 <use href="/icons/pixelarticons.svg#refresh"></use></svg
               ><span>Generate preview</span>
             </button>
-            <button type="button" id="cc-create" class="cc-primary" disabled>
+            <button type="button" id="cc-create" class="primary-button" disabled>
               Create campaign
             </button>
           </footer>
@@ -1196,7 +1197,9 @@
               </svg>
               Edit
             </button>
-            <button type="submit" id="hp-hex-apply" hidden>Apply changes</button>
+            <button type="submit" id="hp-hex-apply" class="primary-button" hidden>
+              Apply changes
+            </button>
             <button type="button" id="hp-hex-cancel" hidden>Cancel</button>
             <button type="button" id="hp-hex-multi-edit">
               <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -1290,7 +1293,9 @@
         <output id="hp-batch-feedback" class="hp-hex-feedback" role="alert" tabindex="-1"></output>
         <div class="hp-inspector-action-cluster">
           <div class="hp-inspector-edit-actions">
-            <button type="submit" id="hp-batch-apply">Apply to selected hexes</button>
+            <button type="submit" id="hp-batch-apply" class="primary-button">
+              Apply to selected hexes
+            </button>
             <button type="button" id="hp-batch-cancel">Discard changes</button>
             <button type="button" id="hp-batch-undo">Undo</button>
             <button
@@ -1314,7 +1319,9 @@
         <p id="hp-reset-selected-description" data-reset-count></p>
         <div class="hp-tools cluster">
           <button type="button" data-reset-selected="cancel" autofocus>Cancel</button>
-          <button type="button" data-reset-selected="confirm">Reset selected</button>
+          <button type="button" data-reset-selected="confirm" class="primary-button">
+            Reset selected
+          </button>
         </div>
       </dialog>
     </template>

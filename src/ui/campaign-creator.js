@@ -56,8 +56,8 @@ export function createCampaignCreator({
     generateButton.disabled = busy || !seedValid() || (!needsGeneration && Boolean(world));
     createButton.disabled =
       busy || needsGeneration || !world || !seedValid() || !nameInput.value.trim();
-    generateButton.classList.toggle('cc-primary', needsGeneration);
-    createButton.classList.toggle('cc-primary', !needsGeneration);
+    generateButton.classList.toggle('primary-button', needsGeneration);
+    createButton.classList.toggle('primary-button', !needsGeneration);
     el('restore').hidden = !needsGeneration || !world;
     el('restore').disabled = busy;
     generateButton.classList.toggle('hp-working', busy && !creating);

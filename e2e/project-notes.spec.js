@@ -162,10 +162,17 @@ test('Inspector hides empty feature metadata, keeps proximity, and offers Undo o
       buttons.map((button) => ({
         label: button.textContent.trim(),
         y: button.getBoundingClientRect().top,
+        width: Math.round(button.getBoundingClientRect().width),
+        height: Math.round(button.getBoundingClientRect().height),
       })),
     );
   expect(rows.map((row) => row.label)).toEqual(['Edit', 'Multiselect', 'Reset', 'Regenerate']);
-  expect(new Set(rows.map((row) => row.y)).size).toBe(1);
+  if (testInfo.project.name === 'mobile') {
+    expect(new Set(rows.map((row) => row.y)).size).toBe(1);
+  } else {
+    expect(new Set(rows.map((row) => row.width)).size).toBe(1);
+    expect(new Set(rows.map((row) => row.height)).size).toBe(1);
+  }
   await page.screenshot({ path: testInfo.outputPath('inspector.png'), fullPage: true });
   await page.locator('#hp-hex-visited').click();
   await page.locator('#hp-hex-edit').click();
