@@ -1297,7 +1297,7 @@
     width: 100%;
     height: calc(100svh - var(--panel-margin) * 2);
     display: grid;
-    grid-template-columns: minmax(0, 60vw) minmax(0, 1fr);
+    grid-template-columns: minmax(60vw, 1fr) minmax(0, 35rem);
     gap: var(--panel-margin);
     isolation: isolate;
     &[data-panel-rails='1'] {
