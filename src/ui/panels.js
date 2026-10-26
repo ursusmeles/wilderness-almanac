@@ -11,10 +11,17 @@ export function createPanels(root, preferences, onChange) {
   side.className = 'hp-side-panels';
   side.setAttribute('aria-label', 'Campaign tools');
   root.append(side);
-  let order = preferences.panelOrder ?? ['tracker', 'inspector'];
-  const collapsed = { ...(preferences.panelsCollapsed ?? { tracker: true, inspector: false }) };
+  const campaignLayouts = new Map(Object.entries(preferences.campaignPanels ?? {}));
+  let campaignId;
+  let order = ['inspector', 'tracker'];
+  let collapsed = { tracker: false, inspector: false };
   const mobileCollapsed = { tracker: true, inspector: true };
-  const horizontal = preferences.panelsHorizontal ?? { tracker: false, inspector: false };
+  let horizontal = { tracker: false, inspector: false };
+  const desktopPreferences = () => ({
+    panelOrder: order.slice(),
+    panelsCollapsed: { ...collapsed },
+    panelsHorizontal: { ...horizontal },
+  });
   const mobile = window.matchMedia(
     '(max-width: 760px), (max-width: 1024px) and (max-height: 500px)',
   );
@@ -74,6 +81,8 @@ export function createPanels(root, preferences, onChange) {
     const current = { ...preferred, tracker: multiEdit || preferred.tracker };
     const railIds = mobile.matches ? [] : order.filter((id) => horizontal[id]);
     const stackedIds = order.filter((id) => !railIds.includes(id));
+    const bothOpen =
+      !mobile.matches && stackedIds.length === 2 && stackedIds.every((id) => !current[id]);
     root.dataset.panelRails = String(railIds.length);
     side.style.setProperty('--rail-count', railIds.length);
     const rows = stackedIds.map((id) =>
@@ -82,8 +91,10 @@ export function createPanels(root, preferences, onChange) {
         : id === 'inspector'
           ? inspectorMode === 'party'
             ? 'max-content'
-            : 'minmax(var(--inspector-min-height, 300px), 1fr)'
-          : 'minmax(52px, 2fr)',
+            : bothOpen
+              ? 'min(var(--inspector-overview-height, 300px), calc(100% - var(--panel-bar-size) - 2px - var(--panel-margin)))'
+              : 'minmax(0, 1fr)'
+          : 'minmax(calc(var(--panel-bar-size) + 2px), 1fr)',
     );
     if (!stackedIds.some((id) => !current[id])) rows.push('minmax(0, 1fr)');
     side.style.setProperty('--panel-rows', rows.join(' '));
@@ -160,9 +171,10 @@ export function createPanels(root, preferences, onChange) {
     const overview = panels.inspector.querySelector('.hp-inspector-overview');
     if (!overview || !overview.getBoundingClientRect().height) return;
     const bar = panels.inspector.querySelector('.hp-panel-bar');
+    const style = getComputedStyle(panels.inspector);
     side.style.setProperty(
-      '--inspector-min-height',
-      `${Math.ceil(overview.getBoundingClientRect().height + bar.getBoundingClientRect().height + 2)}px`,
+      '--inspector-overview-height',
+      `${overview.getBoundingClientRect().height + bar.getBoundingClientRect().height + parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth)}px`,
     );
   });
   observer.observe(panels.inspector);
@@ -190,7 +202,13 @@ export function createPanels(root, preferences, onChange) {
       root.dataset.inspectorMode = mode;
       render();
     },
-    enterCampaign() {
+    enterCampaign(id) {
+      if (campaignId) campaignLayouts.set(campaignId, desktopPreferences());
+      campaignId = id;
+      const layout = campaignLayouts.get(id) ?? {};
+      order = (layout.panelOrder ?? ['inspector', 'tracker']).slice();
+      collapsed = { ...(layout.panelsCollapsed ?? { tracker: false, inspector: false }) };
+      horizontal = { ...(layout.panelsHorizontal ?? { tracker: false, inspector: false }) };
       mobileCollapsed.tracker = mobileCollapsed.inspector = true;
       render();
     },
@@ -199,11 +217,11 @@ export function createPanels(root, preferences, onChange) {
       (mobile.matches || !horizontal.inspector) &&
       !root.hidden &&
       !root.classList.contains('hp-map-expanded'),
-    preferences: () => ({
-      panelOrder: order.slice(),
-      panelsCollapsed: { ...collapsed },
-      panelsHorizontal: { ...horizontal },
-    }),
+    preferences() {
+      const layouts = new Map(campaignLayouts);
+      if (campaignId) layouts.set(campaignId, desktopPreferences());
+      return { campaignPanels: Object.fromEntries(layouts) };
+    },
     dispose() {
       listeners.abort();
       observer.disconnect();

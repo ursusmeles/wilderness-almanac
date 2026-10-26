@@ -3,14 +3,9 @@ import { TIMES_OF_DAY } from '../application/time-of-day.js';
 
 export const UI_PREFERENCES_KEY = 'wilderness-almanac:ui-v1';
 
-// Explicit allowlist: campaigns, palettes and replay state never go here.
-function pick(value = {}) {
+function pickPanels(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
   return {
-    ...(typeof value.motion === 'boolean' ? { motion: value.motion } : {}),
-    ...(TIMES_OF_DAY.includes(value.defaultTimeOfDay)
-      ? { defaultTimeOfDay: value.defaultTimeOfDay }
-      : {}),
-    ...(typeof value.settingsOpen === 'boolean' ? { settingsOpen: value.settingsOpen } : {}),
     ...(Array.isArray(value.panelOrder) &&
     value.panelOrder.length === 2 &&
     new Set(value.panelOrder).size === 2 &&
@@ -24,6 +19,31 @@ function pick(value = {}) {
           : [],
       ),
     ),
+  };
+}
+
+// Explicit allowlist: campaign content, palettes and replay state never go here.
+function pick(value = {}) {
+  const campaignPanels =
+    value.campaignPanels &&
+    typeof value.campaignPanels === 'object' &&
+    !Array.isArray(value.campaignPanels)
+      ? Object.fromEntries(
+          Object.entries(value.campaignPanels).flatMap(([id, panels]) => {
+            const picked = pickPanels(panels);
+            return id.trim() && id.length <= 128 && Object.keys(picked).length
+              ? [[id, picked]]
+              : [];
+          }),
+        )
+      : {};
+  return {
+    ...(typeof value.motion === 'boolean' ? { motion: value.motion } : {}),
+    ...(TIMES_OF_DAY.includes(value.defaultTimeOfDay)
+      ? { defaultTimeOfDay: value.defaultTimeOfDay }
+      : {}),
+    ...(typeof value.settingsOpen === 'boolean' ? { settingsOpen: value.settingsOpen } : {}),
+    ...(Object.keys(campaignPanels).length ? { campaignPanels } : {}),
   };
 }
 

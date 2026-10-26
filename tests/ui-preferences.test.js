@@ -19,6 +19,14 @@ test('localStorage only receives validated noncritical UI preferences', () => {
       settingsOpen: true,
       panelOrder: ['inspector', 'tracker'],
       panelsCollapsed: { tracker: true, inspector: false },
+      campaignPanels: {
+        adventure: {
+          panelOrder: ['tracker', 'inspector'],
+          panelsCollapsed: { tracker: true, inspector: false },
+          panelsHorizontal: { tracker: false, inspector: true },
+          seed: 'critical',
+        },
+      },
       seed: 'critical',
       variant: 3,
       campaignId: 'id',
@@ -33,8 +41,13 @@ test('localStorage only receives validated noncritical UI preferences', () => {
     motion: false,
     defaultTimeOfDay: 'night',
     settingsOpen: true,
-    panelOrder: ['inspector', 'tracker'],
-    panelsCollapsed: { tracker: true, inspector: false },
+    campaignPanels: {
+      adventure: {
+        panelOrder: ['tracker', 'inspector'],
+        panelsCollapsed: { tracker: true, inspector: false },
+        panelsHorizontal: { tracker: false, inspector: true },
+      },
+    },
   });
   assert.equal(readUIPreferences(storage).motion, false);
   saveUIPreferences(storage, {
@@ -44,6 +57,39 @@ test('localStorage only receives validated noncritical UI preferences', () => {
     panelsHorizontal: { tracker: true },
   });
   assert.deepEqual(readUIPreferences(storage), {});
+});
+
+test('campaign panel layouts stay separate and ignore legacy global layouts and invalid entries', () => {
+  let source = JSON.stringify({
+    version: 1,
+    panelOrder: ['tracker', 'inspector'],
+    panelsCollapsed: { tracker: true, inspector: true },
+    panelsHorizontal: { tracker: true, inspector: true },
+    campaignPanels: {
+      first: { panelsCollapsed: { tracker: false, inspector: true } },
+      second: { panelsHorizontal: { tracker: true, inspector: false } },
+      invalid: { panelOrder: ['tracker', 'tracker'], panelsCollapsed: { tracker: 'yes' } },
+      null: null,
+      array: [],
+      '': { panelOrder: ['inspector', 'tracker'] },
+      ['x'.repeat(129)]: { panelOrder: ['inspector', 'tracker'] },
+    },
+  });
+  const storage = { getItem: () => source, setItem: (_, value) => (source = value) };
+  const expected = {
+    campaignPanels: {
+      first: { panelsCollapsed: { tracker: false, inspector: true } },
+      second: { panelsHorizontal: { tracker: true, inspector: false } },
+    },
+  };
+  assert.deepEqual(readUIPreferences(storage), expected);
+  assert.equal(saveUIPreferences(storage, expected), true);
+  assert.deepEqual(readUIPreferences(storage), expected);
+  assert.equal(readUIPreferences(storage).campaignPanels.third, undefined);
+  for (const campaignPanels of [null, [], 'invalid']) {
+    source = JSON.stringify({ version: 1, campaignPanels });
+    assert.deepEqual(readUIPreferences(storage), {});
+  }
 });
 
 test('restricted and malformed noncritical preferences fail harmlessly', () => {

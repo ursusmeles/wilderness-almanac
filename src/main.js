@@ -335,7 +335,7 @@ async function openCampaign(campaign, { fromHistory = false } = {}) {
       await loadMapView();
       if (disposed) return false;
       const keepView = Boolean(renderer && session.snapshot()?.campaign.id === campaign.id);
-      panels.enterCampaign();
+      panels.enterCampaign(campaign.id);
       session.open(campaign);
       presentCampaign({ resetView: !keepView });
       if (!fromHistory) campaignHistory?.enter(session.snapshot().campaign);
