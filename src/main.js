@@ -427,7 +427,7 @@ function presentCampaign({ resetView = false } = {}) {
   syncTimeOfDay();
   applyPalette();
   renderWorld({ resetView });
-  renderer?.focus(campaign.partyToken.key, { hexesWide: 9 / 1.2 ** 3 });
+  renderer?.focus(campaign.partyToken.key, { hexesWide: 9 / 1.2 });
   root.querySelector('.hp-title').textContent = campaign.name;
   document.title = `${campaign.name} · Wilderness Almanac`;
   root.dataset.mapName = world.name;

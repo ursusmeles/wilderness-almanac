@@ -17,7 +17,10 @@ export function createPanels(root, preferences, onChange) {
   let collapsed = { tracker: false, inspector: false };
   const mobileCollapsed = { tracker: true, inspector: true };
   let horizontal = { tracker: false, inspector: false };
+  let panelSplit;
+  let drag;
   const desktopPreferences = () => ({
+    ...(panelSplit !== undefined ? { panelSplit } : {}),
     panelOrder: order.slice(),
     panelsCollapsed: { ...collapsed },
     panelsHorizontal: { ...horizontal },
@@ -48,6 +51,65 @@ export function createPanels(root, preferences, onChange) {
       );
     for (const button of panel.querySelectorAll('[data-horizontal], [data-collapse]'))
       button.setAttribute('aria-controls', `hp-${id}-body`);
+    const handle = panel.querySelector('.hp-panel-resize');
+    handle.setAttribute('aria-controls', `hp-${id}-body`);
+    handle.addEventListener(
+      'pointerdown',
+      (event) => {
+        if (event.button !== 0 || !splitBounds()) return;
+        event.preventDefault();
+        handle.blur();
+        drag = {
+          pointerId: event.pointerId,
+          handle,
+          y: event.clientY,
+          height: panel.getBoundingClientRect().height,
+        };
+        handle.setPointerCapture(event.pointerId);
+      },
+      { signal: listeners.signal },
+    );
+    handle.addEventListener(
+      'pointermove',
+      (event) => {
+        if (!drag || event.pointerId !== drag.pointerId) return;
+        resizeTop(drag.height + event.clientY - drag.y);
+      },
+      { signal: listeners.signal },
+    );
+    for (const type of ['pointerup', 'pointercancel', 'lostpointercapture'])
+      handle.addEventListener(type, () => finishResize(), { signal: listeners.signal });
+    const resetSplit = () => {
+      panelSplit = undefined;
+      for (const key of order) collapsed[key] = false;
+      render();
+      onChange();
+    };
+    handle.addEventListener('dblclick', resetSplit, { signal: listeners.signal });
+    handle.addEventListener(
+      'keydown',
+      (event) => {
+        const bounds = splitBounds();
+        if (!bounds) return;
+        const step = event.shiftKey ? 40 : 10;
+        const height = panel.getBoundingClientRect().height;
+        const next = {
+          ArrowUp: height - step,
+          ArrowDown: height + step,
+          Home: bounds.min,
+          End: bounds.max,
+        }[event.key];
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          resetSplit();
+        } else if (next !== undefined) {
+          event.preventDefault();
+          resizeTop(next);
+          onChange();
+        }
+      },
+      { signal: listeners.signal },
+    );
     panels[id] = panel;
     panel.addEventListener(
       'click',
@@ -76,6 +138,40 @@ export function createPanels(root, preferences, onChange) {
       { signal: listeners.signal },
     );
   }
+  function splitBounds() {
+    const stacked = order.filter((id) => !horizontal[id]);
+    if (mobile.matches || multiEdit || stacked.length !== 2) return null;
+    const min =
+      panels[stacked[0]].querySelector('.hp-panel-bar').getBoundingClientRect().height +
+      (collapsed[stacked[0]] ? 2 : 1);
+    const lower =
+      panels[stacked[1]].querySelector('.hp-panel-bar').getBoundingClientRect().height +
+      (collapsed[stacked[1]] ? 2 : 1);
+    const available = Math.max(
+      min + lower,
+      side.getBoundingClientRect().height - parseFloat(getComputedStyle(side).rowGap),
+    );
+    return { id: stacked[0], min, max: available - lower, available };
+  }
+  function resizeTop(height) {
+    const bounds = splitBounds();
+    if (!bounds) return;
+    const next = Math.min(bounds.max, Math.max(bounds.min, height));
+    collapsed[bounds.id] = next <= bounds.min + 4;
+    const lower = order.find((id) => id !== bounds.id);
+    collapsed[lower] = !collapsed[bounds.id] && next >= bounds.max - 4;
+    panelSplit =
+      (collapsed[bounds.id] ? bounds.min : collapsed[lower] ? bounds.max : next) / bounds.available;
+    if (drag) drag.changed = true;
+    render();
+  }
+  function finishResize(save = true) {
+    if (!drag) return;
+    const { handle, pointerId, changed } = drag;
+    drag = undefined;
+    if (handle.hasPointerCapture(pointerId)) handle.releasePointerCapture(pointerId);
+    if (changed && save) onChange();
+  }
   function render() {
     const preferred = activeCollapsed();
     const current = { ...preferred, tracker: multiEdit || preferred.tracker };
@@ -83,6 +179,7 @@ export function createPanels(root, preferences, onChange) {
     const stackedIds = order.filter((id) => !railIds.includes(id));
     const bothOpen =
       !mobile.matches && stackedIds.length === 2 && stackedIds.every((id) => !current[id]);
+    const bounds = splitBounds();
     root.dataset.panelRails = String(railIds.length);
     side.style.setProperty('--rail-count', railIds.length);
     const rows = stackedIds.map((id) =>
@@ -96,6 +193,10 @@ export function createPanels(root, preferences, onChange) {
               : 'minmax(0, 1fr)'
           : 'minmax(calc(var(--panel-bar-size) + 2px), 1fr)',
     );
+    if (bounds && panelSplit !== undefined && !current[bounds.id]) {
+      rows[0] = `${Math.min(bounds.max, Math.max(bounds.min, panelSplit * bounds.available))}px`;
+      rows[1] = current[stackedIds[1]] ? 'max-content' : 'minmax(0, 1fr)';
+    }
     if (!stackedIds.some((id) => !current[id])) rows.push('minmax(0, 1fr)');
     side.style.setProperty('--panel-rows', rows.join(' '));
     side.style.setProperty(
@@ -106,7 +207,7 @@ export function createPanels(root, preferences, onChange) {
     );
     for (const [index, id] of order.entries()) {
       const panel = panels[id];
-      side.append(panel);
+      if (side.children[index] !== panel) side.append(panel);
       panel.classList.toggle('is-collapsed', current[id]);
       const rail = railIds.includes(id);
       panel.classList.toggle('is-side-collapsed', rail);
@@ -124,6 +225,10 @@ export function createPanels(root, preferences, onChange) {
       const toggle = panel.querySelector('[data-collapse]');
       const unavailable = id === 'tracker' && multiEdit;
       toggle.disabled = unavailable;
+      const resizable = bounds?.id === id;
+      toggle.hidden = Boolean(bounds);
+      const handle = panel.querySelector('.hp-panel-resize');
+      handle.hidden = !resizable;
       const name =
         id === 'tracker'
           ? 'Sandbox tools'
@@ -131,6 +236,17 @@ export function createPanels(root, preferences, onChange) {
             ? 'Party Inspector'
             : 'Hex Inspector';
       panel.querySelector('h2').textContent = name;
+      handle.setAttribute('aria-label', `Resize ${name}`);
+      if (resizable) {
+        const height = panel.getBoundingClientRect().height;
+        handle.setAttribute('aria-valuemin', '0');
+        handle.setAttribute('aria-valuemax', '100');
+        handle.setAttribute('aria-valuenow', String(Math.round((height / bounds.available) * 100)));
+        handle.setAttribute(
+          'aria-valuetext',
+          current[id] ? 'Collapsed' : `${Math.round(height)} pixels`,
+        );
+      }
       for (const button of panel.querySelectorAll('[data-direction]'))
         button.setAttribute(
           'aria-label',
@@ -161,6 +277,7 @@ export function createPanels(root, preferences, onChange) {
   mobile.addEventListener(
     'change',
     () => {
+      finishResize();
       if (mobile.matches) mobileCollapsed.tracker = mobileCollapsed.inspector = true;
       render();
       onChange();
@@ -170,6 +287,7 @@ export function createPanels(root, preferences, onChange) {
   let measurementFrame;
   function measureOverview() {
     measurementFrame = undefined;
+    render();
     const overview = panels.inspector.querySelector('.hp-inspector-overview');
     if (!overview || !overview.getBoundingClientRect().height) return;
     const bar = panels.inspector.querySelector('.hp-panel-bar');
@@ -182,6 +300,7 @@ export function createPanels(root, preferences, onChange) {
     measurementFrame ??= requestAnimationFrame(measureOverview);
   });
   observer.observe(panels.inspector);
+  observer.observe(side);
   observer.observe(panels.inspector.querySelector('.hp-panel-bar'));
   const contentObserver = new MutationObserver(() => {
     const overview = panels.inspector.querySelector('.hp-inspector-overview');
@@ -207,12 +326,14 @@ export function createPanels(root, preferences, onChange) {
       render();
     },
     enterCampaign(id) {
+      finishResize();
       if (campaignId) campaignLayouts.set(campaignId, desktopPreferences());
       campaignId = id;
       const layout = campaignLayouts.get(id) ?? {};
       order = (layout.panelOrder ?? ['inspector', 'tracker']).slice();
       collapsed = { ...(layout.panelsCollapsed ?? { tracker: false, inspector: false }) };
       horizontal = { ...(layout.panelsHorizontal ?? { tracker: false, inspector: false }) };
+      panelSplit = layout.panelSplit;
       mobileCollapsed.tracker = mobileCollapsed.inspector = true;
       render();
     },
@@ -227,6 +348,7 @@ export function createPanels(root, preferences, onChange) {
       return { campaignPanels: Object.fromEntries(layouts) };
     },
     dispose() {
+      finishResize(false);
       listeners.abort();
       cancelAnimationFrame(measurementFrame);
       observer.disconnect();

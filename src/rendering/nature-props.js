@@ -186,40 +186,13 @@ export function createNatureBuilder({ materials, propMaterial }) {
     parent.add(g);
   }
   function makeCrops(parent, prop, cell) {
-    if (prop.cropStyle && prop.cropStyle !== 'plots') return makeField(parent, prop, cell);
-    const g = new THREE.Group();
-    g.position.set(prop.x, prop.y, prop.z);
-    g.rotation.y = prop.angle;
-    g.scale.setScalar(prop.scale);
-    addMesh(
-      g,
-      new THREE.BoxGeometry(0.36, 0.012, 0.4),
-      propMaterial('soil', prop.temperature),
-      0,
-      0.006,
-      0,
+    return makeField(
+      parent,
+      !prop.cropStyle || prop.cropStyle === 'plots'
+        ? { ...prop, cropStyle: 'grain', detailSeed: prop.detailSeed ?? 0 }
+        : prop,
+      cell,
     );
-    for (let row = 0; row < 4; row++) {
-      const z = (row - 1.5) * 0.085;
-      addMesh(
-        g,
-        new THREE.BoxGeometry(0.32, 0.028, 0.027),
-        propMaterial('crop', prop.temperature),
-        0,
-        0.025,
-        z,
-      );
-      for (let k = 0; k < 5; k++)
-        addMesh(
-          g,
-          new THREE.ConeGeometry(0.012, 0.065 + prop.variant * 0.01, 3),
-          propMaterial('crop', prop.temperature),
-          (k - 2) * 0.06,
-          0.058,
-          z,
-        );
-    }
-    parent.add(g);
   }
   function makeWave(parent, prop) {
     const points = [];

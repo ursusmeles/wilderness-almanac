@@ -4,9 +4,9 @@
     "variant": 0,
     "colors": ["#cdab8f", "#0b365e", "#11b329"],
     "expected": {
-      "meshes": 854,
-      "vertices": 826432,
-      "digest": "6d9dc066ab0342340ff0c90a1af6354f0988051fddc75dfac3a1830f24c2aad1"
+      "meshes": 858,
+      "vertices": 833032,
+      "digest": "408f512fa4064c5dca8cfaa1c042e4cd323e9d4a31be92f1eaa4808c018d2c15"
     }
   },
   {
@@ -14,9 +14,9 @@
     "variant": 1,
     "colors": ["#000000", "#243f4a", "#ffb600"],
     "expected": {
-      "meshes": 973,
-      "vertices": 590970,
-      "digest": "5075a12f77537a142d65814bf47bd1194bbc84a744043acb01222b8c1ca6324b"
+      "meshes": 977,
+      "vertices": 608658,
+      "digest": "3a93dd83df878e0be6fbfa5c1c383ad291f2d3206ae6d1bd08fe35a844aad0c0"
     }
   },
   {
@@ -24,9 +24,9 @@
     "variant": 2,
     "colors": ["#c7ffee", "#477480", "#99c1f1"],
     "expected": {
-      "meshes": 962,
-      "vertices": 798193,
-      "digest": "e64856c1ef35c31b11a1a617af098a776979ea20e322ea71b0479687945d5d8f"
+      "meshes": 966,
+      "vertices": 802945,
+      "digest": "8016bed82507d5be4641fde112297271497461e72859970812e5b34a5e7ffa74"
     }
   }
 ]

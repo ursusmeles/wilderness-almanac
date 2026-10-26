@@ -81,8 +81,8 @@ test('farmland variants replay, retain terrain and use vineyards only above leve
       .filter((prop) => prop.kind === 'crops')
       .reduce((sum, prop) => sum + 0.144 * prop.scale ** 2, 0);
   }
-  assert.deepEqual([...styles].sort(), ['grain', 'plots', 'vineyard']);
-  assert.ok(area > oldArea * 1.05, 'Bigger plots cover more of the tile');
+  assert.deepEqual([...styles].sort(), ['grain', 'vineyard']);
+  assert.ok(area > oldArea * 1.05, 'Wheat fields cover more of the tile');
   assert.ok(
     vineyards / eligible > 0.13 && vineyards / eligible < 0.27,
     'Vineyards have about a 20% opportunity, leaving other styles more common',
@@ -398,7 +398,10 @@ test('crop and fruit meshes have finite geometry inside their reserved footprint
   };
   try {
     for (const variant of [
+      {},
+      { detailSeed: undefined },
       { cropStyle: 'plots' },
+      { cropStyle: 'plots', detailSeed: undefined },
       { cropStyle: 'grain' },
       { cropStyle: 'vineyard' },
       {
@@ -411,7 +414,10 @@ test('crop and fruit meshes have finite geometry inside their reserved footprint
         ],
       },
     ]) {
-      builder.makeCrops(group, { ...base, ...variant });
+      const descriptor = { ...base, ...variant };
+      const saved = structuredClone(descriptor);
+      builder.makeCrops(group, descriptor);
+      assert.deepEqual(descriptor, saved, 'Rendering retains saved crop descriptors');
       group.updateMatrixWorld(true);
       let vertices = 0;
       group.traverse((mesh) => {
@@ -428,6 +434,14 @@ test('crop and fruit meshes have finite geometry inside their reserved footprint
         }
       });
       assert.ok(vertices > 100);
+      if (!variant.cropStyle || variant.cropStyle === 'plots') {
+        assert.equal(group.children[0].children.length, 3, 'Legacy rows render as wheat meshes');
+        assert.equal(
+          group.children[0].children[2].material,
+          registry.propMaterial('grain', base.temperature),
+          'Legacy descriptors use golden wheat heads',
+        );
+      }
       if (variant.patch) {
         assert.equal(
           group.children[0].children[0].material.userData.treeSway,

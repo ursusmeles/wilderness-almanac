@@ -6,6 +6,9 @@ export const UI_PREFERENCES_KEY = 'wilderness-almanac:ui-v1';
 function pickPanels(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
   return {
+    ...(Number.isFinite(value.panelSplit) && value.panelSplit >= 0 && value.panelSplit <= 1
+      ? { panelSplit: value.panelSplit }
+      : {}),
     ...(Array.isArray(value.panelOrder) &&
     value.panelOrder.length === 2 &&
     new Set(value.panelOrder).size === 2 &&

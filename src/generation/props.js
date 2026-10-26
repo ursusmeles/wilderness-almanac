@@ -260,12 +260,10 @@ export function generatePropDressing(
         world.seed,
         `farmland:${cell.key}:${variant}:${revisions[cell.key] ?? 0}`,
       );
-      const cropStyle =
-        cell.elevation > 0 && farmRandom() < 0.2
-          ? 'vineyard'
-          : farmRandom() < 0.6
-            ? 'grain'
-            : 'plots';
+      const vineyard = cell.elevation > 0 && farmRandom() < 0.2;
+      // Retain the retired plot-style roll so existing wheat/vineyard streams replay.
+      if (!vineyard) farmRandom();
+      const cropStyle = vineyard ? 'vineyard' : 'grain';
       if (modern && cropStyle === 'grain') {
         if (random() < 0.25) {
           const fruit = farmRandom() < 0.5;

@@ -40,7 +40,7 @@ Select connected town or city hexes to **Join town** or **Join city**. Villages 
 
 In Multiselect, **Reset selected**, next to Undo, restores the selected hexes to their generated defaults after confirmation. It clears their edits, visited status and dressing locks. Undo restores the reset hexes.
 
-On current maps, mountain ranges mix rounded ridges with occasional taller, steeper crests. Farmland can show planted plots, dense golden fields spreading toward hex edges, or occasional vineyards on raised tiles. Some farmland trees bear colourful fruit. These are cosmetic variants chosen by regeneration; locks preserve them.
+On current maps, mountain ranges mix rounded ridges with occasional taller, steeper crests. Farmland shows dense golden wheat fields spreading toward hex edges, with occasional vineyards on raised tiles. Some farmland trees bear colourful fruit. These are cosmetic variants chosen by regeneration; locks preserve them.
 
 **Regenerate map**, in the expanded appearance panel, changes the map's cosmetic dressing while keeping its geography and locations. Create a different world through **New campaign** in the main menu. Hexes with locked dressing keep their appearance through map-wide regeneration.
 

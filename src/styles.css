@@ -1648,6 +1648,7 @@
     height: 100%;
   }
   .hp-tool-panel {
+    position: relative;
     grid-column: var(--panel-column, 1);
     grid-row: var(--panel-row, auto);
   }
@@ -1672,6 +1673,31 @@
     display: flex;
     gap: var(--space-4);
   }
+  .hp-panel-resize {
+    position: absolute;
+    inset: auto 0 0;
+    height: var(--space-12);
+    display: grid;
+    place-items: center;
+    cursor: row-resize;
+    touch-action: none;
+    user-select: none;
+    &::before {
+      content: '';
+      width: var(--space-32);
+      height: var(--space-4);
+      border-radius: var(--radius);
+      background: var(--muted);
+    }
+    &:hover::before,
+    &:focus-visible::before {
+      background: var(--gold);
+    }
+    &:focus-visible {
+      outline: var(--focus-width) solid var(--focus);
+      outline-offset: calc(-1 * var(--focus-width));
+    }
+  }
   :is(.hp-panel-buttons button, #hp-toggle-settings) {
     --icon-size: var(--icon-small);
     padding: 0;
@@ -1694,12 +1720,12 @@
     grid-template-columns: clamp(6.5rem, 36%, 10rem) minmax(0, 1fr);
     align-items: center;
     gap: var(--space-4) var(--space-24);
-    padding: var(--space-12);
+    padding: var(--space-8) var(--space-12) var(--space-16);
     border-bottom: 1px solid var(--line);
   }
   .hp-hex-visited {
     float: inline-end;
-    margin-inline-start: var(--space-8);
+    margin-inline-start: var(--space-16);
     padding-inline: var(--space-8);
   }
   .hp-party-overview {
@@ -1937,6 +1963,10 @@
     }
   }
   @media (min-width: 761px) and (min-height: 501px), (min-width: 1025px) {
+    .hp-tool-panel.is-collapsed:not(.is-side-collapsed) .hp-panel-bar {
+      height: calc(var(--panel-bar-size) - 1px);
+      min-height: calc(var(--panel-bar-size) - 1px);
+    }
     :is(.hp-inspector-action-cluster, .hp-batch-overview .hp-inspector-edit-actions) {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2231,6 +2261,10 @@
     }
     & .hp-palette-controls {
       max-width: none;
+    }
+    & .hp-palette-picker {
+      grid-template-columns: minmax(0, var(--palette-controls-width)) auto;
+      justify-content: start;
     }
   }
   .is-side-collapsed {

@@ -21,6 +21,7 @@ test('localStorage only receives validated noncritical UI preferences', () => {
       panelsCollapsed: { tracker: true, inspector: false },
       campaignPanels: {
         adventure: {
+          panelSplit: 0.4,
           panelOrder: ['tracker', 'inspector'],
           panelsCollapsed: { tracker: true, inspector: false },
           panelsHorizontal: { tracker: false, inspector: true },
@@ -43,6 +44,7 @@ test('localStorage only receives validated noncritical UI preferences', () => {
     settingsOpen: true,
     campaignPanels: {
       adventure: {
+        panelSplit: 0.4,
         panelOrder: ['tracker', 'inspector'],
         panelsCollapsed: { tracker: true, inspector: false },
         panelsHorizontal: { tracker: false, inspector: true },
@@ -57,6 +59,19 @@ test('localStorage only receives validated noncritical UI preferences', () => {
     panelsHorizontal: { tracker: true },
   });
   assert.deepEqual(readUIPreferences(storage), {});
+});
+
+test('campaign panel splits accept only finite proportions', () => {
+  let saved;
+  const storage = { getItem: () => saved, setItem: (_, value) => (saved = value) };
+  for (const panelSplit of [0, 0.4, 1]) {
+    saveUIPreferences(storage, { campaignPanels: { adventure: { panelSplit } } });
+    assert.equal(readUIPreferences(storage).campaignPanels.adventure.panelSplit, panelSplit);
+  }
+  for (const panelSplit of [-1, 1.1, Infinity, NaN, '0.4']) {
+    saveUIPreferences(storage, { campaignPanels: { adventure: { panelSplit } } });
+    assert.deepEqual(readUIPreferences(storage), {});
+  }
 });
 
 test('campaign panel layouts stay separate and ignore legacy global layouts and invalid entries', () => {

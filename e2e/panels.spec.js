@@ -36,7 +36,8 @@ test('desktop panel defaults and saved layouts belong to each campaign', async (
     'data-panel',
     'inspector',
   );
-  await sandbox.locator('[data-collapse]').click();
+  await page.getByRole('separator', { name: 'Resize Hex Inspector', exact: true }).focus();
+  await page.keyboard.press('End');
   await inspector.locator('[data-horizontal]').click();
   await page.locator('#hp-back-menu').click();
   await page.getByRole('button', { name: 'Enter Other campaign', exact: true }).click();
@@ -83,7 +84,8 @@ test('desktop Inspector fold follows the overview height and wrapped titles', as
     .poll(() => overview.evaluate((element) => element.getBoundingClientRect().height))
     .toBeGreaterThan(before);
   await expect.poll(foldGap).toBeLessThan(0.1);
-  await page.locator('.hp-tracker-panel [data-collapse]').click();
+  await page.getByRole('separator', { name: 'Resize Hex Inspector', exact: true }).focus();
+  await page.keyboard.press('End');
   const inspector = await page.locator('.hp-inspector-panel').boundingBox();
   const column = await page.locator('.hp-side-panels').boundingBox();
   expect(inspector.height).toBeGreaterThan(column.height / 2);
