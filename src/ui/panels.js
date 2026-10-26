@@ -167,15 +167,19 @@ export function createPanels(root, preferences, onChange) {
     },
     { signal: listeners.signal },
   );
-  const observer = new ResizeObserver(() => {
+  let measurementFrame;
+  function measureOverview() {
+    measurementFrame = undefined;
     const overview = panels.inspector.querySelector('.hp-inspector-overview');
     if (!overview || !overview.getBoundingClientRect().height) return;
     const bar = panels.inspector.querySelector('.hp-panel-bar');
     const style = getComputedStyle(panels.inspector);
-    side.style.setProperty(
-      '--inspector-overview-height',
-      `${overview.getBoundingClientRect().height + bar.getBoundingClientRect().height + parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth)}px`,
-    );
+    const height = `${overview.getBoundingClientRect().height + bar.getBoundingClientRect().height + parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth)}px`;
+    if (side.style.getPropertyValue('--inspector-overview-height') !== height)
+      side.style.setProperty('--inspector-overview-height', height);
+  }
+  const observer = new ResizeObserver(() => {
+    measurementFrame ??= requestAnimationFrame(measureOverview);
   });
   observer.observe(panels.inspector);
   observer.observe(panels.inspector.querySelector('.hp-panel-bar'));
@@ -224,6 +228,7 @@ export function createPanels(root, preferences, onChange) {
     },
     dispose() {
       listeners.abort();
+      cancelAnimationFrame(measurementFrame);
       observer.disconnect();
       contentObserver.disconnect();
       delete root.dataset.panelRails;

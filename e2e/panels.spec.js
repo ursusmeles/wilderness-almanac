@@ -58,6 +58,10 @@ test('desktop Inspector fold follows the overview height and wrapped titles', as
   page,
 }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop', 'desktop Inspector fold');
+  await page.addInitScript(() => {
+    window.panelErrors = [];
+    window.addEventListener('error', (event) => window.panelErrors.push(event.message));
+  });
   await openCampaign(page);
   await page.evaluate(() => document.fonts.ready);
   const foldGap = () =>
@@ -83,4 +87,5 @@ test('desktop Inspector fold follows the overview height and wrapped titles', as
   const inspector = await page.locator('.hp-inspector-panel').boundingBox();
   const column = await page.locator('.hp-side-panels').boundingBox();
   expect(inspector.height).toBeGreaterThan(column.height / 2);
+  expect(await page.evaluate(() => window.panelErrors)).toEqual([]);
 });
