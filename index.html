@@ -168,12 +168,8 @@
               </button>
             </header>
             <div class="settings-content stack">
-              <fieldset
-                id="settings-motion"
-                class="settings-group stack"
-                aria-describedby="settings-motion-note"
-              >
-                <legend>Movement</legend>
+              <fieldset id="settings-motion" class="settings-group stack">
+                <legend>Default animation preference</legend>
                 <div class="settings-toggle">
                   <label
                     ><input type="radio" name="settings-motion" value="true" checked /><span
@@ -186,16 +182,8 @@
                     ></label
                   >
                 </div>
-                <p id="settings-motion-note" class="settings-note">
-                  Animate wind, waves, light pulses and lighthouse beams. Reduced-motion preferences
-                  still apply.
-                </p>
               </fieldset>
-              <fieldset
-                id="settings-time"
-                class="settings-group stack"
-                aria-describedby="settings-time-note"
-              >
+              <fieldset id="settings-time" class="settings-group stack">
                 <legend>Default time of day</legend>
                 <div class="settings-toggle">
                   <label
@@ -217,16 +205,9 @@
                     ></label
                   >
                 </div>
-                <p id="settings-time-note" class="settings-note">
-                  New campaigns start at this time.
-                </p>
               </fieldset>
-              <fieldset
-                id="settings-time-increment"
-                class="settings-group stack"
-                aria-describedby="settings-time-increment-note"
-              >
-                <legend>Campaign time increment</legend>
+              <fieldset id="settings-time-increment" class="settings-group stack">
+                <legend>Default campaign time increment</legend>
                 <div class="settings-toggle">
                   <label
                     ><input type="radio" name="settings-time-increment" value="day" /><span
@@ -244,10 +225,21 @@
                     ></label
                   >
                 </div>
-                <p id="settings-time-increment-note" class="settings-note">
-                  Applies to all campaigns. Existing numbers stay the same.
-                </p>
               </fieldset>
+              <div class="settings-group settings-palette-group stack">
+                <label for="settings-palette">Default palette</label>
+                <div class="settings-palette-actions">
+                  <select id="settings-palette"></select>
+                  <button
+                    type="button"
+                    id="open-palette-manager"
+                    aria-haspopup="dialog"
+                    aria-controls="palette-manager-dialog"
+                  >
+                    Manage palettes
+                  </button>
+                </div>
+              </div>
               <fieldset id="settings-panel-order" class="settings-group stack">
                 <legend>Top panel</legend>
                 <div class="settings-toggle">
@@ -266,23 +258,6 @@
                   >
                 </div>
               </fieldset>
-              <div class="settings-group settings-palette-group stack">
-                <label for="settings-palette">Default palette</label>
-                <div class="settings-palette-actions">
-                  <select id="settings-palette" aria-describedby="settings-palette-note"></select>
-                  <button
-                    type="button"
-                    id="open-palette-manager"
-                    aria-haspopup="dialog"
-                    aria-controls="palette-manager-dialog"
-                  >
-                    Manage palettes
-                  </button>
-                </div>
-                <p id="settings-palette-note" class="settings-note">
-                  New campaigns start with this palette.
-                </p>
-              </div>
               <div class="settings-group stack">
                 <div class="settings-import cluster">
                   <button type="button" id="import-campaign">

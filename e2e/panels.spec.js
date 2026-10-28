@@ -28,7 +28,7 @@ test('Settings order applies on desktop/mobile, stages cancellation and survives
   await expect(page.locator('#settings-save')).toBeDisabled();
   await expect(page.locator('#settings-panel-order input[value="inspector"]')).toBeChecked();
   const positions = await page.evaluate(() =>
-    ['settings-time', 'settings-panel-order', 'settings-palette'].map(
+    ['settings-time', 'settings-palette', 'settings-panel-order'].map(
       (id) => document.getElementById(id).getBoundingClientRect().y,
     ),
   );

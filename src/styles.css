@@ -453,8 +453,8 @@
       display: grid;
       place-items: center;
       min-width: 0;
-      min-height: var(--control-size);
-      padding: var(--space-8);
+      min-height: 0;
+      padding: var(--space-4) var(--space-8);
       border-inline-end: 1px solid var(--line);
       font: var(--control-font);
       text-align: center;
@@ -1170,6 +1170,9 @@
     display: flex;
     align-items: center;
     gap: var(--space-8);
+    @media (max-width: 760px), (max-width: 1024px) and (max-height: 500px) {
+      gap: 0;
+    }
   }
   .palette-swatch {
     position: relative;
@@ -1199,6 +1202,14 @@
     }
     @media (pointer: coarse) {
       width: var(--control-size);
+    }
+    @media (max-width: 760px), (max-width: 1024px) and (max-height: 500px) {
+      &::before {
+        inset: 50% auto auto 50%;
+        width: var(--space-24);
+        height: calc(var(--space-24) + var(--space-4));
+        translate: -50% -50%;
+      }
     }
   }
   .palette-name-wrap {
