@@ -121,11 +121,19 @@ export async function createBrowserStore({
       try {
         const row = campaignRows.get(id);
         if (!validRevision(row) || row.value.id !== id) throw new Error('unreadable');
-        const campaign = validateCampaign(row.value);
+        const rows = data.journal
+          .filter((entry) => entry.campaignId === id)
+          .sort((a, b) => a.id - b.id);
+        if (rows.some((entry) => entry.value?.id !== entry.id)) throw new Error('unreadable');
+        const raw = {
+          ...row.value,
+          ...(rows.length ? { journal: rows.map((entry) => entry.value) } : {}),
+        };
+        const campaign = validateCampaign(raw);
         currentCampaigns.push(campaign);
         // Library cards edit live records in place. The committed baseline
         // must never alias those objects or a rename could look unchanged.
-        baseline.set(id, validateCampaign(row.value));
+        baseline.set(id, validateCampaign(raw));
       } catch {
         // Keep the original row and library identity, never replace it via a
         // stale library snapshot merely because this app cannot open it.
@@ -236,8 +244,30 @@ export async function createBrowserStore({
             value: { ...unknownFields(original, baseline.get(value.id) ?? value), ...value },
           };
           // Known fields removed by reset/replacement must stay removed.
-          for (const key of ['hexEdits', 'partyToken', 'fogOfWar', 'timeOfDay', 'preferences'])
+          for (const key of [
+            'hexEdits',
+            'partyToken',
+            'fogOfWar',
+            'timeOfDay',
+            'preferences',
+            'journalSequence',
+          ])
             if (!Object.hasOwn(value, key)) delete row.value[key];
+          // Keep journal bodies out of the replay row. Update only changed
+          // entries, in the same revision-checked transaction as party/visits.
+          delete row.value.journal;
+          const previousEntries = new Map(
+            (baseline.get(value.id)?.journal ?? []).map((entry) => [entry.id, entry]),
+          );
+          const entries = value.journal ?? [];
+          const ids = new Set(entries.map((entry) => entry.id));
+          const storedKeys = await requested(stores.journal.index('campaign').getAllKeys(value.id));
+          const storedIds = new Set(storedKeys.map((key) => key[1]));
+          for (const entry of entries)
+            if (!storedIds.has(entry.id) || !equal(previousEntries.get(entry.id), entry))
+              stores.journal.put({ campaignId: value.id, id: entry.id, value: entry });
+          for (const id of previousEntries.keys())
+            if (!ids.has(id)) stores.journal.delete([value.id, id]);
           stores.campaigns.put(row);
           updates.campaigns.set(value.id, row);
         }
@@ -245,8 +275,7 @@ export async function createBrowserStore({
           const current = await requested(stores.campaigns.get(id));
           if (revision(current) !== revision(campaignRows.get(id))) conflict();
           stores.campaigns.delete(id);
-          // Future journal rows belong to the deleted campaign. No journal
-          // actions are implemented yet; deletion already owns their lifecycle.
+          // Deletion recovery carries the full in-memory journal for Undo.
           const keys = await requested(stores.journal.index('campaign').getAllKeys(id));
           for (const key of keys) stores.journal.delete(key);
         }

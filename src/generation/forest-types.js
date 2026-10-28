@@ -34,16 +34,19 @@ export function forestProfiles(cells, seed) {
       const smallerWoods = choices.filter((choice) => choice !== 'taiga');
       type = smallerWoods[Math.floor(random() * smallerWoods.length)];
     }
-    for (const cell of group)
+    for (const cell of group) {
+      const species = choices.includes(cell.forestType) ? cell.forestType : type;
       profiles.set(cell.key, {
         clusterId: `forest:${start.key}`,
         family,
-        type,
+        type: species,
         mixed: false,
-        name: type === 'taiga' ? 'taiga' : cell.terrain.replace('forest', `${type} forest`),
+        name: species === 'taiga' ? 'taiga' : cell.terrain.replace('forest', `${species} forest`),
       });
+    }
   }
   for (const cell of forests) {
+    if (cell.forestType) continue;
     const profile = profiles.get(cell.key);
     const opposite = neighbours(cell, byKey).filter(
       (next) => profiles.has(next.key) && familyOf(next) !== profile.family,

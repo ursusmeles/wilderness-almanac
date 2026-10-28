@@ -133,3 +133,24 @@ test('earlier UI namespaces retain preferences until a current preference is sav
   assert.deepEqual(readUIPreferences(storage), { motion: true });
   assert.equal(values.has('previous-product:ui-v1'), true);
 });
+
+test('global tool order and per-campaign map widths/folding validate separately from campaign content', () => {
+  let source;
+  const storage = { getItem: () => source, setItem: (_, value) => (source = value) };
+  const preferences = {
+    journalFirst: true,
+    campaignPanels: {
+      first: { mapSplit: 0.6, sidePanelsFolded: true, panelSplit: 0.3 },
+      second: { mapSplit: 0.4, sidePanelsFolded: false },
+    },
+  };
+  assert.equal(saveUIPreferences(storage, preferences), true);
+  assert.deepEqual(readUIPreferences(storage), preferences);
+  for (const mapSplit of [-1, 2, NaN, Infinity, '0.4']) {
+    saveUIPreferences(storage, {
+      journalFirst: 'true',
+      campaignPanels: { first: { mapSplit, sidePanelsFolded: 'true' } },
+    });
+    assert.deepEqual(readUIPreferences(storage), {});
+  }
+});

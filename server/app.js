@@ -91,11 +91,17 @@ export function createApp({ db, auth, config }) {
   });
   app.get('/api/campaigns/:id/export', (c) => {
     const result = getCampaign(db, c.get('owner'), c.req.param('id'));
+    let source;
+    try {
+      source = exportCampaign(result.campaign);
+    } catch (error) {
+      throw new APIError(413, error.message);
+    }
     const filename = campaignFilename(result.campaign).replace(/[^a-zA-Z0-9._-]/g, '_');
     c.header('Content-Type', 'application/json; charset=utf-8');
     c.header('Content-Disposition', `attachment; filename="${filename}"`);
     c.header('ETag', `"${result.revision}"`);
-    return c.body(exportCampaign(result.campaign));
+    return c.body(source);
   });
   app.get('/api/campaigns/:id', (c) => {
     const result = getCampaign(db, c.get('owner'), c.req.param('id'));

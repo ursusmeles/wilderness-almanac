@@ -9,6 +9,12 @@ function pickPanels(value) {
     ...(Number.isFinite(value.panelSplit) && value.panelSplit >= 0 && value.panelSplit <= 1
       ? { panelSplit: value.panelSplit }
       : {}),
+    ...(Number.isFinite(value.mapSplit) && value.mapSplit >= 0 && value.mapSplit <= 1
+      ? { mapSplit: value.mapSplit }
+      : {}),
+    ...(typeof value.sidePanelsFolded === 'boolean'
+      ? { sidePanelsFolded: value.sidePanelsFolded }
+      : {}),
     ...(Array.isArray(value.panelOrder) &&
     value.panelOrder.length === 2 &&
     new Set(value.panelOrder).size === 2 &&
@@ -42,6 +48,7 @@ function pick(value = {}) {
       : {};
   return {
     ...(typeof value.motion === 'boolean' ? { motion: value.motion } : {}),
+    ...(typeof value.journalFirst === 'boolean' ? { journalFirst: value.journalFirst } : {}),
     ...(TIMES_OF_DAY.includes(value.defaultTimeOfDay)
       ? { defaultTimeOfDay: value.defaultTimeOfDay }
       : {}),

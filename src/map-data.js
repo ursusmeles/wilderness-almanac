@@ -4,21 +4,23 @@ import { DIRECTIONS, keyOf, worldPosition } from './generation/hex.js';
 // Radius 12 gives a complete 469-cell hex. Six compact Voronoi regions are
 // clipped to that outline; complete small hexagons cannot tile it in six pieces.
 export const WORLD_RADIUS = 12;
-export function createTopology() {
-  const cells = [];
-  const regions = Array.from({ length: 6 }, (_, index) => ({
-    id: index + 1,
-    origin: { q: 0, r: 0 },
-    hexIds: [],
-  }));
-  const sites = [
+export function createTopology({
+  radius = WORLD_RADIUS,
+  sites = [
     [-6, -3],
     [0, -3],
     [6, -3],
     [-6, 3],
     [0, 3],
     [6, 3],
-  ];
+  ],
+} = {}) {
+  const cells = [];
+  const regions = Array.from({ length: sites.length }, (_, index) => ({
+    id: index + 1,
+    origin: { q: 0, r: 0 },
+    hexIds: [],
+  }));
   regions.forEach((region, index) => {
     region.origin = { q: sites[index][0], r: sites[index][1] };
   });
@@ -48,9 +50,9 @@ export function createTopology() {
     cells.push(cell);
     region.hexIds.push(cell.id);
   }
-  for (let q = -WORLD_RADIUS; q <= WORLD_RADIUS; q++) {
-    for (let r = -WORLD_RADIUS; r <= WORLD_RADIUS; r++) {
-      if (Math.abs(q + r) > WORLD_RADIUS) continue;
+  for (let q = -radius; q <= radius; q++) {
+    for (let r = -radius; r <= radius; r++) {
+      if (Math.abs(q + r) > radius) continue;
       const scores = sites.map(([x, y]) => (q - x) ** 2 + (q - x) * (r - y) + (r - y) ** 2);
       add(q, r, scores.indexOf(Math.min(...scores)));
     }
@@ -62,5 +64,5 @@ export function createTopology() {
       byKey.has(keyOf(cell.q + q, cell.r + r)) ? [] : [side],
     );
   }
-  return { cells, regions, radius: WORLD_RADIUS };
+  return { cells, regions, radius };
 }

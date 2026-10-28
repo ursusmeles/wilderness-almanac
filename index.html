@@ -202,6 +202,15 @@
                   New campaigns start at this time.
                 </p>
               </div>
+              <div class="settings-group stack">
+                <label class="cc-field" for="settings-panel-order">
+                  Side panel order
+                  <select id="settings-panel-order">
+                    <option value="inspector">Inspector above Journal</option>
+                    <option value="tracker">Journal above Inspector</option>
+                  </select>
+                </label>
+              </div>
               <div class="settings-group settings-palette-group stack">
                 <label for="settings-palette">Default palette</label>
                 <div class="settings-palette-actions">
@@ -976,46 +985,178 @@
       </section>
     </main>
 
-    <template id="tool-panel-template">
-      <section class="hp-tool-panel">
-        <header class="hp-panel-bar cluster">
-          <h2></h2>
-          <div class="hp-panel-buttons">
+    <template id="party-journal-entry-template">
+      <div class="hp-journal-entry" tabindex="0" role="group" aria-label="Journal entry">
+        <div class="hp-journal-entry-text"></div>
+        <div class="hp-journal-entry-controls" role="group" aria-label="Journal entry actions">
+          <button
+            type="button"
+            class="icon-button"
+            data-entry-action="copy"
+            aria-label="Copy journal entry"
+            data-tooltip="Copy"
+          >
+            <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <use href="/icons/pixelarticons.svg#copy"></use>
+            </svg>
+          </button>
+          <button
+            type="button"
+            class="icon-button"
+            data-entry-action="regenerate"
+            aria-label="Reroll journal entry"
+            data-tooltip="Reroll"
+          >
+            <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <use href="/icons/pixelarticons.svg#refresh"></use>
+            </svg>
+          </button>
+          <button
+            type="button"
+            class="icon-button"
+            data-entry-action="edit"
+            aria-label="Edit journal entry"
+            data-tooltip="Edit"
+            hidden
+          >
+            <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <use href="/icons/pixelarticons.svg#pencil"></use>
+            </svg>
+          </button>
+          <button
+            type="button"
+            class="icon-button"
+            data-entry-action="delete"
+            aria-label="Delete journal entry"
+            data-tooltip="Delete"
+          >
+            <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <use href="/icons/pixelarticons.svg#trash"></use>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </template>
+    <template id="party-journal-template">
+      <section class="hp-journal" aria-label="Party Journal">
+        <div
+          id="hp-journal-log"
+          class="hp-journal-log"
+          tabindex="0"
+          role="region"
+          aria-label="Party Journal events, oldest first"
+        >
+          <nav class="hp-journal-divider hp-journal-pagination" aria-label="Journal weeks">
             <button
               type="button"
-              class="icon-button hp-panel-button hp-panel-order hp-move-up"
-              data-direction="-1"
-              data-tooltip="Move panel up"
+              class="icon-button"
+              data-week-page="first"
+              aria-label="First week"
             >
               <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <use href="/icons/pixelarticons.svg#arrow-bar-up"></use>
+                <use href="/icons/pixelarticons.svg#arrow-bar-left"></use>
               </svg>
             </button>
             <button
               type="button"
-              class="icon-button hp-panel-button hp-panel-order hp-move-down"
-              data-direction="1"
-              data-tooltip="Move panel down"
+              class="icon-button"
+              data-week-page="previous"
+              aria-label="Previous week"
             >
               <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <use href="/icons/pixelarticons.svg#arrow-bar-down"></use>
+                <use href="/icons/pixelarticons.svg#arrow-left"></use>
               </svg>
             </button>
-            <button
-              type="button"
-              class="icon-button hp-panel-button hp-panel-horizontal"
-              data-horizontal
-            >
+            <span id="hp-journal-week" tabindex="-1">Week 1</span>
+            <button type="button" class="icon-button" data-week-page="next" aria-label="Next week">
+              <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <use href="/icons/pixelarticons.svg#arrow-right"></use>
+              </svg>
+            </button>
+            <button type="button" class="icon-button" data-week-page="last" aria-label="Last week">
               <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <use href="/icons/pixelarticons.svg#arrow-bar-right"></use>
               </svg>
             </button>
-            <button class="icon-button hp-panel-button" type="button" data-collapse>
-              <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <use href="/icons/pixelarticons.svg#collapse"></use>
-              </svg>
+          </nav>
+          <button id="hp-journal-older" type="button" hidden>Load older entries</button>
+          <div id="hp-journal-entries"></div>
+          <div id="hp-journal-new-week" class="hp-journal-new-week" hidden>
+            <button id="hp-journal-start" class="primary-button" type="button">
+              Start new week
             </button>
           </div>
+        </div>
+        <div class="hp-journal-actions">
+          <button type="button" data-journal-command="/oracle">Roll oracle</button>
+          <button type="button" data-journal-command="/abstract">Draw an abstract</button>
+          <button
+            type="button"
+            data-journal-command="/explore"
+            data-tooltip="Hex exploration is coming later"
+          >
+            Explore hex
+          </button>
+        </div>
+        <form id="hp-journal-form" class="hp-journal-form">
+          <label for="hp-journal-input" class="sr-only">Journal entry or command</label>
+          <div class="hp-journal-compose">
+            <div class="hp-journal-input-wrap">
+              <textarea
+                id="hp-journal-input"
+                rows="2"
+                placeholder="Write a note or type / for commands"
+                aria-describedby="hp-journal-count hp-journal-error"
+                aria-autocomplete="list"
+                aria-controls="hp-journal-suggestions"
+                aria-expanded="false"
+              ></textarea>
+              <span id="hp-journal-count" class="hp-journal-count">0 / 300</span>
+            </div>
+            <div class="hp-journal-submit">
+              <button id="hp-journal-add" class="primary-button" type="submit">
+                Add to Journal
+              </button>
+              <button
+                id="hp-journal-cancel-edit"
+                class="icon-button"
+                type="button"
+                aria-label="Cancel journal edit"
+                data-tooltip="Cancel edit"
+                hidden
+              >
+                <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <use href="/icons/pixelarticons.svg#close"></use>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div
+            id="hp-journal-suggestions"
+            class="hp-journal-suggestions"
+            role="listbox"
+            aria-label="Commands and mention suggestions"
+            hidden
+          ></div>
+          <p id="hp-journal-error" class="hp-journal-error" role="alert" hidden></p>
+        </form>
+        <span id="hp-journal-announcement" class="sr-only" role="status" aria-live="polite"></span>
+      </section>
+    </template>
+    <template id="tool-panel-template">
+      <section class="hp-tool-panel">
+        <header class="hp-panel-bar cluster">
+          <h2></h2>
+          <button
+            class="icon-button hp-panel-button hp-panel-disclosure"
+            type="button"
+            data-collapse
+            hidden
+          >
+            <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <use href="/icons/pixelarticons.svg#collapse"></use>
+            </svg>
+          </button>
         </header>
         <div class="hp-panel-body"></div>
         <div
@@ -1027,6 +1168,24 @@
           hidden
         ></div>
       </section>
+    </template>
+    <template id="party-panel-name-template">
+      <form id="hp-party-name-form" class="campaign-name-form">
+        <input
+          id="hp-party-name"
+          class="campaign-name"
+          type="text"
+          aria-label="Party name"
+          value="Adventurers"
+          maxlength="100"
+          required
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <use href="/icons/pixelarticons.svg#pencil"></use>
+        </svg>
+      </form>
     </template>
     <template id="party-inspector-template">
       <div class="hp-party-overview">
@@ -1066,37 +1225,24 @@
           </div>
         </div>
         <div class="hp-inspector-heading">
-          <form id="hp-party-name-form" class="campaign-name-form">
-            <input
-              id="hp-party-name"
-              class="campaign-name"
-              type="text"
-              aria-label="Party name"
-              value="Adventurers"
-              maxlength="100"
-              required
-              autocomplete="off"
-              spellcheck="false"
-            />
-            <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <use href="/icons/pixelarticons.svg#pencil"></use>
-            </svg>
-          </form>
-          <p class="hp-party-location-value hp-pixel">
-            <button
-              type="button"
-              id="hp-party-locate-position"
-              class="icon-button hp-seed-action"
-              aria-label="Locate party hex"
-              data-tooltip="Show party location"
-            >
-              <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <use href="/icons/pixelarticons.svg#compass"></use>
-              </svg>
-            </button>
-            <span id="hp-party-address"></span>
-          </p>
           <dl class="hp-hex-distances">
+            <div>
+              <dt>
+                <button
+                  type="button"
+                  id="hp-party-locate-position"
+                  class="icon-button hp-seed-action"
+                  aria-label="Locate party hex"
+                  data-tooltip="Show party location"
+                >
+                  <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <use href="/icons/pixelarticons.svg#compass"></use>
+                  </svg>
+                </button>
+                <span>Region</span>
+              </dt>
+              <dd id="hp-party-address"></dd>
+            </div>
             <div>
               <dt>
                 <button
@@ -1127,7 +1273,7 @@
                     <use href="/icons/pixelarticons.svg#map-pin"></use>
                   </svg>
                 </button>
-                <span>Nearest point of interest</span>
+                <span>Nearest POI</span>
               </dt>
               <dd id="hp-party-poi"></dd>
             </div>
@@ -1149,11 +1295,23 @@
               <dd id="hp-party-visited"></dd>
             </div>
             <div>
-              <dt><span>Weeks travelled</span></dt>
+              <dt>
+                <button
+                  type="button"
+                  id="hp-party-show-week"
+                  class="icon-button hp-seed-action"
+                  aria-label="Show current week"
+                  data-tooltip="Show current week"
+                >
+                  <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <use href="/icons/pixelarticons.svg#calendar"></use>
+                  </svg>
+                </button>
+                <span>Week</span>
+              </dt>
               <dd id="hp-party-weeks"></dd>
             </div>
           </dl>
-          <p id="hp-party-keyboard-help" class="hp-field-note">Move: Q/W/E · A/S/D</p>
         </div>
       </div>
     </template>

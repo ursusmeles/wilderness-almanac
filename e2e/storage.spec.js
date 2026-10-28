@@ -77,6 +77,114 @@ async function seed(page, campaigns = [campaign], preferences = {}) {
   );
 }
 
+test('journal rows commit with party state, survive reload and deletion Undo, and reject stale tabs atomically', async ({
+  page,
+}) => {
+  await prepare(page);
+  const result = await page.evaluate(async () => {
+    const { createCampaign } = await import('/src/application/campaigns.js');
+    const { generateWorld } = await import('/src/generation/world.js');
+    const { createCampaignSession } = await import('/src/application/campaign-session.js');
+    const store = await window.boot();
+    const record = createCampaign(
+      generateWorld('heliotest'),
+      ['#cdab8f', '#0b365e', '#11b329'],
+      'Test',
+    );
+    const session = createCampaignSession({
+      persist: async (campaign) => {
+        const saved = await store.save({ campaigns: [campaign] });
+        return { campaignSaved: saved, preferencesSaved: saved };
+      },
+    });
+    session.open(record);
+    session.moveParty('1,0');
+    session.partyDetails({ name: 'Wayfarers' });
+    session.nextWeek();
+    session.addJournal('<img src=x onerror=alert(1)>');
+    await session.save();
+    const saved = session.snapshot().campaign;
+    const raw = await window.readDB();
+    const count = raw.journal.length,
+      inline = raw.campaigns[0].value.journal;
+    const reloaded = await window.boot();
+    const restored = reloaded.campaigns[0];
+    reloaded.close();
+    await store.save({ campaigns: [], deletedCampaign: { index: 0, campaign: saved } });
+    const deletedCount = (await window.readDB()).journal.length;
+    await store.save({ campaigns: [saved], deletedCampaign: null });
+    const undoCount = (await window.readDB()).journal.length;
+    const stale = await window.boot();
+    session.nextWeek();
+    await session.save();
+    const conflict = await stale.save({
+      campaigns: [{ ...stale.campaigns[0], name: 'Stale name' }],
+    });
+    stale.close();
+    const beforeFailure = await window.readDB();
+    const put = IDBObjectStore.prototype.put;
+    IDBObjectStore.prototype.put = function (...args) {
+      if (this.name === 'journal') throw new DOMException('Simulated quota', 'QuotaExceededError');
+      return put.apply(this, args);
+    };
+    session.moveParty('-1,0');
+    const failed = await session.save();
+    IDBObjectStore.prototype.put = put;
+    const afterFailure = await window.readDB();
+    const live = session.snapshot().campaign;
+    const recovery = JSON.parse(await store.recovery());
+    store.close();
+    return {
+      count,
+      inline,
+      restored,
+      saved,
+      deletedCount,
+      undoCount,
+      conflict,
+      beforeFailure,
+      afterFailure,
+      failed,
+      live,
+      recovery,
+    };
+  });
+  expect(result.count).toBe(4);
+  expect(result.inline).toBeUndefined();
+  expect(result.restored).toEqual(result.saved);
+  expect(result.deletedCount).toBe(0);
+  expect(result.undoCount).toBe(4);
+  expect(result.conflict).toBe(false);
+  expect(result.failed.saved).toBe(false);
+  expect(result.afterFailure.campaigns).toEqual(result.beforeFailure.campaigns);
+  expect(result.afterFailure.journal).toEqual(result.beforeFailure.journal);
+  expect(result.live.partyToken.key).toBe('-1,0');
+  expect(result.recovery.database.journal).toEqual(result.beforeFailure.journal);
+});
+
+test('inline journal records become separate rows without losing unchanged entries', async ({
+  page,
+}) => {
+  await prepare(page);
+  const journal = [{ id: 1, week: 1, kind: 'note', text: 'An older saved note', mentions: [] }];
+  await seed(page, [{ ...campaign, journal }]);
+  const result = await page.evaluate(async () => {
+    const store = await window.boot();
+    const value = { ...store.campaigns[0], name: 'New campaign name' };
+    const saved = await store.save({ campaigns: [value] });
+    store.close();
+    const reloaded = await window.boot();
+    const journal = reloaded.campaigns[0].journal;
+    reloaded.close();
+    const raw = await window.readDB();
+    return { saved, journal, raw };
+  });
+  expect(result.saved).toBe(true);
+  expect(result.journal).toEqual(journal);
+  expect(result.raw.journal).toHaveLength(1);
+  expect(result.raw.campaigns[0].value.journal).toBeUndefined();
+});
+
 test('earlier product namespaces retain committed campaigns and original migration sources', async ({
   page,
 }) => {

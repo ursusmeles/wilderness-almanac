@@ -288,8 +288,12 @@ export function createCampaignMenu({ store, defaultPalette, onEnter, onNewCampai
 
   function download(campaign) {
     const date = new Date();
-    downloadFile(exportCampaign(campaign, date), campaignFilename(campaign, date));
-    setMessage(`Campaign export started: “${campaign.name}”`);
+    try {
+      downloadFile(exportCampaign(campaign, date), campaignFilename(campaign, date));
+      setMessage(`Campaign export started: “${campaign.name}”`);
+    } catch (error) {
+      setMessage(error.message, true);
+    }
   }
 
   async function downloadRecovery(palettes) {

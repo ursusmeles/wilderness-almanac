@@ -26,7 +26,7 @@ export function saveCampaign(db, owner, id, expected, value) {
   if (campaign.id !== id) throw new APIError(400, 'Campaign identity does not match the URL.');
   const document = JSON.stringify(campaign);
   if (Buffer.byteLength(document) > MAX_CAMPAIGN_BYTES)
-    throw new APIError(413, 'The campaign exceeds the 4 MB limit.');
+    throw new APIError(413, 'The campaign exceeds the 16 MB limit.');
   const now = new Date().toISOString();
   return db
     .transaction(() => {

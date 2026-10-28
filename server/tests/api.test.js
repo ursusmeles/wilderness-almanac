@@ -191,6 +191,45 @@ test('conditional saves reject stale revisions and deletion cannot reset revisio
   assert.equal((await f.request('/api/campaigns/campaign-1', { cookie })).status, 404);
 });
 
+test('account copies and version-3 exports preserve journal results and reject malformed references', async (t) => {
+  const f = await fixture(t);
+  const cookie = await f.login('journal@example.com');
+  const value = {
+    ...campaign,
+    seed: 'heliotest',
+    generatorVersion: 10,
+    partyToken: { key: '0,0', style: 'warden', weeks: 2 },
+    journal: [{ id: 1, week: 2, kind: 'oracle', text: 'Oracle: Yes (d6: 5 = 5)', mentions: [] }],
+  };
+  const saved = await f.request('/api/campaigns/campaign-1', {
+    method: 'PUT',
+    cookie,
+    headers: { 'if-match': '"0"' },
+    body: { campaign: value },
+  });
+  assert.equal(saved.status, 201);
+  const loaded = await (await f.request('/api/campaigns/campaign-1', { cookie })).json();
+  assert.deepEqual(loaded.campaign, value);
+  const exported = await (await f.request('/api/campaigns/campaign-1/export', { cookie })).text();
+  assert.equal(JSON.parse(exported).version, 3);
+  assert.deepEqual(importCampaign(exported), value);
+  const bad = {
+    ...value,
+    journal: [
+      { ...value.journal[0], mentions: [{ type: 'hex', key: '999,999', start: 0, end: 3 }] },
+    ],
+  };
+  const rejected = await f.request('/api/campaigns/campaign-1', {
+    method: 'PUT',
+    cookie,
+    headers: { 'if-match': '"1"' },
+    body: { campaign: bad },
+  });
+  assert.equal(rejected.status, 400);
+  const unchanged = await (await f.request('/api/campaigns/campaign-1', { cookie })).json();
+  assert.equal(unchanged.revision, 1);
+});
+
 test('HTTPS, trusted origins, content type, required revisions and input bounds are enforced', async (t) => {
   const f = await fixture(t);
   const cookie = await f.login('alice@example.com');
@@ -256,7 +295,7 @@ test('HTTPS, trusted origins, content type, required revisions and input bounds 
       await f.request('/api/campaigns/campaign-1', {
         ...base,
         headers: { 'if-match': '"0"' },
-        body: { padding: 'x'.repeat(4 * 1024 * 1024 + 5000) },
+        body: { padding: 'x'.repeat(16 * 1024 * 1024 + 5000) },
       })
     ).status,
     413,

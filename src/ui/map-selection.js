@@ -12,6 +12,7 @@ export function createMapSelection(
     isBusy,
     isMobile,
     syncSelection,
+    onPartySelected = () => {},
     updateInspector,
     onAction,
     onHover,
@@ -39,6 +40,7 @@ export function createMapSelection(
       return false;
     }
     if (session.snapshot().partySelected) {
+      onPartySelected();
       focusMap();
       afterSelect();
       return true;
@@ -51,6 +53,7 @@ export function createMapSelection(
       party.reset();
       syncSelection();
       updateInspector();
+      onPartySelected();
       focusMap();
       afterSelect();
     };
@@ -113,8 +116,9 @@ export function createMapSelection(
     selection.value = key;
     root.dataset.selected = key;
     onHover(key);
-    updateInspector();
+    // Reveal the destination panel before its visibility-gated preview refresh.
     syncSelection();
+    updateInspector();
   }
 
   function takeDestination() {

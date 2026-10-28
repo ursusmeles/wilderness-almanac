@@ -27,6 +27,7 @@ import { createCampaignCreator } from './ui/campaign-creator.js';
 import { createPanels } from './ui/panels.js';
 import { createHexInspector } from './ui/hex-inspector.js';
 import { createPartyInspector } from './ui/party-inspector.js';
+import { createPartyJournal } from './ui/party-journal.js';
 import { createBatchInspector } from './ui/batch-inspector.js';
 import { createMapAction } from './ui/map-action.js';
 import { loadThumbnails, saveThumbnails } from './ui/thumbnail-cache.js';
@@ -69,6 +70,7 @@ let viewSignature;
 let inspector;
 let batchInspector;
 let partyInspector;
+let partyJournal;
 const activeInspector = () =>
   session.snapshot()?.partySelected
     ? partyInspector
@@ -103,7 +105,7 @@ const listeners = new AbortController();
 const listen = (target, type, handler) =>
   target.addEventListener(type, handler, { signal: listeners.signal });
 const panels = createPanels(root, saved, () => {
-  if (session.snapshot()) session.save();
+  persistPreferences();
   inspector?.refreshPreview();
   partyInspector?.refreshPreview();
 });
@@ -138,6 +140,10 @@ const mapSelection = createMapSelection(root, {
   isBusy: mapAction.isBusy,
   isMobile: workspaceControls.isMobile,
   syncSelection,
+  onPartySelected() {
+    panels.openParty();
+    partyJournal?.reveal();
+  },
   updateInspector,
   onAction: handleAction,
   onHover: (key) => mapConsole.hover(shortCoordinates(cellsByKey.get(key))),
@@ -330,7 +336,14 @@ function handleAction(result) {
     }
     return false;
   }
-  if (result.scope === 'lighting') syncTimeOfDay();
+  if (result.scope === 'journal') {
+    partyJournal?.update({
+      ...session.snapshot(),
+      visibleWorld: displayView.world,
+      visibleLayout: displayView.layout,
+    });
+    if (session.snapshot().partySelected) updateInspector();
+  } else if (result.scope === 'lighting') syncTimeOfDay();
   else if (result.scope === 'world') renderWorld();
   else {
     if (result.scope === 'palette') applyPalette();
@@ -549,6 +562,11 @@ function syncSelection() {
   partyInspectorHost.hidden = !state.partySelected;
   panels.setMultiEdit(state.multiEdit);
   panels.setInspectorMode(state.partySelected ? 'party' : 'hex');
+  partyJournal?.update({
+    ...state,
+    visibleWorld: displayView.world,
+    visibleLayout: displayView.layout,
+  });
 }
 function toggleMultiEdit() {
   const change = () => {
@@ -699,10 +717,47 @@ function updateInspector() {
 const singleInspectorHost = document.createElement('div');
 const batchInspectorHost = document.createElement('div');
 const partyInspectorHost = document.createElement('div');
+const partyJournalHost = document.createElement('div');
+partyInspectorHost.className = 'hp-party-metadata';
+partyJournalHost.className = 'hp-party-journal';
+panels.party.append(partyInspectorHost, partyJournalHost);
+partyJournal = createPartyJournal(partyJournalHost, {
+  isBusy: mapAction.isBusy,
+  onSubmit(text, mentions, week) {
+    const result = session.addJournal(text, mentions, undefined, { week });
+    if (result.ok) handleAction(result);
+    return result;
+  },
+  onEdit(id, text, mentions) {
+    const result = session.editJournal(id, text, mentions);
+    if (result.ok) handleAction(result);
+    return result;
+  },
+  onNextWeek() {
+    const result = session.nextWeek();
+    if (result.ok) handleAction(result);
+    return result;
+  },
+  onEntryAction(action, id) {
+    const result = action === 'delete' ? session.deleteJournal(id) : session.regenerateJournal(id);
+    if (result.ok) handleAction(result);
+    return result;
+  },
+  onMention(type, key) {
+    if (type === 'party') mapSelection.selectParty();
+    else if (cellsByKey.has(key)) {
+      renderer.select(key);
+      const state = session.snapshot();
+      if (!state.partySelected && !state.multiEdit && state.selected === key) renderer.focus(key);
+    }
+  },
+});
 partyInspectorHost.hidden = true;
 batchInspectorHost.hidden = true;
-panels.inspector.append(singleInspectorHost, batchInspectorHost, partyInspectorHost);
+panels.inspector.append(singleInspectorHost, batchInspectorHost);
 partyInspector = createPartyInspector(partyInspectorHost, {
+  nameHost: panels.partyHeader,
+  onShowWeek: (week) => partyJournal.showWeek(week),
   onChange: (patch) => handleAction(session.partyDetails(patch)),
   onNavigate(key) {
     if (mapAction.isBusy()) return;
@@ -729,7 +784,7 @@ partyInspector = createPartyInspector(partyInspectorHost, {
     ),
   preview: (party, colors, color) => mapView?.partyPreview(party, colors, color) ?? '',
   colorFor: (colors) => mapView.partyColor(colors),
-  visible: () => Boolean(session.snapshot()?.partySelected) && panels.inspectorVisible(),
+  visible: panels.partyVisible,
 });
 inspector = createHexInspector(singleInspectorHost, {
   visible: panels.inspectorVisible,
@@ -823,11 +878,12 @@ const paletteManager = createPaletteManager({
 });
 const settings = createSettings({
   library: paletteLibrary,
-  read: () => ({ defaultTimeOfDay, motion: movement }),
+  read: () => ({ defaultTimeOfDay, motion: movement, journalFirst: panels.journalFirst() }),
   async onSave(values, imported) {
     paletteLibrary.setDefault(values.defaultPalette);
     defaultTimeOfDay = values.defaultTimeOfDay;
     movement = values.motion;
+    panels.setJournalFirst(values.journalFirst);
     updateMovementToggle();
     renderer?.setMotion(false);
     const uiSaved = persistPreferences();
@@ -957,6 +1013,7 @@ if (import.meta.hot)
     accountPanel?.dispose();
     inspector.dispose();
     partyInspector.dispose();
+    partyJournal.dispose();
     batchInspector.dispose();
     panels.dispose();
     mapView?.disposeTilePreview();

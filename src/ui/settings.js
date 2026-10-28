@@ -19,6 +19,7 @@ export function createSettings({ library, read, onSave }) {
     defaultPalette: el('palette').value,
     defaultTimeOfDay: el('time').value,
     motion: el('motion').getAttribute('aria-checked') === 'true',
+    journalFirst: el('panel-order').value === 'tracker',
   });
   const current = () => ({ defaultPalette: library.default().id, ...read() });
   function sync() {
@@ -74,6 +75,7 @@ export function createSettings({ library, read, onSave }) {
     fileInput.value = '';
     palettes(saved.defaultPalette);
     el('time').value = saved.defaultTimeOfDay;
+    el('panel-order').value = saved.journalFirst ? 'tracker' : 'inspector';
     el('motion').setAttribute('aria-checked', String(saved.motion));
     el('filename').textContent = 'No file selected';
     el('message').textContent = '';
@@ -85,6 +87,7 @@ export function createSettings({ library, read, onSave }) {
     sync();
   });
   listen(el('time'), 'change', sync);
+  listen(el('panel-order'), 'change', sync);
   listen(el('motion'), 'click', () => {
     el('motion').setAttribute('aria-checked', String(!values().motion));
     sync();
@@ -128,7 +131,7 @@ export function createSettings({ library, read, onSave }) {
     sync();
     try {
       if (file.size > MAX_CAMPAIGN_BYTES)
-        throw new Error('Choose a campaign JSON file smaller than 4 MB.');
+        throw new Error('Choose a campaign JSON file smaller than 16 MB.');
       const campaign = importCampaign(await file.text());
       if (request !== revision || listeners.signal.aborted) return;
       campaign.id = crypto.randomUUID();

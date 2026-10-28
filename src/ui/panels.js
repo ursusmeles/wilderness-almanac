@@ -1,7 +1,13 @@
 import { cloneTemplate } from './templates.js';
 
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+const MOBILE = '(max-width: 760px), (max-width: 1024px) and (max-height: 500px)';
+
+// Own layout and noncritical preferences; campaign selection/content stay with the session.
 export function createPanels(root, preferences, onChange) {
   const listeners = new AbortController();
+  const listen = (target, type, handler) =>
+    target.addEventListener(type, handler, { signal: listeners.signal });
   const map = document.createElement('section');
   map.className = 'hp-map-panel';
   map.setAttribute('aria-label', 'Map');
@@ -11,297 +17,388 @@ export function createPanels(root, preferences, onChange) {
   side.className = 'hp-side-panels';
   side.setAttribute('aria-label', 'Campaign tools');
   root.append(side);
+  const mobile = matchMedia(MOBILE);
   const campaignLayouts = new Map(Object.entries(preferences.campaignPanels ?? {}));
-  let campaignId;
-  let order = ['inspector', 'tracker'];
-  let collapsed = { tracker: false, inspector: false };
-  const mobileCollapsed = { tracker: true, inspector: true };
-  let horizontal = { tracker: false, inspector: false };
-  let panelSplit;
-  let drag;
+  let campaignId, panelSplit, mapSplit, drag, measurementFrame;
+  let journalFirst = preferences.journalFirst ?? false;
+  let collapsed = { inspector: false, tracker: false };
+  const mobileCollapsed = { inspector: true, tracker: true, party: false };
+  let folded = false,
+    partyMode = false,
+    multiEdit = false,
+    overviewHeight = 300;
+  const order = () => (journalFirst ? ['tracker', 'inspector'] : ['inspector', 'tracker']);
+  const panels = {};
+  const title = (id) => ({ inspector: 'Inspector', tracker: 'Journal', party: 'Party panel' })[id];
   const desktopPreferences = () => ({
     ...(panelSplit !== undefined ? { panelSplit } : {}),
-    panelOrder: order.slice(),
+    ...(mapSplit !== undefined ? { mapSplit } : {}),
     panelsCollapsed: { ...collapsed },
-    panelsHorizontal: { ...horizontal },
+    sidePanelsFolded: folded,
   });
-  const mobile = window.matchMedia(
-    '(max-width: 760px), (max-width: 1024px) and (max-height: 500px)',
-  );
-  const activeCollapsed = () => (mobile.matches ? mobileCollapsed : collapsed);
-  const panels = {};
-  let inspectorMode = 'hex';
-  let multiEdit = false;
-  for (const [id, name] of [
-    ['tracker', 'Sandbox tools'],
-    ['inspector', 'Hex Inspector'],
-  ]) {
+  for (const id of ['inspector', 'tracker', 'party']) {
     const panel = cloneTemplate('tool-panel-template').firstElementChild;
     panel.classList.add(`hp-${id}-panel`);
     panel.dataset.panel = id;
-    panel.setAttribute('aria-labelledby', `hp-${id}-title`);
+    panel.setAttribute('aria-label', title(id));
     const heading = panel.querySelector('h2');
     heading.id = `hp-${id}-title`;
-    heading.textContent = name;
+    heading.textContent = title(id);
     panel.querySelector('.hp-panel-body').id = `hp-${id}-body`;
-    for (const button of panel.querySelectorAll('[data-direction]'))
-      button.setAttribute(
-        'aria-label',
-        `Move ${name} ${button.dataset.direction === '-1' ? 'up' : 'down'}`,
-      );
-    for (const button of panel.querySelectorAll('[data-horizontal], [data-collapse]'))
-      button.setAttribute('aria-controls', `hp-${id}-body`);
     const handle = panel.querySelector('.hp-panel-resize');
+    const disclosure = panel.querySelector('[data-collapse]');
+    disclosure.setAttribute('aria-controls', `hp-${id}-body`);
+    listen(disclosure, 'click', () => {
+      if (mobile.matches && !(id === 'tracker' && multiEdit)) toggleMobile(id);
+    });
     handle.setAttribute('aria-controls', `hp-${id}-body`);
-    handle.addEventListener(
-      'pointerdown',
-      (event) => {
-        if (event.button !== 0 || !splitBounds()) return;
+    handle.setAttribute('aria-label', `Resize ${title(id)}`);
+    panels[id] = panel;
+    side.append(panel);
+    listen(handle, 'pointerdown', (event) => {
+      if (event.button !== 0 || (id === 'tracker' && multiEdit)) return;
+      event.preventDefault();
+      handle.blur();
+      drag = {
+        id,
+        handle,
+        pointerId: event.pointerId,
+        start: event.clientY,
+        height: panel.getBoundingClientRect().height,
+        moved: false,
+      };
+      handle.setPointerCapture(event.pointerId);
+    });
+    listen(handle, 'pointermove', (event) => {
+      if (!drag || drag.handle !== handle || drag.pointerId !== event.pointerId) return;
+      const delta = event.clientY - drag.start;
+      if (Math.abs(delta) < 3 && !drag.moved) return;
+      drag.moved = true;
+      if (mobile.matches) resizeMobile(id, drag.height + delta);
+      else resizeTop(drag.height + delta);
+    });
+    listen(handle, 'pointerup', () => {
+      if (drag?.handle !== handle) return;
+      finishResize();
+    });
+    for (const type of ['pointercancel', 'lostpointercapture'])
+      listen(handle, type, () => finishResize());
+    listen(handle, 'dblclick', () => {
+      if (!mobile.matches) toggleTop();
+    });
+    listen(handle, 'keydown', (event) => {
+      if (id === 'tracker' && multiEdit) return;
+      const bounds = splitBounds();
+      if (event.key === 'Enter' || event.key === ' ') {
         event.preventDefault();
-        handle.blur();
-        drag = {
-          pointerId: event.pointerId,
-          handle,
-          y: event.clientY,
-          height: panel.getBoundingClientRect().height,
-        };
-        handle.setPointerCapture(event.pointerId);
-      },
-      { signal: listeners.signal },
-    );
-    handle.addEventListener(
-      'pointermove',
-      (event) => {
-        if (!drag || event.pointerId !== drag.pointerId) return;
-        resizeTop(drag.height + event.clientY - drag.y);
-      },
-      { signal: listeners.signal },
-    );
-    for (const type of ['pointerup', 'pointercancel', 'lostpointercapture'])
-      handle.addEventListener(type, () => finishResize(), { signal: listeners.signal });
-    const resetSplit = () => {
-      panelSplit = undefined;
-      for (const key of order) collapsed[key] = false;
-      render();
-      onChange();
-    };
-    handle.addEventListener('dblclick', resetSplit, { signal: listeners.signal });
-    handle.addEventListener(
-      'keydown',
-      (event) => {
-        const bounds = splitBounds();
-        if (!bounds) return;
-        const step = event.shiftKey ? 40 : 10;
+        if (mobile.matches) toggleMobile(id);
+        else toggleTop();
+      } else if (mobile.matches) {
         const height = panel.getBoundingClientRect().height;
+        const step = event.shiftKey ? 40 : 10;
+        if (['Home', 'End'].includes(event.key)) {
+          event.preventDefault();
+          mobileCollapsed[id] = event.key === 'Home';
+          panel.style.removeProperty('--mobile-panel-height');
+          render();
+        } else if (['ArrowUp', 'ArrowDown'].includes(event.key)) {
+          event.preventDefault();
+          resizeMobile(id, height + (event.key === 'ArrowUp' ? -step : step));
+        }
+      } else if (bounds) {
+        const height = panel.getBoundingClientRect().height,
+          step = event.shiftKey ? 40 : 10;
         const next = {
           ArrowUp: height - step,
           ArrowDown: height + step,
           Home: bounds.min,
           End: bounds.max,
         }[event.key];
-        if (event.key === 'Enter') {
-          event.preventDefault();
-          resetSplit();
-        } else if (next !== undefined) {
+        if (next !== undefined) {
           event.preventDefault();
           resizeTop(next);
           onChange();
         }
-      },
-      { signal: listeners.signal },
-    );
-    panels[id] = panel;
-    panel.addEventListener(
-      'click',
-      (event) => {
-        const button = event.target.closest('button');
-        if (!button || button.disabled) return;
-        if (button.hasAttribute('data-collapse')) {
-          if (id === 'tracker' && multiEdit) return;
-          const current = activeCollapsed();
-          current[id] = !current[id];
-        } else if (button.hasAttribute('data-horizontal')) horizontal[id] = !horizontal[id];
-        else if (button.dataset.direction) {
-          const index = order.indexOf(id),
-            next = index + Number(button.dataset.direction);
-          if (next < 0 || next > 1) return;
-          [order[index], order[next]] = [order[next], order[index]];
-        } else return;
-        render();
-        onChange();
-        const focusTarget =
-          button.disabled && button.dataset.direction
-            ? panel.querySelector(`[data-direction="${-Number(button.dataset.direction)}"]`)
-            : button;
-        focusTarget.focus({ preventScroll: true });
-      },
-      { signal: listeners.signal },
-    );
+      }
+    });
   }
+  const partyHeader = panels.party.querySelector('.hp-panel-bar');
+  partyHeader.insertBefore(
+    cloneTemplate('party-panel-name-template'),
+    partyHeader.querySelector('[data-collapse]'),
+  );
+  const mapHandle = document.createElement('div');
+  mapHandle.className = 'hp-map-resize';
+  mapHandle.tabIndex = 0;
+  mapHandle.setAttribute('role', 'separator');
+  mapHandle.setAttribute('aria-orientation', 'vertical');
+  mapHandle.setAttribute('aria-label', 'Resize map and side panels');
+  mapHandle.setAttribute('aria-controls', 'hp-inspector-body hp-tracker-body hp-party-body');
+  map.append(mapHandle);
+  function widthBounds() {
+    const style = getComputedStyle(root);
+    const available = Math.max(1, root.clientWidth - parseFloat(style.columnGap));
+    const unit = parseFloat(getComputedStyle(document.documentElement).fontSize);
+    return {
+      available,
+      mapMin: Math.min(24 * unit, available / 2),
+      sideMin: Math.min(18.75 * unit, available / 2),
+    };
+  }
+  function resizeMap(width) {
+    const bounds = widthBounds();
+    if (width > bounds.available - bounds.sideMin + 48) folded = true;
+    else {
+      folded = false;
+      mapSplit = clamp(width, bounds.mapMin, bounds.available - bounds.sideMin) / bounds.available;
+    }
+    render();
+  }
+  function defaultSplit() {
+    panelSplit = undefined;
+    collapsed.inspector = collapsed.tracker = false;
+  }
+  function toggleMap() {
+    folded = !folded;
+    if (!folded) {
+      mapSplit = undefined;
+      defaultSplit();
+    }
+    render();
+    onChange();
+  }
+  listen(mapHandle, 'pointerdown', (event) => {
+    if (event.button !== 0 || mobile.matches) return;
+    event.preventDefault();
+    mapHandle.blur();
+    drag = { id: 'map', handle: mapHandle, pointerId: event.pointerId, moved: false };
+    mapHandle.setPointerCapture(event.pointerId);
+  });
+  listen(mapHandle, 'pointermove', (event) => {
+    if (drag?.id !== 'map' || drag.pointerId !== event.pointerId) return;
+    drag.moved = true;
+    resizeMap(event.clientX - root.getBoundingClientRect().left);
+  });
+  for (const type of ['pointerup', 'pointercancel', 'lostpointercapture'])
+    listen(mapHandle, type, () => finishResize());
+  listen(mapHandle, 'dblclick', toggleMap);
+  listen(mapHandle, 'keydown', (event) => {
+    const bounds = widthBounds(),
+      width = map.getBoundingClientRect().width;
+    const step = event.shiftKey ? 40 : 10;
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      toggleMap();
+    } else if (
+      event.key === 'End' ||
+      (event.key === 'ArrowRight' && !folded && width >= bounds.available - bounds.sideMin - 1)
+    ) {
+      event.preventDefault();
+      folded = true;
+      render();
+      onChange();
+    } else if (event.key === 'ArrowLeft' && folded) {
+      event.preventDefault();
+      folded = false;
+      mapSplit = (bounds.available - bounds.sideMin) / bounds.available;
+      render();
+      onChange();
+    } else {
+      const next = { ArrowLeft: width - step, ArrowRight: width + step, Home: bounds.mapMin }[
+        event.key
+      ];
+      if (next !== undefined) {
+        event.preventDefault();
+        resizeMap(next);
+        onChange();
+      }
+    }
+  });
   function splitBounds() {
-    const stacked = order.filter((id) => !horizontal[id]);
-    if (mobile.matches || multiEdit || stacked.length !== 2) return null;
-    const min =
-      panels[stacked[0]].querySelector('.hp-panel-bar').getBoundingClientRect().height +
-      (collapsed[stacked[0]] ? 2 : 1);
-    const lower =
-      panels[stacked[1]].querySelector('.hp-panel-bar').getBoundingClientRect().height +
-      (collapsed[stacked[1]] ? 2 : 1);
+    if (mobile.matches || partyMode || folded || multiEdit) return null;
+    const top = order()[0],
+      lower = order()[1];
+    const min = panels[top].querySelector('.hp-panel-bar').getBoundingClientRect().height + 2;
+    const bottom = panels[lower].querySelector('.hp-panel-bar').getBoundingClientRect().height + 2;
     const available = Math.max(
-      min + lower,
-      side.getBoundingClientRect().height - parseFloat(getComputedStyle(side).rowGap),
+      min + bottom,
+      side.clientHeight - parseFloat(getComputedStyle(side).rowGap),
     );
-    return { id: stacked[0], min, max: available - lower, available };
+    return { id: top, lower, min, max: available - bottom, available };
+  }
+  function defaultTop(bounds) {
+    const inspector = clamp(overviewHeight, bounds.min, bounds.max);
+    return order()[0] === 'inspector' ? inspector : bounds.available - inspector;
   }
   function resizeTop(height) {
     const bounds = splitBounds();
     if (!bounds) return;
-    const next = Math.min(bounds.max, Math.max(bounds.min, height));
-    collapsed[bounds.id] = next <= bounds.min + 4;
-    const lower = order.find((id) => id !== bounds.id);
-    collapsed[lower] = !collapsed[bounds.id] && next >= bounds.max - 4;
-    panelSplit =
-      (collapsed[bounds.id] ? bounds.min : collapsed[lower] ? bounds.max : next) / bounds.available;
-    if (drag) drag.changed = true;
+    const next = clamp(height, bounds.min, bounds.max);
+    collapsed[bounds.id] = next <= bounds.min + 3;
+    collapsed[bounds.lower] = !collapsed[bounds.id] && next >= bounds.max - 3;
+    panelSplit = next / bounds.available;
+    render();
+  }
+  function toggleTop() {
+    const bounds = splitBounds();
+    if (!bounds) return;
+    const height = panels[bounds.id].getBoundingClientRect().height;
+    if (collapsed[bounds.id] || height > defaultTop(bounds) + 3) defaultSplit();
+    else {
+      collapsed[bounds.id] = true;
+      collapsed[bounds.lower] = false;
+      panelSplit = undefined;
+    }
+    render();
+    onChange();
+  }
+  function toggleMobile(id) {
+    mobileCollapsed[id] = !mobileCollapsed[id];
+    panels[id].style.removeProperty('--mobile-panel-height');
+    render();
+  }
+  function resizeMobile(id, height) {
+    const minimum = panels[id].querySelector('.hp-panel-bar').getBoundingClientRect().height + 2;
+    mobileCollapsed[id] = height < minimum + 30;
+    panels[id].style.setProperty('--mobile-panel-height', `${Math.max(minimum, height)}px`);
     render();
   }
   function finishResize(save = true) {
     if (!drag) return;
-    const { handle, pointerId, changed } = drag;
+    const { handle, pointerId, moved } = drag;
     drag = undefined;
     if (handle.hasPointerCapture(pointerId)) handle.releasePointerCapture(pointerId);
-    if (changed && save) onChange();
+    if (moved && save && !mobile.matches) onChange();
   }
   function render() {
-    const preferred = activeCollapsed();
-    const current = { ...preferred, tracker: multiEdit || preferred.tracker };
-    const railIds = mobile.matches ? [] : order.filter((id) => horizontal[id]);
-    const stackedIds = order.filter((id) => !railIds.includes(id));
-    const bothOpen =
-      !mobile.matches && stackedIds.length === 2 && stackedIds.every((id) => !current[id]);
-    const bounds = splitBounds();
-    root.dataset.panelRails = String(railIds.length);
-    side.style.setProperty('--rail-count', railIds.length);
-    const rows = stackedIds.map((id) =>
-      current[id]
-        ? 'max-content'
-        : id === 'inspector'
-          ? inspectorMode === 'party'
-            ? 'max-content'
-            : bothOpen
-              ? 'min(var(--inspector-overview-height, 300px), calc(100% - var(--panel-bar-size) - 2px - var(--panel-margin)))'
-              : 'minmax(0, 1fr)'
-          : 'minmax(calc(var(--panel-bar-size) + 2px), 1fr)',
-    );
-    if (bounds && panelSplit !== undefined && !current[bounds.id]) {
-      rows[0] = `${Math.min(bounds.max, Math.max(bounds.min, panelSplit * bounds.available))}px`;
-      rows[1] = current[stackedIds[1]] ? 'max-content' : 'minmax(0, 1fr)';
-    }
-    if (!stackedIds.some((id) => !current[id])) rows.push('minmax(0, 1fr)');
-    side.style.setProperty('--panel-rows', rows.join(' '));
+    const ids = partyMode ? ['party'] : order();
+    root.dataset.inspectorMode = partyMode ? 'party' : 'hex';
+    root.dataset.panelRails = String(!mobile.matches && folded ? ids.length : 0);
+    root.style.setProperty('--visible-panel-count', String(ids.length));
+    if (mobile.matches) root.style.removeProperty('--workspace-columns');
+    else if (folded)
+      root.style.setProperty(
+        '--workspace-columns',
+        `minmax(0, 1fr) calc(var(--panel-rail-size) * ${ids.length} + var(--panel-margin) * ${ids.length - 1})`,
+      );
+    else if (mapSplit !== undefined) {
+      const bounds = widthBounds();
+      const width = clamp(
+        mapSplit * bounds.available,
+        bounds.mapMin,
+        bounds.available - bounds.sideMin,
+      );
+      root.style.setProperty('--workspace-columns', `${width}px minmax(0, 1fr)`);
+    } else if (root.clientWidth) {
+      const bounds = widthBounds();
+      const unit = parseFloat(getComputedStyle(document.documentElement).fontSize);
+      const width = clamp(
+        Math.max(innerWidth * 0.6, bounds.available - 35 * unit),
+        bounds.mapMin,
+        bounds.available - bounds.sideMin,
+      );
+      root.style.setProperty('--workspace-columns', `${width}px minmax(0, 1fr)`);
+    } else root.style.removeProperty('--workspace-columns');
     side.style.setProperty(
       '--panel-columns',
-      stackedIds.length
-        ? `minmax(0, 1fr)${railIds.length ? ` repeat(${railIds.length}, var(--panel-rail-size))` : ''}`
-        : `repeat(${railIds.length}, var(--panel-rail-size))`,
+      !mobile.matches && folded
+        ? `repeat(${ids.length}, var(--panel-rail-size))`
+        : 'minmax(0, 1fr)',
     );
-    for (const [index, id] of order.entries()) {
-      const panel = panels[id];
-      if (side.children[index] !== panel) side.append(panel);
-      panel.classList.toggle('is-collapsed', current[id]);
-      const rail = railIds.includes(id);
-      panel.classList.toggle('is-side-collapsed', rail);
-      const body = panel.querySelector('.hp-panel-body');
-      const wasHidden = body.hidden;
-      body.hidden = current[id] || rail;
-      if (wasHidden && !body.hidden) body.scrollTop = 0;
-      panel.style.setProperty(
-        '--panel-column',
-        rail ? (stackedIds.length ? railIds.indexOf(id) + 2 : railIds.indexOf(id) + 1) : 1,
-      );
-      panel.style.setProperty('--panel-row', rail ? '1 / -1' : stackedIds.indexOf(id) + 1);
-      panel.querySelector('.hp-move-up').disabled = index === 0;
-      panel.querySelector('.hp-move-down').disabled = index === 1;
-      const toggle = panel.querySelector('[data-collapse]');
-      const unavailable = id === 'tracker' && multiEdit;
-      toggle.disabled = unavailable;
-      const resizable = bounds?.id === id;
-      toggle.hidden = Boolean(bounds);
-      const handle = panel.querySelector('.hp-panel-resize');
-      handle.hidden = !resizable;
-      const name =
-        id === 'tracker'
-          ? 'Sandbox tools'
-          : inspectorMode === 'party'
-            ? 'Party Inspector'
-            : 'Hex Inspector';
-      panel.querySelector('h2').textContent = name;
-      handle.setAttribute('aria-label', `Resize ${name}`);
-      if (resizable) {
-        const height = panel.getBoundingClientRect().height;
-        handle.setAttribute('aria-valuemin', '0');
-        handle.setAttribute('aria-valuemax', '100');
-        handle.setAttribute('aria-valuenow', String(Math.round((height / bounds.available) * 100)));
-        handle.setAttribute(
-          'aria-valuetext',
-          current[id] ? 'Collapsed' : `${Math.round(height)} pixels`,
-        );
-      }
-      for (const button of panel.querySelectorAll('[data-direction]'))
-        button.setAttribute(
-          'aria-label',
-          `Move ${name} ${button.dataset.direction === '-1' ? 'up' : 'down'}`,
-        );
-      toggle.setAttribute('aria-expanded', String(!current[id]));
-      toggle.setAttribute('aria-label', `${current[id] ? 'Open' : 'Close'} ${name}`);
-      toggle.dataset.tooltip = unavailable
-        ? 'Turn off multiselect to open panel'
-        : current[id]
-          ? 'Open panel'
-          : 'Close panel';
-      toggle
-        .querySelector('use')
-        .setAttribute('href', `/icons/pixelarticons.svg#${current[id] ? 'expand' : 'collapse'}`);
-      const sideways = panel.querySelector('[data-horizontal]');
-      sideways.setAttribute('aria-expanded', String(!rail));
-      sideways.setAttribute('aria-label', rail ? `Expand ${name}` : `Collapse ${name} to the side`);
-      sideways.dataset.tooltip = rail ? 'Expand panel' : 'Collapse panel to the side';
-      sideways
-        .querySelector('use')
-        .setAttribute(
-          'href',
-          `/icons/pixelarticons.svg#${rail ? 'arrow-bar-left' : 'arrow-bar-right'}`,
-        );
+    const bounds = splitBounds();
+    let rows = 'minmax(0, 1fr)';
+    if (!partyMode && !folded && !mobile.matches) {
+      const top = order()[0],
+        lower = order()[1];
+      if (multiEdit)
+        rows = top === 'tracker' ? 'max-content minmax(0, 1fr)' : 'minmax(0, 1fr) max-content';
+      else if (collapsed[top]) rows = 'max-content minmax(0, 1fr)';
+      else if (collapsed[lower]) rows = 'minmax(0, 1fr) max-content';
+      else if (bounds)
+        rows = `${panelSplit === undefined ? defaultTop(bounds) : clamp(panelSplit * bounds.available, bounds.min, bounds.max)}px minmax(0, 1fr)`;
     }
+    side.style.setProperty('--panel-rows', rows);
+    for (const id of ['inspector', 'tracker', 'party']) {
+      const panel = panels[id],
+        index = ids.indexOf(id);
+      panel.hidden = index < 0;
+      if (index < 0) continue;
+      if (side.children[index] !== panel) side.insertBefore(panel, side.children[index]);
+      const rail = !mobile.matches && folded;
+      const closed = mobile.matches
+        ? mobileCollapsed[id]
+        : id !== 'party' && (collapsed[id] || (id === 'tracker' && multiEdit));
+      panel.classList.toggle('is-side-collapsed', rail);
+      panel.classList.toggle('is-collapsed', closed);
+      panel.style.setProperty('--panel-column', rail ? String(index + 1) : '1');
+      panel.style.setProperty('--panel-row', rail ? '1' : String(index + 1));
+      const body = panel.querySelector('.hp-panel-body');
+      body.hidden = closed || rail;
+      const heading = panel.querySelector('h2');
+      if (id === 'party') heading.classList.toggle('sr-only', !rail);
+      const handle = panel.querySelector('.hp-panel-resize');
+      handle.hidden = rail || (mobile.matches ? closed : partyMode || index !== 0 || multiEdit);
+      handle.setAttribute('aria-disabled', String(id === 'tracker' && multiEdit));
+      handle.tabIndex = id === 'tracker' && multiEdit ? -1 : 0;
+      const disclosure = panel.querySelector('[data-collapse]');
+      disclosure.hidden = !mobile.matches;
+      disclosure.disabled = id === 'tracker' && multiEdit;
+      disclosure.setAttribute('aria-expanded', String(!closed));
+      disclosure.setAttribute('aria-label', `${closed ? 'Open' : 'Close'} ${title(id)}`);
+      disclosure.dataset.tooltip = disclosure.disabled
+        ? 'Turn off multiselect to open Journal'
+        : `${closed ? 'Open' : 'Close'} panel`;
+      disclosure
+        .querySelector('use')
+        .setAttribute('href', `/icons/pixelarticons.svg#${closed ? 'expand' : 'collapse'}`);
+      handle.setAttribute('aria-valuemin', '0');
+      handle.setAttribute('aria-valuemax', '100');
+      handle.setAttribute(
+        'aria-valuenow',
+        String(
+          closed
+            ? 0
+            : mobile.matches
+              ? 100
+              : Math.round(
+                  (panel.getBoundingClientRect().height /
+                    Math.max(1, bounds?.available ?? side.clientHeight)) *
+                    100,
+                ),
+        ),
+      );
+      handle.setAttribute(
+        'aria-valuetext',
+        closed ? 'Collapsed; activate to open' : 'Open; drag to resize',
+      );
+    }
+    mapHandle.hidden = mobile.matches;
+    mapHandle.setAttribute('aria-valuemin', '0');
+    mapHandle.setAttribute('aria-valuemax', '100');
+    mapHandle.setAttribute(
+      'aria-valuenow',
+      String(root.clientWidth ? Math.round((map.clientWidth / root.clientWidth) * 100) : 60),
+    );
+    mapHandle.setAttribute(
+      'aria-valuetext',
+      folded
+        ? 'Side panels folded; activate to restore default layout'
+        : 'Side panels open; activate to fold',
+    );
   }
-  mobile.addEventListener(
-    'change',
-    () => {
-      finishResize();
-      if (mobile.matches) mobileCollapsed.tracker = mobileCollapsed.inspector = true;
-      render();
-      onChange();
-    },
-    { signal: listeners.signal },
-  );
-  let measurementFrame;
   function measureOverview() {
     measurementFrame = undefined;
-    render();
     const overview = panels.inspector.querySelector('.hp-inspector-overview');
-    if (!overview || !overview.getBoundingClientRect().height) return;
-    const bar = panels.inspector.querySelector('.hp-panel-bar');
-    const style = getComputedStyle(panels.inspector);
-    const height = `${overview.getBoundingClientRect().height + bar.getBoundingClientRect().height + parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth)}px`;
-    if (side.style.getPropertyValue('--inspector-overview-height') !== height)
-      side.style.setProperty('--inspector-overview-height', height);
+    if (overview?.offsetHeight)
+      overviewHeight =
+        overview.offsetHeight + panels.inspector.querySelector('.hp-panel-bar').offsetHeight + 2;
+    render();
   }
   const observer = new ResizeObserver(() => {
     measurementFrame ??= requestAnimationFrame(measureOverview);
   });
-  observer.observe(panels.inspector);
+  observer.observe(root);
   observer.observe(side);
-  observer.observe(panels.inspector.querySelector('.hp-panel-bar'));
   const contentObserver = new MutationObserver(() => {
     const overview = panels.inspector.querySelector('.hp-inspector-overview');
     if (overview) {
@@ -309,20 +406,54 @@ export function createPanels(root, preferences, onChange) {
       contentObserver.disconnect();
     }
   });
-  contentObserver.observe(panels.inspector.querySelector('.hp-panel-body'), { childList: true });
+  contentObserver.observe(panels.inspector.querySelector('.hp-panel-body'), {
+    childList: true,
+    subtree: true,
+  });
+  listen(mobile, 'change', () => {
+    finishResize();
+    if (mobile.matches) mobileCollapsed.inspector = mobileCollapsed.tracker = true;
+    render();
+  });
+  const visible = (id) =>
+    !root.hidden &&
+    !root.classList.contains('hp-map-expanded') &&
+    (mobile.matches ? !mobileCollapsed[id] : !folded && (id === 'party' || !collapsed[id]));
   render();
   return {
     inspector: panels.inspector.querySelector('.hp-panel-body'),
-    setMultiEdit(enabled) {
-      enabled = Boolean(enabled);
-      if (multiEdit === enabled) return;
-      multiEdit = enabled;
+    tracker: panels.tracker.querySelector('.hp-panel-body'),
+    party: panels.party.querySelector('.hp-panel-body'),
+    partyHeader: panels.party.querySelector('.hp-panel-bar'),
+    openParty() {
+      if (!mobile.matches) folded = false;
+      mobileCollapsed.party = false;
       render();
+      onChange();
+    },
+    setMultiEdit(enabled) {
+      if (multiEdit !== Boolean(enabled)) {
+        multiEdit = Boolean(enabled);
+        render();
+      }
     },
     setInspectorMode(mode) {
-      if (inspectorMode === mode) return;
-      inspectorMode = mode;
-      root.dataset.inspectorMode = mode;
+      if (partyMode !== (mode === 'party')) {
+        partyMode = mode === 'party';
+        render();
+      }
+    },
+    journalFirst: () => journalFirst,
+    setJournalFirst(value) {
+      if (journalFirst === value) return;
+      journalFirst = value;
+      defaultSplit();
+      for (const [id, layout] of campaignLayouts)
+        campaignLayouts.set(id, {
+          ...layout,
+          panelSplit: undefined,
+          panelsCollapsed: { inspector: false, tracker: false },
+        });
       render();
     },
     enterCampaign(id) {
@@ -330,22 +461,23 @@ export function createPanels(root, preferences, onChange) {
       if (campaignId) campaignLayouts.set(campaignId, desktopPreferences());
       campaignId = id;
       const layout = campaignLayouts.get(id) ?? {};
-      order = (layout.panelOrder ?? ['inspector', 'tracker']).slice();
-      collapsed = { ...(layout.panelsCollapsed ?? { tracker: false, inspector: false }) };
-      horizontal = { ...(layout.panelsHorizontal ?? { tracker: false, inspector: false }) };
+      collapsed = { ...(layout.panelsCollapsed ?? { inspector: false, tracker: false }) };
+      if (collapsed.inspector && collapsed.tracker) collapsed[order()[1]] = false;
+      folded =
+        layout.sidePanelsFolded ?? Object.values(layout.panelsHorizontal ?? {}).some(Boolean);
       panelSplit = layout.panelSplit;
-      mobileCollapsed.tracker = mobileCollapsed.inspector = true;
+      mapSplit = layout.mapSplit;
+      mobileCollapsed.inspector = mobileCollapsed.tracker = true;
+      for (const panel of Object.values(panels))
+        panel.style.removeProperty('--mobile-panel-height');
       render();
     },
-    inspectorVisible: () =>
-      !activeCollapsed().inspector &&
-      (mobile.matches || !horizontal.inspector) &&
-      !root.hidden &&
-      !root.classList.contains('hp-map-expanded'),
+    inspectorVisible: () => !partyMode && visible('inspector'),
+    partyVisible: () => partyMode && visible('party'),
     preferences() {
       const layouts = new Map(campaignLayouts);
       if (campaignId) layouts.set(campaignId, desktopPreferences());
-      return { campaignPanels: Object.fromEntries(layouts) };
+      return { journalFirst, campaignPanels: Object.fromEntries(layouts) };
     },
     dispose() {
       finishResize(false);
@@ -354,6 +486,8 @@ export function createPanels(root, preferences, onChange) {
       observer.disconnect();
       contentObserver.disconnect();
       delete root.dataset.panelRails;
+      root.style.removeProperty('--workspace-columns');
+      mapHandle.remove();
       root.prepend(...map.children);
       map.remove();
       side.remove();

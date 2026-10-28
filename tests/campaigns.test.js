@@ -54,9 +54,9 @@ test('campaign JSON replays the exact world, dressing and palette across devices
 test('campaign import rejects malformed, oversized, incompatible and incomplete files', () => {
   assert.throws(() => importCampaign('{oops'), /not valid JSON/);
   assert.throws(() => importCampaign('{}'), /supported Wilderness Almanac/);
-  assert.throws(() => importCampaign(' '.repeat(MAX_CAMPAIGN_BYTES + 1)), /smaller than 4 MB/);
+  assert.throws(() => importCampaign(' '.repeat(MAX_CAMPAIGN_BYTES + 1)), /smaller than 16 MB/);
   const envelope = JSON.parse(exportCampaign(campaign));
-  assert.throws(() => importCampaign(JSON.stringify({ ...envelope, version: 3 })), /supported/);
+  assert.throws(() => importCampaign(JSON.stringify({ ...envelope, version: 99 })), /supported/);
   assert.deepEqual(importCampaign(JSON.stringify({ ...envelope, version: 1 })), campaign);
   assert.deepEqual(
     importCampaign(JSON.stringify({ ...envelope, format: 'previous-product-campaign' })),

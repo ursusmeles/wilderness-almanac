@@ -12,9 +12,10 @@ import { generatePointsOfInterest } from './points-of-interest.js';
 import { worldPreferences } from './world-preferences.js';
 import { generateRoads } from './roads.js';
 import { generateRoadDressing, roadHeight } from './road-geometry.js';
+import { sandboxWorld } from './sandbox-world.js';
 
-export const GENERATOR_VERSION = 9;
-export const SUPPORTED_GENERATOR_VERSIONS = [6, 7, 8, GENERATOR_VERSION];
+export const GENERATOR_VERSION = 10;
+export const SUPPORTED_GENERATOR_VERSIONS = [6, 7, 8, 9, GENERATOR_VERSION];
 
 export function generateWorld(seed, { preferences, generatorVersion = GENERATOR_VERSION } = {}) {
   if (!SUPPORTED_GENERATOR_VERSIONS.includes(generatorVersion))
@@ -41,6 +42,7 @@ export function generateWorld(seed, { preferences, generatorVersion = GENERATOR_
     },
   };
   Object.assign(world, generateMapName(world.seed));
+  if (generatorVersion >= 10 && world.seed === 'heliotest') return sandboxWorld(world);
   generateGeography(world);
   generateHydrology(world);
   generateElevation(world);
@@ -66,6 +68,12 @@ export function generateDressing(
     roadLocks = fixedCells,
   } = {},
 ) {
+  cropStyles = {
+    ...Object.fromEntries(
+      world.cells.filter((cell) => cell.cropStyle).map((cell) => [cell.key, cell.cropStyle]),
+    ),
+    ...cropStyles,
+  };
   const dressing = {
     seed: world.seed,
     variant,

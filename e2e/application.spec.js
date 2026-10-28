@@ -170,7 +170,7 @@ test('leaving the map protects a draft and retains saved edits', async ({ page }
   await dialog.getByRole('button', { name: 'Discard changes', exact: true }).click();
   await expect(page.locator('#campaign-menu')).toBeVisible();
   await page.getByRole('button', { name: 'Enter Test campaign', exact: true }).click();
-  const expand = page.getByRole('button', { name: 'Expand Hex Inspector', exact: true });
+  const expand = page.getByRole('button', { name: 'Open Inspector', exact: true });
   if (await expand.isVisible()) await expand.click();
   await page.getByRole('switch', { name: 'Visited', exact: true }).click();
   await page.locator('#hp-back-menu').click();
@@ -291,6 +291,6 @@ test('mobile panels start closed above the fold and restore correctly after expa
   await expect(page.locator('.hp-side-panels')).toBeHidden();
   await page.getByRole('button', { name: 'Exit expanded map', exact: true }).click();
   await expect(page.locator('.hp-side-panels')).toBeVisible();
-  await page.getByRole('button', { name: 'Expand Hex Inspector', exact: true }).click();
+  await page.getByRole('button', { name: 'Open Inspector', exact: true }).click();
   await expect(page.locator('#hp-inspector-body')).toBeVisible();
 });

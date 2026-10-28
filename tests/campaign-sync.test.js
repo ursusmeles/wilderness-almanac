@@ -12,6 +12,8 @@ const campaign = {
   createdAt: '2026-10-24T00:00:00.000Z',
   paletteName: 'Dusk',
   colors: ['#cdab8f', '#0b365e', '#11b329'],
+  partyToken: { key: '0,0', style: 'warden', weeks: 2 },
+  journal: [{ id: 1, week: 2, kind: 'roll', text: '2d6+1: 6 + 2 + 1 = 9', mentions: [] }],
 };
 
 function fixture() {

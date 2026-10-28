@@ -91,8 +91,19 @@ export async function openCampaign(page, { expandInspector = true } = {}) {
   // Editing flows below use the origin explicitly; entry itself now selects
   // and frames the party's saved hex.
   await page.locator('#hp-selection').selectOption('0,0');
-  const expand = page.getByRole('button', { name: 'Open Hex Inspector', exact: true });
-  if (expandInspector && (await expand.isVisible())) await expand.click();
+  if (expandInspector && (await page.locator('#hp-inspector-body').isHidden())) {
+    const mapHandle = page.getByRole('separator', {
+      name: 'Resize map and side panels',
+      exact: true,
+    });
+    if (await mapHandle.isVisible()) await mapHandle.press('Enter');
+    const open = page.getByRole('button', { name: 'Open Inspector', exact: true });
+    if (await open.isVisible()) await open.click();
+    else if (await page.locator('#hp-inspector-body').isHidden()) {
+      const handle = page.getByRole('separator', { name: 'Resize Inspector', exact: true });
+      if (await handle.isVisible()) await handle.press('Enter');
+    }
+  }
 }
 export async function exportFromMenu(page) {
   const download = page.waitForEvent('download');

@@ -4,8 +4,9 @@ import { validateHexEdits } from '../generation/hex-edits.js';
 import { campaignWorld, campaignDressing } from '../generation/campaign-world.js';
 import { validatePartyToken } from './party-token.js';
 import { TIMES_OF_DAY } from './time-of-day.js';
+import { validateJournal } from './party-journal.js';
 
-export const MAX_CAMPAIGN_BYTES = 4 * 1024 * 1024;
+export const MAX_CAMPAIGN_BYTES = 16 * 1024 * 1024;
 const text = (value, max) =>
   typeof value === 'string' && value.trim().length > 0 && value.length <= max;
 const validDate = (value) =>
@@ -30,6 +31,8 @@ export function validateCampaign(value) {
     (value.fogOfWar !== undefined && typeof value.fogOfWar !== 'boolean') ||
     (value.timeOfDay !== undefined && !TIMES_OF_DAY.includes(value.timeOfDay)) ||
     (value.nameEdited !== undefined && typeof value.nameEdited !== 'boolean') ||
+    (value.journalSequence !== undefined &&
+      (!Number.isSafeInteger(value.journalSequence) || value.journalSequence < 1)) ||
     (value.iconKey !== undefined &&
       (typeof value.iconKey !== 'string' || !/^-?\d{1,2},-?\d{1,2}$/.test(value.iconKey)))
   )
@@ -37,7 +40,12 @@ export function validateCampaign(value) {
   const preferences = worldPreferences(value.preferences);
   if (value.generatorVersion === 6 && Object.values(preferences).some(Boolean))
     throw new Error('Version 6 maps do not support world preferences.');
-  return {
+  const journal = value.journal !== undefined ? validateJournal(value.journal) : undefined;
+  if (value.journalSequence !== undefined && value.journalSequence < (journal?.at(-1)?.id ?? 0))
+    throw new Error('The party journal has an invalid sequence.');
+  if (journal?.some((entry) => entry.week > (value.partyToken?.weeks ?? 1)))
+    throw new Error('The party journal contains a future week.');
+  const campaign = {
     ...(value.preferences !== undefined ? { preferences } : {}),
     ...(value.fogOfWar !== undefined ? { fogOfWar: value.fogOfWar } : {}),
     ...(value.timeOfDay !== undefined ? { timeOfDay: value.timeOfDay } : {}),
@@ -53,7 +61,24 @@ export function validateCampaign(value) {
     ...(value.iconKey !== undefined ? { iconKey: value.iconKey } : {}),
     ...(value.hexEdits !== undefined ? { hexEdits: validateHexEdits(value.hexEdits) } : {}),
     ...(value.partyToken !== undefined ? { partyToken: validatePartyToken(value.partyToken) } : {}),
+    ...(journal?.length ? { journal } : {}),
+    ...(value.journalSequence !== undefined ? { journalSequence: value.journalSequence } : {}),
   };
+  if (campaign.generatorVersion >= 10 && campaign.seed === 'heliotest') {
+    const keys = [
+      campaign.partyToken?.key,
+      campaign.iconKey,
+      ...Object.keys(campaign.hexEdits?.cells ?? {}),
+    ].filter(Boolean);
+    if (
+      keys.some((key) => {
+        const [q, r] = key.split(',').map(Number);
+        return Math.max(Math.abs(q), Math.abs(r), Math.abs(q + r)) > 1;
+      })
+    )
+      throw new Error('The campaign contains a hex outside the heliotest map.');
+  }
+  return campaign;
 }
 
 export function createCampaign(world, colors, paletteName, variant = 0, defaultTimeOfDay = 'dawn') {
@@ -104,7 +129,13 @@ export function chooseCampaignIcon(world) {
 
 export function replaceCampaignMap(campaign, world, previousWorldName) {
   const nameEdited = campaign.nameEdited ?? campaign.name !== previousWorldName;
-  const { hexEdits: _previousEdits, partyToken: _previousParty, ...record } = campaign;
+  const {
+    hexEdits: _previousEdits,
+    partyToken: _previousParty,
+    journal: _previousJournal,
+    journalSequence: _previousJournalSequence,
+    ...record
+  } = campaign;
   return validateCampaign({
     ...record,
     name: nameEdited ? campaign.name : world.name,
@@ -118,21 +149,26 @@ export function replaceCampaignMap(campaign, world, previousWorldName) {
 }
 
 export function exportCampaign(campaign, date = new Date()) {
-  return JSON.stringify(
+  const source = JSON.stringify(
     {
       format: 'wilderness-almanac-campaign',
-      version: 2,
+      version: campaign.journal?.length ? 3 : 2,
       exportedAt: date.toISOString(),
       campaign: validateCampaign(campaign),
     },
     null,
     2,
   );
+  if (new TextEncoder().encode(source).length > MAX_CAMPAIGN_BYTES)
+    throw new Error(
+      'This campaign exceeds the 16 MB transfer limit. Download a recovery file to preserve all data.',
+    );
+  return source;
 }
 
 export function importCampaign(source) {
   if (new TextEncoder().encode(source).length > MAX_CAMPAIGN_BYTES)
-    throw new Error('Choose a campaign JSON file smaller than 4 MB.');
+    throw new Error('Choose a campaign JSON file smaller than 16 MB.');
   let data;
   try {
     data = JSON.parse(source);
@@ -144,7 +180,7 @@ export function importCampaign(source) {
   if (
     typeof data?.format !== 'string' ||
     !/^[a-z][a-z0-9-]{0,63}-campaign$/.test(data.format) ||
-    ![1, 2].includes(data.version)
+    ![1, 2, 3].includes(data.version)
   )
     throw new Error('Choose a supported Wilderness Almanac campaign export.');
   const campaign = validateCampaign(data.campaign);

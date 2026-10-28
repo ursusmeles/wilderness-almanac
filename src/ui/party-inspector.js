@@ -9,10 +9,11 @@ import {
 
 export function createPartyInspector(
   host,
-  { onChange, onNavigate, onSelectVisited, preview, colorFor, visible },
+  { onChange, onNavigate, onSelectVisited, onShowWeek, nameHost, preview, colorFor, visible },
 ) {
   host.replaceChildren(cloneTemplate('party-inspector-template'));
-  const el = (name) => host.querySelector(`#hp-party-${name}`);
+  const el = (name) =>
+    host.querySelector(`#hp-party-${name}`) ?? nameHost.querySelector(`#hp-party-${name}`);
   const listeners = new AbortController();
   const listen = (target, type, callback) =>
     target.addEventListener(type, callback, { signal: listeners.signal });
@@ -75,6 +76,7 @@ export function createPartyInspector(
   listen(el('locate-settlement'), 'click', () => onNavigate(metadata.settlementKey));
   listen(el('locate-poi'), 'click', () => onNavigate(metadata.poi.key));
   listen(el('locate-visited'), 'click', (event) => onSelectVisited(event.currentTarget));
+  listen(el('show-week'), 'click', () => onShowWeek(metadata.weeks));
   return {
     update(next) {
       state = next;
@@ -83,7 +85,8 @@ export function createPartyInspector(
       const steps = (value) => `${value} ${value === 1 ? 'hex' : 'hexes'}`;
       if (document.activeElement !== el('name'))
         el('name').value = next.campaign.partyToken.name ?? 'Adventurers';
-      el('address').textContent = hexAddress(metadata.cell);
+      nameHost.querySelector('h2').textContent = next.campaign.partyToken.name ?? 'Adventurers';
+      el('address').textContent = hexAddress(metadata.cell).replace(/^Region /, '');
       el('settlement').textContent =
         metadata.settlement === null ? none : steps(metadata.settlement);
       el('poi').textContent = metadata.poi

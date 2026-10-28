@@ -13,6 +13,16 @@ import { TIMES_OF_DAY } from './time-of-day.js';
 import { settlementJoin, joinSettlements } from '../generation/settlement-edits.js';
 import { hexAddress } from '../generation/hex.js';
 import {
+  appendJournal,
+  journalCommand,
+  journalEntryCommand,
+  isAutomatedJournalEntry,
+  isClearableJournalRoll,
+  moveEvent,
+  partyName,
+  validateJournal,
+} from './party-journal.js';
+import {
   initialPartyToken,
   partyMetadata,
   PARTY_STYLES,
@@ -89,13 +99,14 @@ export function createCampaignSession({ persist }) {
     return finish(result);
   }
   const result = (scope, notification) => ({ ok: true, scope, notification, state: snapshot() });
-  function remember(fogSafe, action) {
+  function remember(fogSafe, action, journalEventId) {
     history.push({
       variant: state.campaign.variant,
       hexEdits: state.campaign.hexEdits,
       partyKey: state.campaign.partyToken.key,
       fogSafe,
       action,
+      journalEventId,
     });
     if (history.length > 20) history.shift();
   }
@@ -109,10 +120,12 @@ export function createCampaignSession({ persist }) {
       validateKeys = [selected],
       fogSafe = false,
       action = 'map change',
+      journalEvent,
     } = {},
   ) {
     try {
       if (state.campaign.fogOfWar && !fogSafe) return fogError();
+      if (journalEvent) next = appendJournal(next, journalEvent);
       const world = scope === 'tracking' ? state.world : campaignWorld(next, state.baseWorld);
       if (scope !== 'tracking')
         for (const key of validateKeys) {
@@ -149,7 +162,7 @@ export function createCampaignSession({ persist }) {
         }).cells[rerollKey];
       }
       for (const key of relock) next = lockHex(next, key, world, dressing);
-      remember(fogSafe, action);
+      remember(fogSafe, action, journalEvent ? next.journal.at(-1).id : undefined);
       state = { ...state, campaign: next, world, dressing };
       save();
       return result(scope, notification);
@@ -205,7 +218,25 @@ export function createCampaignSession({ persist }) {
     partyDetails(patch) {
       try {
         const partyToken = validatePartyToken({ ...state.campaign.partyToken, ...patch });
-        state = { ...state, campaign: { ...state.campaign, partyToken } };
+        let campaign = { ...state.campaign, partyToken };
+        if (partyName(campaign) !== partyName(state.campaign)) {
+          const oldName = partyName(state.campaign),
+            name = partyName(campaign);
+          campaign = appendJournal(campaign, {
+            kind: 'rename',
+            text: `${oldName} changed name to ${name}.`,
+            mentions: [
+              { type: 'party', key: 'party', start: 0, end: oldName.length },
+              {
+                type: 'party',
+                key: 'party',
+                start: oldName.length + 17,
+                end: oldName.length + 17 + name.length,
+              },
+            ],
+          });
+        }
+        state = { ...state, campaign };
         save();
         const notification =
           patch.name !== undefined
@@ -233,8 +264,124 @@ export function createCampaignSession({ persist }) {
         scope: 'tracking',
         fogSafe: true,
         action: 'party move',
+        journalEvent:
+          key !== state.campaign.partyToken.key
+            ? moveEvent(
+                next,
+                state.world.cells.find((cell) => cell.key === key),
+                state.dressing.cells.find((cell) => cell.key === key),
+              )
+            : undefined,
         notification: `${next.partyToken.name ?? 'Adventurers'} moved to ${hexAddress(state.world.cells.find((cell) => cell.key === key))}`,
       });
+    },
+    nextWeek() {
+      try {
+        const weeks = (state.campaign.partyToken.weeks ?? 1) + 1;
+        const partyToken = validatePartyToken({ ...state.campaign.partyToken, weeks });
+        const name = partyName(state.campaign);
+        const campaign = appendJournal(
+          { ...state.campaign, partyToken },
+          {
+            kind: 'week',
+            text: `${name} lived another week.`,
+            mentions: [{ type: 'party', key: 'party', start: 0, end: name.length }],
+          },
+        );
+        state = { ...state, campaign };
+        save();
+        return result('journal', `Week ${weeks}`);
+      } catch (error) {
+        return { ok: false, error: error.message };
+      }
+    },
+    addJournal(text, mentions = [], random, { week } = {}) {
+      try {
+        const entry = journalCommand(text, mentions, random);
+        if (entry.help || entry.explore) return { ...result('journal'), ...entry };
+        if (entry.clear) {
+          const entries = state.campaign.journal ?? [];
+          const journal = entries.filter((entry) => !isClearableJournalRoll(entry));
+          const removed = entries.length - journal.length;
+          if (removed) {
+            state = {
+              ...state,
+              campaign: {
+                ...state.campaign,
+                journal,
+                journalSequence: Math.max(state.campaign.journalSequence ?? 0, entries.at(-1).id),
+              },
+            };
+            save();
+          }
+          return { ...result('journal', 'Cleared rolls without notes'), clear: true, removed };
+        }
+        state = { ...state, campaign: appendJournal(state.campaign, entry, { week }) };
+        save();
+        return result('journal', 'Added to Party Journal');
+      } catch (error) {
+        return { ok: false, error: error.message };
+      }
+    },
+    editJournal(id, text, mentions = []) {
+      try {
+        const entries = state.campaign.journal ?? [];
+        const entry = entries.find((entry) => entry.id === id);
+        if (!entry || entry.kind !== 'note')
+          throw new Error('Only manual journal entries can be edited.');
+        const edited = validateJournal([{ ...entry, text, mentions }])[0];
+        state = {
+          ...state,
+          campaign: {
+            ...state.campaign,
+            journal: entries.map((entry) => (entry.id === id ? edited : entry)),
+          },
+        };
+        save();
+        return result('journal', 'Journal entry updated');
+      } catch (error) {
+        return { ok: false, error: error.message };
+      }
+    },
+    regenerateJournal(id, random) {
+      try {
+        const entries = state.campaign.journal ?? [];
+        const entry = entries.find((entry) => entry.id === id);
+        if (!entry) throw new Error('This journal entry no longer exists.');
+        const command = journalEntryCommand(entry);
+        if (!command) throw new Error('Only dice, oracle and abstract entries can be regenerated.');
+        const replacement = validateJournal([
+          { ...entry, ...journalCommand(command.text, command.mentions, random) },
+        ])[0];
+        state = {
+          ...state,
+          campaign: {
+            ...state.campaign,
+            journal: entries.map((current) => (current.id === id ? replacement : current)),
+          },
+        };
+        save();
+        return result('journal', 'Journal entry regenerated');
+      } catch (error) {
+        return { ok: false, error: error.message };
+      }
+    },
+    deleteJournal(id) {
+      const entries = state.campaign.journal ?? [];
+      const entry = entries.find((entry) => entry.id === id);
+      if (!entry) return { ok: false, error: 'This journal entry no longer exists.' };
+      if (isAutomatedJournalEntry(entry))
+        return { ok: false, error: 'Automatic journal entries cannot be deleted.' };
+      state = {
+        ...state,
+        campaign: {
+          ...state.campaign,
+          journalSequence: Math.max(state.campaign.journalSequence ?? 0, entries.at(-1).id),
+          journal: entries.filter((entry) => entry.id !== id),
+        },
+      };
+      save();
+      return result('journal', 'Journal entry deleted');
     },
     partyStyle(style) {
       if (!PARTY_STYLES.includes(style)) return { ok: false };
@@ -471,11 +618,18 @@ export function createCampaignSession({ persist }) {
     undo() {
       if (!history.length) return { ok: false };
       if (state.campaign.fogOfWar && !history.at(-1).fogSafe) return fogError();
-      const { partyKey, fogSafe, action, ...previous } = history.at(-1);
+      const { partyKey, fogSafe, action, journalEventId, ...previous } = history.at(-1);
       const campaign = {
         ...state.campaign,
         ...previous,
         partyToken: { ...state.campaign.partyToken, key: partyKey },
+        ...(journalEventId !== undefined
+          ? {
+              journal: (state.campaign.journal ?? []).filter(
+                (entry) => entry.id !== journalEventId,
+              ),
+            }
+          : {}),
       };
       const world = fogSafe ? state.world : campaignWorld(campaign, state.baseWorld);
       const dressing = fogSafe ? state.dressing : campaignDressing(campaign, world);

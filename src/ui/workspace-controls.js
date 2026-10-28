@@ -88,7 +88,10 @@ export function createWorkspaceControls(
   });
   listen(document, 'keydown', (event) => {
     const renderer = getRenderer();
-    if (document.documentElement.dataset.mapInput !== 'keyboard')
+    if (
+      !['+', '=', '-', 'Shift', 'Control', 'Alt', 'Meta'].includes(event.key) &&
+      document.documentElement.dataset.mapInput !== 'keyboard'
+    )
       document.documentElement.dataset.mapInput = 'keyboard';
     if (event.key === 'Tab' && !root.hidden && !document.querySelector('dialog[open]')) {
       keyboardNavigation = true;
@@ -106,7 +109,7 @@ export function createWorkspaceControls(
       event.altKey ||
       document.querySelector('dialog[open]') ||
       event.target.closest(
-        'input, textarea, select, [contenteditable]:not([contenteditable="false"])',
+        'input, textarea, select, [contenteditable]:not([contenteditable="false"]), .hp-journal-log',
       )
     )
       return;

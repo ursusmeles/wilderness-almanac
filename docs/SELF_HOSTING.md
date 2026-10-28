@@ -159,7 +159,7 @@ New documents require revision `"0"`. Missing revisions return 428; mismatches
 return 409. Ownership is part of every SQL predicate and composite primary key,
 never accepted from client JSON. Deletion retains an incremented tombstone so a
 stale create cannot silently resurrect the document. The server accepts the same
-bounded replay data as browser validation, with a 4 MB campaign limit and up to
+bounded replay data as browser validation, with a 16 MB campaign limit and up to
 100 active account campaigns. Public `/healthz` reports only service status.
 
 The browser records acknowledged server revisions and a SHA-256 campaign hash

@@ -72,8 +72,10 @@ test('desktop Inspector actions retain two columns with enlarged text and folded
       .toBe(2);
   }
   await page.locator('#hp-batch-off').click();
+  await page
+    .getByRole('separator', { name: 'Resize map and side panels', exact: true })
+    .press('End');
   for (const panel of ['.hp-tracker-panel', '.hp-inspector-panel']) {
-    await page.locator(`${panel} [data-horizontal]`).click();
     await expect(page.locator(panel)).toHaveClass(/is-side-collapsed/);
     await expectSquareControls(page);
   }
