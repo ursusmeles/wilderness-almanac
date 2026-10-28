@@ -18,6 +18,7 @@ import { createCampaign, campaignIconCandidates } from './application/campaigns.
 import { createFogView } from './application/fog-view.js';
 import { createCampaignSession } from './application/campaign-session.js';
 import { timeOfDay, nextTimeOfDay } from './application/time-of-day.js';
+import { timeIncrementLabels } from './application/campaign-time.js';
 import { createCampaignMenu } from './ui/campaign-menu.js';
 import { createPaletteLibrary } from './application/palette-library.js';
 import { createPaletteManager } from './ui/palette-manager.js';
@@ -90,6 +91,7 @@ const initialVariant =
   linked.variant ?? (linked.seed && linked.seed !== saved.seed ? 0 : (saved.variant ?? 0));
 let movement = saved.motion ?? true;
 let defaultTimeOfDay = saved.defaultTimeOfDay ?? 'dawn';
+let campaignTimeIncrement = saved.timeIncrement ?? 'week';
 let campaignHistory;
 const selection = element('selection');
 const preset = element('preset');
@@ -161,6 +163,7 @@ function persistPreferences() {
   return saveUIPreferences(storage, {
     motion: movement,
     defaultTimeOfDay,
+    timeIncrement: campaignTimeIncrement,
     ...panels.preferences(),
   });
 }
@@ -725,6 +728,7 @@ partyInspectorHost.className = 'hp-party-metadata';
 partyJournalHost.className = 'hp-party-journal';
 panels.party.append(partyInspectorHost, partyJournalHost);
 partyJournal = createPartyJournal(partyJournalHost, {
+  getTimeIncrement: () => campaignTimeIncrement,
   isBusy: mapAction.isBusy,
   onSubmit(text, mentions, week) {
     const result = session.addJournal(text, mentions, undefined, { week });
@@ -737,7 +741,7 @@ partyJournal = createPartyJournal(partyJournalHost, {
     return result;
   },
   onNextWeek() {
-    const result = session.nextWeek();
+    const result = session.nextWeek(campaignTimeIncrement);
     if (result.ok) handleAction(result);
     return result;
   },
@@ -759,6 +763,7 @@ partyInspectorHost.hidden = true;
 batchInspectorHost.hidden = true;
 panels.inspector.append(singleInspectorHost, batchInspectorHost);
 partyInspector = createPartyInspector(partyInspectorHost, {
+  getTimeIncrement: () => campaignTimeIncrement,
   nameHost: panels.partyHeader,
   onShowWeek: (week) => partyJournal.showWeek(week),
   onChange: (patch) => handleAction(session.partyDetails(patch)),
@@ -852,6 +857,7 @@ applyMenuTheme();
 applyPalette();
 campaignMenu = createCampaignMenu({
   store: browserStore,
+  getTimeIncrement: () => campaignTimeIncrement,
   defaultPalette: () => {
     const palette = paletteLibrary.default();
     return { colors: palette.colors, paletteName: palette.name };
@@ -881,10 +887,16 @@ const paletteManager = createPaletteManager({
 });
 const settings = createSettings({
   library: paletteLibrary,
-  read: () => ({ defaultTimeOfDay, motion: movement, journalFirst: panels.journalFirst() }),
+  read: () => ({
+    defaultTimeOfDay,
+    motion: movement,
+    journalFirst: panels.journalFirst(),
+    timeIncrement: campaignTimeIncrement,
+  }),
   async onSave(values, imported) {
     paletteLibrary.setDefault(values.defaultPalette);
     defaultTimeOfDay = values.defaultTimeOfDay;
+    campaignTimeIncrement = timeIncrementLabels(values.timeIncrement).unit;
     movement = values.motion;
     panels.setJournalFirst(values.journalFirst);
     updateMovementToggle();

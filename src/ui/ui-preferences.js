@@ -1,5 +1,6 @@
 import { storageKey } from '../persistence/storage-namespace.js';
 import { TIMES_OF_DAY } from '../application/time-of-day.js';
+import { TIME_INCREMENTS } from '../application/campaign-time.js';
 
 export const UI_PREFERENCES_KEY = 'wilderness-almanac:ui-v1';
 
@@ -49,6 +50,9 @@ function pick(value = {}) {
   return {
     ...(typeof value.motion === 'boolean' ? { motion: value.motion } : {}),
     ...(typeof value.journalFirst === 'boolean' ? { journalFirst: value.journalFirst } : {}),
+    ...(TIME_INCREMENTS.includes(value.timeIncrement)
+      ? { timeIncrement: value.timeIncrement }
+      : {}),
     ...(TIMES_OF_DAY.includes(value.defaultTimeOfDay)
       ? { defaultTimeOfDay: value.defaultTimeOfDay }
       : {}),

@@ -23,10 +23,10 @@ test('Settings stages defaults and imports, Cancel discards, and Save persists n
   await page.locator('#open-settings').click();
   await expect(page.locator('#settings-save')).toBeDisabled();
   await expect(page.locator('#settings-palette')).toHaveValue('forbidden');
-  await expect(page.locator('#settings-time')).toHaveValue('dawn');
+  await expect(page.locator('#settings-time input[value="dawn"]')).toBeChecked();
   await page.locator('#settings-palette').selectOption('glacial');
-  await page.locator('#settings-time').selectOption('night');
-  await page.locator('#settings-motion').click();
+  await page.locator('#settings-time input[value="night"]').check();
+  await page.locator('#settings-motion input[value="false"]').check();
   await page.locator('#campaign-file').setInputFiles(importFile);
   await expect(page.locator('#settings-filename')).toHaveText('adventure.json');
   await expect(page.locator('#settings-message')).toContainText('Ready to import');
@@ -35,8 +35,8 @@ test('Settings stages defaults and imports, Cancel discards, and Save persists n
   await page.locator('#open-settings').click();
   await expect(page.locator('#settings-save')).toBeDisabled();
   await expect(page.locator('#settings-palette')).toHaveValue('forbidden');
-  await expect(page.locator('#settings-time')).toHaveValue('dawn');
-  await expect(page.locator('#settings-motion')).toHaveAttribute('aria-checked', 'true');
+  await expect(page.locator('#settings-time input[value="dawn"]')).toBeChecked();
+  await expect(page.locator('#settings-motion input[value="true"]')).toBeChecked();
   await expect(page.locator('#settings-filename')).toHaveText('No file selected');
   await page.locator('#campaign-file').setInputFiles({
     name: 'bad.json',
@@ -46,8 +46,8 @@ test('Settings stages defaults and imports, Cancel discards, and Save persists n
   await expect(page.locator('#settings-message')).toContainText('not valid JSON');
   await expect(page.locator('#settings-save')).toBeDisabled();
   await page.locator('#settings-palette').selectOption('glacial');
-  await page.locator('#settings-time').selectOption('night');
-  await page.locator('#settings-motion').click();
+  await page.locator('#settings-time input[value="night"]').check();
+  await page.locator('#settings-motion input[value="false"]').check();
   await page.locator('#campaign-file').setInputFiles(importFile);
   await expect(page.locator('#settings-save')).toBeEnabled();
   await page.screenshot({ path: testInfo.outputPath('settings.png') });
@@ -60,8 +60,8 @@ test('Settings stages defaults and imports, Cancel discards, and Save persists n
   await page.locator('#open-settings').click();
   await expect(page.locator('#settings-palette')).toHaveValue('glacial');
   await expect(page.locator('#settings-palette option:checked')).toHaveText('Frozen synapse');
-  await expect(page.locator('#settings-time')).toHaveValue('night');
-  await expect(page.locator('#settings-motion')).toHaveAttribute('aria-checked', 'false');
+  await expect(page.locator('#settings-time input[value="night"]')).toBeChecked();
+  await expect(page.locator('#settings-motion input[value="false"]')).toBeChecked();
   await page.locator('#open-palette-manager').click();
   await expect(page.locator('#palette-manager-dialog')).toBeVisible();
   await page.locator('#close-palette-manager').click();

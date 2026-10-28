@@ -168,49 +168,104 @@
               </button>
             </header>
             <div class="settings-content stack">
-              <div class="settings-group stack">
-                <button
-                  type="button"
-                  id="settings-motion"
-                  class="hp-motion"
-                  role="switch"
-                  aria-label="Movement"
-                  aria-checked="true"
-                  aria-describedby="settings-motion-note"
-                >
-                  <span class="hp-motion-light" aria-hidden="true"></span>
-                  <span
-                    >Movement <span id="settings-motion-state" aria-hidden="true">ON</span></span
+              <fieldset
+                id="settings-motion"
+                class="settings-group stack"
+                aria-describedby="settings-motion-note"
+              >
+                <legend>Movement</legend>
+                <div class="settings-toggle">
+                  <label
+                    ><input type="radio" name="settings-motion" value="true" checked /><span
+                      >Movement On</span
+                    ></label
                   >
-                </button>
+                  <label
+                    ><input type="radio" name="settings-motion" value="false" /><span
+                      >Movement Off</span
+                    ></label
+                  >
+                </div>
                 <p id="settings-motion-note" class="settings-note">
                   Animate wind, waves, light pulses and lighthouse beams. Reduced-motion preferences
                   still apply.
                 </p>
-              </div>
-              <div class="settings-group stack">
-                <label class="cc-field" for="settings-time">
-                  Default time of day
-                  <select id="settings-time" aria-describedby="settings-time-note">
-                    <option value="dawn">Dawn</option>
-                    <option value="day">Day</option>
-                    <option value="dusk">Dusk</option>
-                    <option value="night">Night</option>
-                  </select>
-                </label>
+              </fieldset>
+              <fieldset
+                id="settings-time"
+                class="settings-group stack"
+                aria-describedby="settings-time-note"
+              >
+                <legend>Default time of day</legend>
+                <div class="settings-toggle">
+                  <label
+                    ><input type="radio" name="settings-time" value="dawn" checked /><span
+                      >Dawn</span
+                    ></label
+                  >
+                  <label
+                    ><input type="radio" name="settings-time" value="day" /><span>Day</span></label
+                  >
+                  <label
+                    ><input type="radio" name="settings-time" value="dusk" /><span
+                      >Dusk</span
+                    ></label
+                  >
+                  <label
+                    ><input type="radio" name="settings-time" value="night" /><span
+                      >Night</span
+                    ></label
+                  >
+                </div>
                 <p id="settings-time-note" class="settings-note">
                   New campaigns start at this time.
                 </p>
-              </div>
-              <div class="settings-group stack">
-                <label class="cc-field" for="settings-panel-order">
-                  Side panel order
-                  <select id="settings-panel-order">
-                    <option value="inspector">Inspector above Journal</option>
-                    <option value="tracker">Journal above Inspector</option>
-                  </select>
-                </label>
-              </div>
+              </fieldset>
+              <fieldset
+                id="settings-time-increment"
+                class="settings-group stack"
+                aria-describedby="settings-time-increment-note"
+              >
+                <legend>Campaign time increment</legend>
+                <div class="settings-toggle">
+                  <label
+                    ><input type="radio" name="settings-time-increment" value="day" /><span
+                      >Day</span
+                    ></label
+                  >
+                  <label
+                    ><input type="radio" name="settings-time-increment" value="week" checked /><span
+                      >Week</span
+                    ></label
+                  >
+                  <label
+                    ><input type="radio" name="settings-time-increment" value="session" /><span
+                      >Session</span
+                    ></label
+                  >
+                </div>
+                <p id="settings-time-increment-note" class="settings-note">
+                  Applies to all campaigns. Existing numbers stay the same.
+                </p>
+              </fieldset>
+              <fieldset id="settings-panel-order" class="settings-group stack">
+                <legend>Top panel</legend>
+                <div class="settings-toggle">
+                  <label
+                    ><input
+                      type="radio"
+                      name="settings-panel-order"
+                      value="inspector"
+                      checked
+                    /><span>Inspector</span></label
+                  >
+                  <label
+                    ><input type="radio" name="settings-panel-order" value="tracker" /><span
+                      >Journal</span
+                    ></label
+                  >
+                </div>
+              </fieldset>
               <div class="settings-group settings-palette-group stack">
                 <label for="settings-palette">Default palette</label>
                 <div class="settings-palette-actions">
@@ -645,7 +700,7 @@
                 <dd><time class="campaign-date"></time></dd>
               </div>
               <div>
-                <dt>Week</dt>
+                <dt class="campaign-time-label">Week</dt>
                 <dd class="campaign-week"></dd>
               </div>
               <div>
@@ -1307,7 +1362,7 @@
                     <use href="/icons/pixelarticons.svg#calendar"></use>
                   </svg>
                 </button>
-                <span>Week</span>
+                <span id="hp-party-time-label">Week</span>
               </dt>
               <dd id="hp-party-weeks"></dd>
             </div>

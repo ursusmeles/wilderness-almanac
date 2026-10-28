@@ -1,5 +1,6 @@
 import { cloneTemplate } from './templates.js';
 import { hexAddress } from '../generation/hex.js';
+import { timeIncrementLabels } from '../application/campaign-time.js';
 import {
   partyMetadata,
   PARTY_COLORS,
@@ -9,7 +10,17 @@ import {
 
 export function createPartyInspector(
   host,
-  { onChange, onNavigate, onSelectVisited, onShowWeek, nameHost, preview, colorFor, visible },
+  {
+    onChange,
+    onNavigate,
+    onSelectVisited,
+    onShowWeek,
+    nameHost,
+    preview,
+    colorFor,
+    visible,
+    getTimeIncrement = () => 'week',
+  },
 ) {
   host.replaceChildren(cloneTemplate('party-inspector-template'));
   const el = (name) =>
@@ -111,6 +122,10 @@ export function createPartyInspector(
       el('type').dataset.tooltip =
         `Change shape to ${nextStyle[0].toUpperCase() + nextStyle.slice(1)}`;
       el('weeks').textContent = String(metadata.weeks);
+      const { label, unit } = timeIncrementLabels(getTimeIncrement());
+      el('time-label').textContent = label;
+      el('show-week').setAttribute('aria-label', `Show current ${unit}`);
+      el('show-week').dataset.tooltip = `Show current ${unit}`;
       el('preview').alt =
         `${next.campaign.partyToken.style[0].toUpperCase() + next.campaign.partyToken.style.slice(1)} party token`;
       refreshPreview();

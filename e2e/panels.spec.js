@@ -26,7 +26,7 @@ test('Settings order applies on desktop/mobile, stages cancellation and survives
   await page.locator('#hp-back-menu').click();
   await page.locator('#open-settings').click();
   await expect(page.locator('#settings-save')).toBeDisabled();
-  await expect(page.locator('#settings-panel-order')).toHaveValue('inspector');
+  await expect(page.locator('#settings-panel-order input[value="inspector"]')).toBeChecked();
   const positions = await page.evaluate(() =>
     ['settings-time', 'settings-panel-order', 'settings-palette'].map(
       (id) => document.getElementById(id).getBoundingClientRect().y,
@@ -34,12 +34,12 @@ test('Settings order applies on desktop/mobile, stages cancellation and survives
   );
   expect(positions[0]).toBeLessThan(positions[1]);
   expect(positions[1]).toBeLessThan(positions[2]);
-  await page.locator('#settings-panel-order').selectOption('tracker');
+  await page.locator('#settings-panel-order input[value="tracker"]').check();
   await page.locator('#settings-cancel').click();
   await page.locator('#open-settings').click();
-  await expect(page.locator('#settings-panel-order')).toHaveValue('inspector');
+  await expect(page.locator('#settings-panel-order input[value="inspector"]')).toBeChecked();
   await expect(page.locator('#settings-save')).toBeDisabled();
-  await page.locator('#settings-panel-order').selectOption('tracker');
+  await page.locator('#settings-panel-order input[value="tracker"]').check();
   await page.locator('#settings-save').click();
   await page
     .getByRole('button', { name: /^Enter/ })

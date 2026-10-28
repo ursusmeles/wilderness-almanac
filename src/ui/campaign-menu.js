@@ -4,6 +4,7 @@ import { campaignWorld } from '../generation/campaign-world.js';
 import { cloneTemplate } from './templates.js';
 import { loadThumbnails } from './thumbnail-cache.js';
 import { campaignWeek } from '../application/party-token.js';
+import { timeIncrementLabels } from '../application/campaign-time.js';
 import { copyText, mapLink } from './map-link.js';
 import {
   createCampaign,
@@ -14,7 +15,14 @@ import {
   chooseCampaignIcon,
 } from '../application/campaigns.js';
 
-export function createCampaignMenu({ store, defaultPalette, onEnter, onNewCampaign, saveStatus }) {
+export function createCampaignMenu({
+  store,
+  defaultPalette,
+  onEnter,
+  onNewCampaign,
+  saveStatus,
+  getTimeIncrement = () => 'week',
+}) {
   const menu = document.getElementById('campaign-menu');
   const list = document.getElementById('campaign-list');
   const newButton = document.getElementById('new-campaign');
@@ -198,6 +206,8 @@ export function createCampaignMenu({ store, defaultPalette, onEnter, onNewCampai
       }).format(new Date(campaign.createdAt));
       card.querySelector('.campaign-palette').textContent = campaign.paletteName;
       card.querySelector('.campaign-week').textContent = String(campaignWeek(campaign));
+      card.querySelector('.campaign-time-label').textContent =
+        timeIncrementLabels(getTimeIncrement()).label;
       const ratio = card.querySelector('.campaign-ratio');
       ratio.querySelector('dd').textContent =
         `${data.stats.waterPercent}% / ${data.stats.landPercent}%`;

@@ -2,13 +2,14 @@ import { cloneTemplate } from './templates.js';
 import {
   characterCount,
   JOURNAL_LIMIT,
-  JOURNAL_HELP,
+  journalHelp,
   JOURNAL_COMMANDS,
   mentionOptions,
   hexName,
   isAutomatedJournalEntry,
 } from '../application/party-journal.js';
 import { campaignWeek } from '../application/party-token.js';
+import { periodEvent, timeIncrementLabels } from '../application/campaign-time.js';
 import { copyText } from './map-link.js';
 
 const PAGE_SIZE = 50;
@@ -62,7 +63,15 @@ function diceSpans(entry) {
 
 export function createPartyJournal(
   host,
-  { onSubmit, onNextWeek, onMention, onEntryAction, onEdit, isBusy },
+  {
+    onSubmit,
+    onNextWeek,
+    onMention,
+    onEntryAction,
+    onEdit,
+    isBusy,
+    getTimeIncrement = () => 'week',
+  },
 ) {
   host.replaceChildren(cloneTemplate('party-journal-template'));
   const el = (name) => host.querySelector(`#hp-journal-${name}`);
@@ -77,6 +86,7 @@ export function createPartyJournal(
   let state,
     campaignId,
     journal,
+    displayedIncrement,
     currentWeek,
     viewedWeek = 1,
     shown = PAGE_SIZE,
@@ -95,6 +105,8 @@ export function createPartyJournal(
   const pageEntries = () =>
     (state?.campaign.journal ?? []).filter((entry) => entry.week === viewedWeek);
   const future = () => viewedWeek > currentWeek;
+  const time = () => timeIncrementLabels(getTimeIncrement());
+  const helpText = () => journalHelp(getTimeIncrement());
   const draftKey = () => JSON.stringify([campaignId, viewedWeek]);
   const visibleCells = () =>
     state?.visibleLayout ?? state?.visibleWorld?.cells ?? state?.world.cells ?? [];
@@ -111,7 +123,7 @@ export function createPartyJournal(
     el('count').textContent = `${length} / ${JOURNAL_LIMIT}`;
     input.disabled = disabled;
     input.placeholder = disabled
-      ? 'Start this week to write in the journal'
+      ? `Start this ${time().unit} to write in the journal`
       : 'Write a note or type / for commands';
     el('add').disabled = disabled || length > JOURNAL_LIMIT || !input.value.trim();
     el('add').textContent = editingId === null ? 'Add to Journal' : 'Save changes';
@@ -158,10 +170,13 @@ export function createPartyJournal(
     if (!found) return closeSuggestions();
     const start = before.length - found[1].length - found[2].length;
     if (mentions.some((ref) => start >= ref.start && start < ref.end)) return closeSuggestions();
-    options = mentionOptions(found[1], found[2], state.campaign, {
-      ...state.world,
-      cells: visibleCells(),
-    });
+    options = mentionOptions(
+      found[1],
+      found[2],
+      state.campaign,
+      { ...state.world, cells: visibleCells() },
+      getTimeIncrement(),
+    );
     if (!options.length) return closeSuggestions();
     match = { start, end: input.selectionStart };
     active = 0;
@@ -272,7 +287,7 @@ export function createPartyJournal(
 
   function mentionLabel(entry, ref) {
     const original = entry.text.slice(ref.start, ref.end);
-    if (ref.type === 'week') return `Week ${ref.key}`;
+    if (ref.type === 'week') return `${time().label} ${ref.key}`;
     if (ref.type === 'hex') {
       // Normalize the original address-first format; newer labels remain historical snapshots.
       if (/^\$?Region #/.test(original)) {
@@ -285,6 +300,7 @@ export function createPartyJournal(
     return original;
   }
   function appendText(node, entry) {
+    entry = periodEvent(entry, getTimeIncrement());
     let end = 0;
     const textEnd =
       entry.kind === 'move'
@@ -317,7 +333,7 @@ export function createPartyJournal(
     if (!/[.!?…]$/.test(node.textContent.trimEnd())) node.append(document.createTextNode('.'));
   }
   function appendHelp(node) {
-    for (const text of JOURNAL_HELP.split('\n\n')) {
+    for (const text of helpText().split('\n\n')) {
       const paragraph = document.createElement('p');
       let end = 0;
       for (const match of text.matchAll(/[@#$][a-z]+|\/(?:[a-z]+|\d[\w+-]*)/gi)) {
@@ -356,8 +372,16 @@ export function createPartyJournal(
       previousTop = log.scrollTop;
     const entries = pageEntries(),
       next = future();
-    el('week').textContent = `Week ${viewedWeek}`;
+    const { unit, label, plural } = time();
+    el('week').textContent = `${label} ${viewedWeek}`;
+    host.querySelector('.hp-journal-pagination').setAttribute('aria-label', `Journal ${plural}`);
+    el('start').textContent = `Start new ${unit}`;
     for (const button of host.querySelectorAll('[data-week-page]')) {
+      const direction = button.dataset.weekPage;
+      button.setAttribute(
+        'aria-label',
+        `${direction[0].toUpperCase() + direction.slice(1)} ${unit}`,
+      );
       const backwards = ['first', 'previous'].includes(button.dataset.weekPage);
       button.disabled = backwards ? viewedWeek === 1 : viewedWeek >= currentWeek + 1;
     }
@@ -372,7 +396,7 @@ export function createPartyJournal(
       nodes.push(node);
     }
     if (!next && helpWeek === viewedWeek)
-      nodes.push(entryNode({ kind: 'help', text: JOURNAL_HELP, mentions: [] }, true));
+      nodes.push(entryNode({ kind: 'help', text: helpText(), mentions: [] }, true));
     entriesHost.replaceChildren(...nodes);
     count();
     frame = requestAnimationFrame(() => {
@@ -390,7 +414,7 @@ export function createPartyJournal(
     shown = PAGE_SIZE;
     restoreDraft();
     paint(true);
-    el('announcement').textContent = `Week ${viewedWeek}`;
+    el('announcement').textContent = `${time().label} ${viewedWeek}`;
   }
   for (const button of host.querySelectorAll('[data-week-page]'))
     listen(button, 'click', () => {
@@ -472,13 +496,13 @@ export function createPartyJournal(
         id = row.dataset.entryId;
       const entry =
         id === 'help'
-          ? { text: JOURNAL_HELP }
+          ? { text: helpText() }
           : state.campaign.journal?.find((entry) => entry.id === Number(id));
       if (!entry) return;
       const action = button.dataset.entryAction;
       if (action === 'copy') {
         const text =
-          id === 'help' ? JOURNAL_HELP : row.querySelector('.hp-journal-entry-text').textContent;
+          id === 'help' ? helpText() : row.querySelector('.hp-journal-entry-text').textContent;
         try {
           await copyText(text);
           error();
@@ -561,7 +585,7 @@ export function createPartyJournal(
     }
     if (!outcome.explore)
       el('announcement').textContent = outcome.help
-        ? JOURNAL_HELP
+        ? helpText()
         : outcome.clear
           ? 'Cleared rolls without notes and dismissed help'
           : edited
@@ -576,7 +600,7 @@ export function createPartyJournal(
     if (isBusy() || viewedWeek !== currentWeek + 1) return;
     const result = onNextWeek();
     if (!result.ok) error(result.error);
-    else el('announcement').textContent = `Week ${campaignWeek(result.state.campaign)}`;
+    else el('announcement').textContent = `${time().label} ${campaignWeek(result.state.campaign)}`;
   });
   for (const button of host.querySelectorAll('[data-journal-command]'))
     listen(button, 'click', () => {
@@ -628,13 +652,18 @@ export function createPartyJournal(
   return {
     update(next) {
       const changedCampaign = campaignId !== next.campaign.id,
-        nextWeek = campaignWeek(next.campaign);
+        nextWeek = campaignWeek(next.campaign),
+        nextIncrement = time().unit;
       if (changedCampaign) saveDraft();
       const changed =
-        changedCampaign || next.campaign.journal !== journal || nextWeek !== currentWeek;
+        changedCampaign ||
+        next.campaign.journal !== journal ||
+        nextWeek !== currentWeek ||
+        nextIncrement !== displayedIncrement;
       if (next.campaign.journal !== journal) helpWeek = undefined;
       state = next;
       campaignId = next.campaign.id;
+      displayedIncrement = nextIncrement;
       if (changedCampaign) {
         viewedWeek = nextWeek;
         currentWeek = nextWeek;

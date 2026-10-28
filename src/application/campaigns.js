@@ -44,7 +44,7 @@ export function validateCampaign(value) {
   if (value.journalSequence !== undefined && value.journalSequence < (journal?.at(-1)?.id ?? 0))
     throw new Error('The party journal has an invalid sequence.');
   if (journal?.some((entry) => entry.week > (value.partyToken?.weeks ?? 1)))
-    throw new Error('The party journal contains a future week.');
+    throw new Error('The party journal contains a future journal period.');
   const campaign = {
     ...(value.preferences !== undefined ? { preferences } : {}),
     ...(value.fogOfWar !== undefined ? { fogOfWar: value.fogOfWar } : {}),

@@ -298,7 +298,7 @@ test('plain text, Unicode character limits, structured references and visited-fi
         ...campaign,
         journal: [{ id: 1, week: 3, kind: 'note', text: 'Future', mentions: [] }],
       }),
-    /future week/,
+    /future journal period/,
   );
 });
 

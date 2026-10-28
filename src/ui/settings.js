@@ -15,11 +15,17 @@ export function createSettings({ library, read, onSave }) {
     saving = false,
     revision = 0;
 
+  const selected = (name) => el(name).querySelector('input:checked').value;
+  function select(name, value) {
+    for (const input of el(name).querySelectorAll('input'))
+      input.checked = input.value === String(value);
+  }
   const values = () => ({
     defaultPalette: el('palette').value,
-    defaultTimeOfDay: el('time').value,
-    motion: el('motion').getAttribute('aria-checked') === 'true',
-    journalFirst: el('panel-order').value === 'tracker',
+    defaultTimeOfDay: selected('time'),
+    motion: selected('motion') === 'true',
+    journalFirst: selected('panel-order') === 'tracker',
+    timeIncrement: selected('time-increment'),
   });
   const current = () => ({ defaultPalette: library.default().id, ...read() });
   function sync() {
@@ -33,9 +39,6 @@ export function createSettings({ library, read, onSave }) {
     for (const control of dialog.querySelectorAll('button, select, input'))
       if (control !== el('save') && control.disabled !== saving) control.disabled = saving;
     if (importButton.disabled !== (reading || saving)) importButton.disabled = reading || saving;
-    const motionState = values().motion ? 'ON' : 'OFF';
-    if (el('motion-state').textContent !== motionState)
-      el('motion-state').textContent = motionState;
   }
   function palettes(selected = el('palette').value) {
     const entries = library.all();
@@ -74,24 +77,21 @@ export function createSettings({ library, read, onSave }) {
     paletteEdited = false;
     fileInput.value = '';
     palettes(saved.defaultPalette);
-    el('time').value = saved.defaultTimeOfDay;
-    el('panel-order').value = saved.journalFirst ? 'tracker' : 'inspector';
-    el('motion').setAttribute('aria-checked', String(saved.motion));
+    select('time', saved.defaultTimeOfDay);
+    select('panel-order', saved.journalFirst ? 'tracker' : 'inspector');
+    select('time-increment', saved.timeIncrement);
+    select('motion', saved.motion);
     el('filename').textContent = 'No file selected';
     el('message').textContent = '';
     sync();
-    openDialog(dialog, el('motion'));
+    openDialog(dialog, el('motion').querySelector('input:checked'));
   });
   listen(el('palette'), 'change', () => {
     paletteEdited = true;
     sync();
   });
-  listen(el('time'), 'change', sync);
-  listen(el('panel-order'), 'change', sync);
-  listen(el('motion'), 'click', () => {
-    el('motion').setAttribute('aria-checked', String(!values().motion));
-    sync();
-  });
+  for (const name of ['motion', 'time', 'time-increment', 'panel-order'])
+    listen(el(name), 'change', sync);
   listen(document.getElementById('palette-manager-dialog'), 'close', () => {
     if (!dialog.open) return;
     palettes(paletteEdited ? el('palette').value : library.default().id);

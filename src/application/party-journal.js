@@ -1,5 +1,6 @@
 import { hexAddress } from '../generation/hex.js';
 import { hexName } from './hex-description.js';
+import { timeIncrementLabels } from './campaign-time.js';
 export { hexName } from './hex-description.js';
 
 export const JOURNAL_LIMIT = 300;
@@ -47,6 +48,8 @@ export const JOURNAL_HELP = [
   '/oracle [modifier] [question] rolls a d6 oracle, with the modified total limited to 1–6. Add a question to keep that roll when clearing.',
   'Roll dice: /2d6+1 4d6 1d20. Use + and - to combine d4, d6, d8, d10, d12 and d20. Spaces separate rolls.',
 ].join('\n\n');
+export const journalHelp = (increment) =>
+  JOURNAL_HELP.replace('#week', `#${timeIncrementLabels(increment).unit}`);
 export const isAutomatedJournalEntry = (entry) => ['move', 'rename', 'week'].includes(entry.kind);
 
 // Imported/older results may carry trailing notes without command metadata. Only clear
@@ -136,7 +139,7 @@ export function validateJournal(value) {
 
 export function appendJournal(campaign, entry, { week = campaign.partyToken?.weeks ?? 1 } = {}) {
   if (!weekNumber(week) || week > (campaign.partyToken?.weeks ?? 1))
-    throw new Error('Start this week before adding journal entries.');
+    throw new Error('Start this journal period before adding entries.');
   const journal = campaign.journal ?? [];
   if (journal.length >= MAX_JOURNAL_ENTRIES)
     throw new Error(
@@ -313,7 +316,7 @@ export function journalEntryCommand(entry) {
   };
 }
 
-export function mentionOptions(marker, query, campaign, world) {
+export function mentionOptions(marker, query, campaign, world, increment = 'week') {
   const needle = query.toLocaleLowerCase().trim();
   if (marker === '@') {
     const label = `@${partyName(campaign)}`;
@@ -323,11 +326,15 @@ export function mentionOptions(marker, query, campaign, world) {
   }
   if (marker === '#') {
     const current = campaign.partyToken?.weeks ?? 1;
-    const number = needle.replace(/^week\s*/i, '');
+    const number = needle.replace(/^(?:week|day|session)s?\s*/i, '');
     const numbers = number ? [Number(number)] : [current];
     return numbers
       .filter((week) => weekNumber(week) && week <= current)
-      .map((week) => ({ type: 'week', key: String(week), label: `Week ${week}` }));
+      .map((week) => ({
+        type: 'week',
+        key: String(week),
+        label: `${timeIncrementLabels(increment).label} ${week}`,
+      }));
   }
   if (marker !== '$') return [];
   return world.cells
