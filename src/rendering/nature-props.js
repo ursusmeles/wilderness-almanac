@@ -2,9 +2,11 @@ import * as THREE from 'three';
 import { randomStream } from '../generation/math.js';
 import { addMesh, geometryFrom } from './geometry.js';
 import { createFarmlandBuilder } from './farmland-props.js';
+import { createPixelEvergreenBuilder } from './pixel-evergreens.js';
 
-export function createNatureBuilder({ materials, propMaterial }) {
+export function createNatureBuilder({ materials, propMaterial, pixelMaterial = propMaterial }) {
   const makeField = createFarmlandBuilder({ propMaterial });
+  const makeEvergreen = createPixelEvergreenBuilder({ propMaterial: pixelMaterial });
   function makeTree(parent, prop) {
     const g = new THREE.Group();
     g.userData.tree = true;
@@ -55,26 +57,7 @@ export function createNatureBuilder({ materials, propMaterial }) {
         }
       }
     } else {
-      addMesh(
-        g,
-        new THREE.ConeGeometry(0.24, 0.53, prop.variant === 2 ? 6 : 5),
-        propMaterial('leafDark', prop.temperature),
-        0,
-        0.47,
-        0,
-      );
-      addMesh(
-        g,
-        new THREE.ConeGeometry(
-          prop.variant === 2 ? 0.16 : 0.19,
-          prop.variant === 2 ? 0.63 : 0.49,
-          5,
-        ),
-        propMaterial('leaf', prop.temperature),
-        0,
-        prop.variant === 2 ? 0.75 : 0.7,
-        0,
-      );
+      makeEvergreen(g, prop);
     }
     parent.add(g);
   }
