@@ -294,10 +294,12 @@ export function createHexInspector(
     frame = requestAnimationFrame(() => {
       if (!visible()) return;
       const src = preview(state.tile, state.colors);
-      previewTile = state.tile;
-      previewColors = state.colors.join(',');
       el('preview').hidden = !src;
-      if (src) el('preview').src = src;
+      if (src) {
+        previewTile = state.tile;
+        previewColors = state.colors.join(',');
+        el('preview').src = src;
+      }
       el('preview').alt = `Isometric view of ${el('name').textContent}`;
     });
   }

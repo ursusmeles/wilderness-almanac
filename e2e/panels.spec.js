@@ -182,7 +182,7 @@ test('Party replaces both tools, edits its header, navigates calendar and retain
   }
   await expect(page.locator('.hp-party-overview input')).toHaveCount(0);
   await expect(page.locator('.hp-party-overview dt > span')).toHaveText([
-    'Region',
+    'Location',
     'Nearest settlement',
     'Nearest POI',
     'Hexes visited',

@@ -88,7 +88,9 @@ export function createPartyInspector(
       nameHost.querySelector('h2').textContent = next.campaign.partyToken.name ?? 'Adventurers';
       el('address').textContent = hexAddress(metadata.cell).replace(/^Region /, '');
       el('settlement').textContent =
-        metadata.settlement === null ? none : steps(metadata.settlement);
+        metadata.settlement === null
+          ? none
+          : `${metadata.settlementName}, ${steps(metadata.settlement)}`;
       el('poi').textContent = metadata.poi
         ? `${metadata.poi.name}, ${steps(metadata.poi.distance)}`
         : none;

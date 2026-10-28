@@ -131,7 +131,10 @@ const workspaceControls = createWorkspaceControls(root, {
   isBusy: mapAction.isBusy,
   onPartyMove: (key) => handleAction(session.moveParty(key)),
   notify: (text) => mapConsole.notify(text),
-  refreshPreview: () => inspector?.refreshPreview(),
+  refreshPreview() {
+    inspector?.refreshPreview();
+    partyInspector?.refreshPreview();
+  },
 });
 const mapSelection = createMapSelection(root, {
   session,

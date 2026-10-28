@@ -56,7 +56,7 @@ export function createPanels(root, preferences, onChange) {
     panels[id] = panel;
     side.append(panel);
     listen(handle, 'pointerdown', (event) => {
-      if (event.button !== 0 || (id === 'tracker' && multiEdit)) return;
+      if (event.button !== 0 || mobile.matches || (id === 'tracker' && multiEdit)) return;
       event.preventDefault();
       handle.blur();
       drag = {
@@ -74,8 +74,7 @@ export function createPanels(root, preferences, onChange) {
       const delta = event.clientY - drag.start;
       if (Math.abs(delta) < 3 && !drag.moved) return;
       drag.moved = true;
-      if (mobile.matches) resizeMobile(id, drag.height + delta);
-      else resizeTop(drag.height + delta);
+      resizeTop(drag.height + delta);
     });
     listen(handle, 'pointerup', () => {
       if (drag?.handle !== handle) return;
@@ -87,24 +86,11 @@ export function createPanels(root, preferences, onChange) {
       if (!mobile.matches) toggleTop();
     });
     listen(handle, 'keydown', (event) => {
-      if (id === 'tracker' && multiEdit) return;
+      if (mobile.matches || (id === 'tracker' && multiEdit)) return;
       const bounds = splitBounds();
       if (event.key === 'Enter' || event.key === ' ') {
         event.preventDefault();
-        if (mobile.matches) toggleMobile(id);
-        else toggleTop();
-      } else if (mobile.matches) {
-        const height = panel.getBoundingClientRect().height;
-        const step = event.shiftKey ? 40 : 10;
-        if (['Home', 'End'].includes(event.key)) {
-          event.preventDefault();
-          mobileCollapsed[id] = event.key === 'Home';
-          panel.style.removeProperty('--mobile-panel-height');
-          render();
-        } else if (['ArrowUp', 'ArrowDown'].includes(event.key)) {
-          event.preventDefault();
-          resizeMobile(id, height + (event.key === 'ArrowUp' ? -step : step));
-        }
+        toggleTop();
       } else if (bounds) {
         const height = panel.getBoundingClientRect().height,
           step = event.shiftKey ? 40 : 10;
@@ -254,14 +240,8 @@ export function createPanels(root, preferences, onChange) {
   }
   function toggleMobile(id) {
     mobileCollapsed[id] = !mobileCollapsed[id];
-    panels[id].style.removeProperty('--mobile-panel-height');
     render();
-  }
-  function resizeMobile(id, height) {
-    const minimum = panels[id].querySelector('.hp-panel-bar').getBoundingClientRect().height + 2;
-    mobileCollapsed[id] = height < minimum + 30;
-    panels[id].style.setProperty('--mobile-panel-height', `${Math.max(minimum, height)}px`);
-    render();
+    onChange();
   }
   function finishResize(save = true) {
     if (!drag) return;
@@ -337,7 +317,7 @@ export function createPanels(root, preferences, onChange) {
       const heading = panel.querySelector('h2');
       if (id === 'party') heading.classList.toggle('sr-only', !rail);
       const handle = panel.querySelector('.hp-panel-resize');
-      handle.hidden = rail || (mobile.matches ? closed : partyMode || index !== 0 || multiEdit);
+      handle.hidden = mobile.matches || rail || partyMode || index !== 0 || multiEdit;
       handle.setAttribute('aria-disabled', String(id === 'tracker' && multiEdit));
       handle.tabIndex = id === 'tracker' && multiEdit ? -1 : 0;
       const disclosure = panel.querySelector('[data-collapse]');
@@ -414,6 +394,7 @@ export function createPanels(root, preferences, onChange) {
     finishResize();
     if (mobile.matches) mobileCollapsed.inspector = mobileCollapsed.tracker = true;
     render();
+    onChange();
   });
   const visible = (id) =>
     !root.hidden &&
@@ -468,8 +449,6 @@ export function createPanels(root, preferences, onChange) {
       panelSplit = layout.panelSplit;
       mapSplit = layout.mapSplit;
       mobileCollapsed.inspector = mobileCollapsed.tracker = true;
-      for (const panel of Object.values(panels))
-        panel.style.removeProperty('--mobile-panel-height');
       render();
     },
     inspectorVisible: () => !partyMode && visible('inspector'),

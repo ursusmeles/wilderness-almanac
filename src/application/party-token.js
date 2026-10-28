@@ -47,6 +47,7 @@ export function partyMetadata(world, campaign, { visibleWorld = world } = {}) {
     )[0];
   const proximityWorld = campaign.fogOfWar ? visibleWorld : world;
   const settlement = nearest(proximityWorld.cells.filter((other) => other.pointOfLight));
+  const settlementType = settlement?.pointOfLight.type ?? 'settlement';
   const poiCell = nearest(proximityWorld.cells.filter((other) => other.pointsOfInterest?.length));
   const poi = poiCell?.pointsOfInterest[0];
   const names = {
@@ -77,6 +78,9 @@ export function partyMetadata(world, campaign, { visibleWorld = world } = {}) {
     cell,
     settlement: settlement ? distance(cell, settlement) : null,
     settlementKey: settlement?.key ?? null,
+    settlementName: settlement
+      ? (settlement.pointOfLight.name ?? settlementType[0].toUpperCase() + settlementType.slice(1))
+      : null,
     poi: poi ? { key: poiCell.key, name: label, distance: distance(cell, poiCell) } : null,
     visited,
     visitedKeys,
