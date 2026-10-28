@@ -353,7 +353,7 @@ export function createCampaignSession({ persist }) {
             delete edit.poi;
           if (
             state.campaign.hexEdits?.cells[cell.key]?.lock &&
-            ['terrain', 'elevation', 'settlement', 'poi', 'crossing'].some((field) =>
+            ['terrain', 'elevation', 'settlement', 'poi', 'crossing', 'cropStyle'].some((field) =>
               Object.hasOwn(edit, field),
             )
           )
@@ -418,15 +418,21 @@ export function createCampaignSession({ persist }) {
       if (state.campaign.hexEdits?.cells[selected]?.lock)
         return { ok: false, error: 'Unlock dressing to regenerate this hex.' };
       const revision = (state.campaign.hexEdits?.cells[selected]?.revision ?? 0) + 1;
-      return transition(updateHex(state.campaign, selected, { revision }), {
+      return transition(updateHex(state.campaign, selected, { revision, cropStyle: null }), {
         rerollKey: selected,
         notification: 'Hex dressing regenerated',
         action: 'hex appearance regeneration',
       });
     },
     regenerate() {
+      const patches = Object.fromEntries(
+        Object.entries(state.campaign.hexEdits?.cells ?? {})
+          .filter(([, edit]) => edit.cropStyle && !edit.lock)
+          .map(([key]) => [key, { cropStyle: null }]),
+      );
+      const next = { ...state.campaign, variant: state.campaign.variant + 1 };
       return transition(
-        { ...state.campaign, variant: state.campaign.variant + 1 },
+        Object.keys(patches).length ? updateHexes(next, patches, state.baseWorld) : next,
         { notification: 'Map appearance regenerated', action: 'map appearance regeneration' },
       );
     },

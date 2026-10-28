@@ -15,7 +15,7 @@ export function generatePropDressing(
   world,
   variant,
   mountainSurfaces,
-  { fixedCells = {}, revisions = {}, canopySalt = '', roads = new Map() } = {},
+  { fixedCells = {}, revisions = {}, cropStyles = {}, canopySalt = '', roads = new Map() } = {},
 ) {
   const states = world.cells.map((cell) => {
     const localVariant = revisions[cell.key] ? `${variant}:${revisions[cell.key]}` : variant;
@@ -255,7 +255,7 @@ export function generatePropDressing(
         place('reeds', 0.065, { scale: 0.8 + random() * 0.3, variant: integer(0, 2) });
       if (random() < 0.25) place('tree', 0.12, { scale: 0.5, variant: 1 });
     } else if (cell.terrain === 'farmlands') {
-      const modern = world.generatorVersion >= 9;
+      const modern = world.generatorVersion >= 9 || Boolean(cropStyles[cell.key]);
       const farmRandom = randomFor(
         world.seed,
         `farmland:${cell.key}:${variant}:${revisions[cell.key] ?? 0}`,
@@ -263,7 +263,7 @@ export function generatePropDressing(
       const vineyard = cell.elevation > 0 && farmRandom() < 0.2;
       // Retain the retired plot-style roll so existing wheat/vineyard streams replay.
       if (!vineyard) farmRandom();
-      const cropStyle = vineyard ? 'vineyard' : 'grain';
+      const cropStyle = cropStyles[cell.key] ?? (vineyard ? 'vineyard' : 'grain');
       if (modern && cropStyle === 'grain') {
         if (random() < 0.25) {
           const fruit = farmRandom() < 0.5;

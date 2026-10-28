@@ -239,9 +239,11 @@ export function campaignDressing(
   const edits = campaign.hexEdits?.cells ?? {};
   const fixed = { ...fixedCells };
   const revisions = {};
+  const cropStyles = {};
   const mountainLocks = Object.fromEntries(mountainBase.map((shape) => [shape.rangeId, shape]));
   for (const [key, edit] of Object.entries(edits).sort(([a], [b]) => a.localeCompare(b))) {
     if (edit.revision) revisions[key] = edit.revision;
+    if (edit.cropStyle) cropStyles[key] = edit.cropStyle;
     if (edit.dressing && edit.dressingVariant === campaign.variant && key !== rerollKey) {
       fixed[key] = edit.dressing;
       const range = world.cells.find((cell) => cell.key === key)?.mountainRangeId;
@@ -258,6 +260,7 @@ export function campaignDressing(
   const dressing = generateDressing(world, campaign.variant, {
     fixedCells: rerollKey ? fixed : {},
     revisions,
+    cropStyles,
     mountainLocks,
     canopySalt: rerollKey ? `${rerollKey}:${revisions[rerollKey]}` : '',
     roadLocks: fixed,
@@ -437,6 +440,7 @@ export function updateHexes(campaign, patches, baseWorld) {
   );
   const version = Math.max(
     previous.version,
+    Object.values(patches).some((patch) => patch?.cropStyle != null) ? 4 : 1,
     roadRequests.length ? 3 : 1,
     Object.values(patches).some((patch) => patch && own(patch, 'settlementGroup')) ? 2 : 1,
   );
@@ -451,6 +455,13 @@ export function updateHexes(campaign, patches, baseWorld) {
     }
     const { roadExits: _exits, ...fields } = patch;
     const edit = { ...hexEdits.cells[key], ...fields };
+    if (patch.cropStyle === null || (own(patch, 'terrain') && patch.terrain !== 'farmlands'))
+      delete edit.cropStyle;
+    if (own(patch, 'cropStyle')) {
+      delete edit.lock;
+      delete edit.dressing;
+      delete edit.dressingVariant;
+    }
     if (
       own(patch, 'settlement') &&
       !own(patch, 'settlementGroup') &&
@@ -504,7 +515,7 @@ export function updateHexes(campaign, patches, baseWorld) {
       );
       const owner = changed.find((key) => patches[key] !== null);
       if (removed.length && owner) {
-        hexEdits.version = 3;
+        hexEdits.version = Math.max(hexEdits.version, 3);
         hexEdits.cells[owner] = {
           ...hexEdits.cells[owner],
           removedRoadLinks: [

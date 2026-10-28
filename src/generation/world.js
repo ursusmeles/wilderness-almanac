@@ -60,6 +60,7 @@ export function generateDressing(
   {
     fixedCells = {},
     revisions = {},
+    cropStyles = {},
     mountainLocks = {},
     canopySalt = '',
     roadLocks = fixedCells,
@@ -93,6 +94,7 @@ export function generateDressing(
     ? generatePropDressing(world, variant, prepareMountainRanges(world, dressing), {
         fixedCells,
         revisions,
+        cropStyles,
         canopySalt,
         roads,
       })

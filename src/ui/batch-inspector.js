@@ -1,5 +1,5 @@
 import { openDialog } from './dialog-focus.js';
-import { TERRAIN_TYPES } from '../generation/terrain-types.js';
+import { TERRAIN_OPTIONS, terrainValue, terrainPatch } from './terrain-options.js';
 import { SETTLEMENT_TYPES } from '../generation/hex-edits.js';
 import { cloneTemplate } from './templates.js';
 import { explainDisabled } from './control-help.js';
@@ -34,7 +34,7 @@ export function createBatchInspector(
     return node;
   };
   for (const [field, values] of Object.entries({
-    terrain: TERRAIN_TYPES,
+    terrain: TERRAIN_OPTIONS,
     settlement: ['', ...SETTLEMENT_TYPES],
     elevation: [0, 1, 2, 3],
     crossing: ['', 'bridge', 'ferry'],
@@ -119,6 +119,7 @@ export function createBatchInspector(
                 ? value || null
                 : value;
     }
+    if (result.terrain !== undefined) Object.assign(result, terrainPatch(result.terrain));
     return result;
   }
   async function apply(button = el('apply')) {
@@ -217,17 +218,20 @@ export function createBatchInspector(
       el('join').dataset.tooltip = next.join?.joined
         ? 'Already one settlement'
         : 'Combine into one settlement';
+      const dressed = new Map((next.dressing ?? []).map((cell) => [cell.key, cell]));
       for (const field of fields) {
         const values = next.cells.map((cell) =>
-          field === 'settlement'
-            ? (cell.pointOfLight?.type ?? '')
-            : field === 'poi'
-              ? poiValue(cell.pointsOfInterest[0])
-              : field === 'crossing'
-                ? (cell.crossing?.kind ?? '')
-                : field === 'visited'
-                  ? String(next.edits?.[cell.key]?.visited ?? false)
-                  : String(cell[field]),
+          field === 'terrain'
+            ? terrainValue(cell, dressed.get(cell.key)?.props, next.edits?.[cell.key]?.cropStyle)
+            : field === 'settlement'
+              ? (cell.pointOfLight?.type ?? '')
+              : field === 'poi'
+                ? poiValue(cell.pointsOfInterest[0])
+                : field === 'crossing'
+                  ? (cell.crossing?.kind ?? '')
+                  : field === 'visited'
+                    ? String(next.edits?.[cell.key]?.visited ?? false)
+                    : String(cell[field]),
         );
         const unique = new Set(values);
         const current =

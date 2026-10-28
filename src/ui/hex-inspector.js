@@ -1,5 +1,5 @@
 import { openDialog } from './dialog-focus.js';
-import { TERRAIN_TYPES } from '../generation/terrain-types.js';
+import { TERRAIN_OPTIONS, terrainValue, terrainPatch } from './terrain-options.js';
 import { SETTLEMENT_TYPES } from '../generation/hex-edits.js';
 import { inspectDistances } from '../generation/campaign-world.js';
 import { describeHex } from './map-link.js';
@@ -9,7 +9,6 @@ import { explainDisabled } from './control-help.js';
 import { roadGraph } from '../generation/roads.js';
 import { ROAD_DIRECTIONS, roadExitLabels } from './road-labels.js';
 import { POI_OPTIONS, poiValue, poiFromValue } from './poi-options.js';
-import { isVineyard } from '../generation/farmland-patches.js';
 
 const title = (text) => (text ? text[0].toUpperCase() + text.slice(1) : 'None');
 export function createHexInspector(
@@ -55,7 +54,7 @@ export function createHexInspector(
       }),
     );
   };
-  options(el('terrain'), TERRAIN_TYPES);
+  options(el('terrain'), TERRAIN_OPTIONS);
   options(el('settlement'), SETTLEMENT_TYPES, true);
   el('poi').replaceChildren(
     ...POI_OPTIONS.map(({ value, label }) => {
@@ -77,7 +76,7 @@ export function createHexInspector(
   host.closest('#campaign-workspace').append(unsaved);
 
   function constraints() {
-    const terrain = el('terrain').value;
+    const { terrain } = terrainPatch(el('terrain').value);
     const water = ['river', 'open water'].includes(terrain),
       mountain = terrain === 'mountains';
     if (water || mountain) el('elevation').value = water ? '0' : '4';
@@ -136,7 +135,7 @@ export function createHexInspector(
   function fill() {
     const cell = state.cell,
       poi = cell.pointsOfInterest[0];
-    el('terrain').value = cell.terrain;
+    el('terrain').value = terrainValue(cell, state.dressed?.props, state.cropStyle);
     el('settlement').value = cell.pointOfLight?.type ?? '';
     el('poi').value = poiValue(poi);
     el('elevation').value = String(cell.elevation);
@@ -150,8 +149,6 @@ export function createHexInspector(
   function setEditing(enabled) {
     enabled = enabled && !state?.fogOfWar;
     editing = enabled;
-    el('terrain').querySelector('[value="farmlands"]').textContent =
-      !editing && state && isVineyard(state.cell, state.dressed?.props) ? 'Vineyards' : 'Farmlands';
     dirty = false;
     roadDirty = false;
     el('fields').disabled = !enabled;
@@ -208,13 +205,16 @@ export function createHexInspector(
     }
   }
   function patch() {
-    const terrain = el('terrain').value,
-      water = ['river', 'open water'].includes(terrain);
+    const choice = terrainPatch(el('terrain').value);
+    const { terrain } = choice;
+    const water = ['river', 'open water'].includes(terrain);
     const currentPoi = state.cell.pointsOfInterest[0];
     const poi = terrain === 'open water' ? null : poiFromValue(el('poi').value, currentPoi);
     const poiChanged = poi?.kind !== currentPoi?.kind || poi?.variant !== currentPoi?.variant;
+    if (el('terrain').value === terrainValue(state.cell, state.dressed?.props, state.cropStyle))
+      delete choice.cropStyle;
     return {
-      terrain,
+      ...choice,
       elevation: water ? 0 : terrain === 'mountains' ? 4 : Number(el('elevation').value),
       settlement: water ? null : el('settlement').value || null,
       ...(poiChanged ? { poi } : {}),

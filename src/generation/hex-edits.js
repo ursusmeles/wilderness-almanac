@@ -232,7 +232,7 @@ function validateLock(value, key) {
 export function validateHexEdits(value) {
   if (
     !record(value) ||
-    ![1, 2, 3].includes(value.version) ||
+    ![1, 2, 3, 4].includes(value.version) ||
     !record(value.cells) ||
     Object.keys(value.cells).length > 469
   )
@@ -244,6 +244,15 @@ export function validateHexEdits(value) {
     if (source.terrain !== undefined) {
       if (!TERRAIN_TYPES.includes(source.terrain)) fail();
       edit.terrain = source.terrain;
+    }
+    if (source.cropStyle !== undefined) {
+      if (
+        value.version < 4 ||
+        edit.terrain !== 'farmlands' ||
+        !['grain', 'vineyard'].includes(source.cropStyle)
+      )
+        fail();
+      edit.cropStyle = source.cropStyle;
     }
     if (source.elevation !== undefined) {
       if (!Number.isInteger(source.elevation) || source.elevation < 0 || source.elevation > 4)
