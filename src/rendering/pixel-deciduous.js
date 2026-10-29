@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { randomStream } from '../generation/math.js';
 import { addMesh } from './geometry.js';
-import { voxelFaces, packFoliageAtlas, crownGeometry } from './pixel-foliage-geometry.js';
+import { foliageVoxelLevels, packFoliageAtlas, crownGeometry } from './pixel-foliage-geometry.js';
 import { DECIDUOUS_SPECIES, FOLIAGE_TONE_COUNT } from './pixel-foliage-colors.js';
 
 const SIZE = 9;
@@ -122,7 +122,7 @@ function crownFaces(species, style) {
         )
           data[(y * SIZE + z) * SIZE + x] = 1;
       }
-  return voxelFaces({
+  return foliageVoxelLevels({
     dims,
     step,
     origin,
@@ -148,9 +148,13 @@ export function deciduousAtlas() {
   if (!atlas) {
     const templates = new Map();
     for (const species of DECIDUOUS_SPECIES)
-      for (let style = 0; style < 8; style++)
-        templates.set(`${species}:${style}`, crownFaces(species, style));
-    atlas = packFoliageAtlas(templates);
+      for (let style = 0; style < 8; style++) {
+        const levels = crownFaces(species, style);
+        const key = `${species}:${style}`;
+        templates.set(key, levels.near);
+        templates.set(`${key}:far`, levels.far);
+      }
+    atlas = packFoliageAtlas(templates, { compact: true });
   }
   return atlas;
 }
@@ -179,11 +183,13 @@ export function createPixelDeciduousBuilder({
       );
       mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), axis.normalize());
     }
-    addMesh(
+    const crown = addMesh(
       parent,
       crownGeometry(deciduousAtlas().crowns.get(`${species}:${style}`)),
       pixelDeciduousMaterial(prop.temperature, prop.foliageTone),
     );
+    crown.userData.foliageFar = deciduousAtlas().crowns.get(`${species}:${style}:far`);
+    crown.userData.foliagePixelSize = WIDTH / SIZE;
     if (prop.fruit) {
       const random = randomStream(prop.detailSeed);
       for (let i = 0; i < 10; i++) {

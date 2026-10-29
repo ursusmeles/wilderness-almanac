@@ -81,7 +81,37 @@ export function voxelFaces({ dims, step, origin, data, shade }) {
   return faces;
 }
 
-export function packFoliageAtlas(forms) {
+// Coarse crowns keep the same seeded volume and sample its original colour
+// pattern. They are only shown once the original voxel is smaller than a pixel.
+export function foliageVoxelLevels(options) {
+  const { dims, step, origin, data, shade } = options;
+  const coarseDims = dims.map((size, axis) =>
+    axis === 1 ? Math.ceil(size / 2) : Math.ceil(size / 4) * 2 - 1,
+  );
+  const ratio = dims.map((size, axis) => size / coarseDims[axis]);
+  const coarse = new Uint8Array(coarseDims[0] * coarseDims[1] * coarseDims[2]);
+  const source = (coords) =>
+    coords.map((value, axis) => Math.min(dims[axis] - 1, Math.floor((value + 0.5) * ratio[axis])));
+  for (let y = 0; y < coarseDims[1]; y++)
+    for (let z = 0; z < coarseDims[2]; z++)
+      for (let x = 0; x < coarseDims[0]; x++) {
+        const [sx, sy, sz] = source([x, y, z]);
+        coarse[(y * coarseDims[2] + z) * coarseDims[0] + x] =
+          data[(sy * dims[2] + sz) * dims[0] + sx];
+      }
+  return {
+    near: voxelFaces(options),
+    far: voxelFaces({
+      dims: coarseDims,
+      step: step.map((size, axis) => size * ratio[axis]),
+      origin,
+      data: coarse,
+      shade: (coords, axis, sign) => shade(source(coords), axis, sign),
+    }),
+  };
+}
+
+export function packFoliageAtlas(forms, { compact = false } = {}) {
   const width = 256;
   let x = 0,
     y = 0,
@@ -112,7 +142,9 @@ export function packFoliageAtlas(forms) {
     x += face.width + 2;
     rowHeight = Math.max(rowHeight, face.height + 2);
   }
-  const height = 2 ** Math.ceil(Math.log2(y + rowHeight));
+  // Nearest-filtered, clamped textures need neither mipmaps nor power-of-two
+  // padding. Other prop atlases retain their existing layout by default.
+  const height = compact ? y + rowHeight : 2 ** Math.ceil(Math.log2(y + rowHeight));
   const indices = new Uint8Array(width * height);
   for (const crown of crowns.values()) {
     for (const face of crown.faces) {

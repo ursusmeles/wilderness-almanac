@@ -1,6 +1,6 @@
 import { randomStream } from '../generation/math.js';
 import { addMesh } from './geometry.js';
-import { voxelFaces, packFoliageAtlas, crownGeometry } from './pixel-foliage-geometry.js';
+import { foliageVoxelLevels, packFoliageAtlas, crownGeometry } from './pixel-foliage-geometry.js';
 import { EVERGREEN_SPECIES as SPECIES, FOLIAGE_TONE_COUNT } from './pixel-foliage-colors.js';
 
 const SIZE = 11;
@@ -166,7 +166,7 @@ function crownFaces(species, variant, style) {
     if (tone === 4 && edge < 0.3 && (x + z + tier + style) % 3 === 0) tone = 5;
     return tone + 1;
   }
-  return voxelFaces({
+  return foliageVoxelLevels({
     dims,
     step,
     origin,
@@ -193,9 +193,13 @@ export function evergreenAtlas() {
   const forms = new Map();
   for (const species of SPECIES)
     for (const variant of [0, 2])
-      for (let style = 0; style < 8; style++)
-        forms.set(`${species}:${variant}:${style}`, crownFaces(species, variant, style));
-  atlas = packFoliageAtlas(forms);
+      for (let style = 0; style < 8; style++) {
+        const levels = crownFaces(species, variant, style);
+        const key = `${species}:${variant}:${style}`;
+        forms.set(key, levels.near);
+        forms.set(`${key}:far`, levels.far);
+      }
+  atlas = packFoliageAtlas(forms, { compact: true });
   return atlas;
 }
 
@@ -206,6 +210,8 @@ export function createPixelEvergreenBuilder({ pixelMaterial }) {
     const key = `${species}:${variant}:${style}`;
     const crown = evergreenAtlas().crowns.get(key);
     const geometry = crownGeometry(crown);
-    addMesh(parent, geometry, pixelMaterial(prop.temperature, prop.foliageTone));
+    const mesh = addMesh(parent, geometry, pixelMaterial(prop.temperature, prop.foliageTone));
+    mesh.userData.foliageFar = evergreenAtlas().crowns.get(`${key}:far`);
+    mesh.userData.foliagePixelSize = WIDTH / SIZE;
   };
 }
