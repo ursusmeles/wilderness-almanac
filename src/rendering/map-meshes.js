@@ -14,6 +14,7 @@ export function createMapMeshes({
   materials,
   propMaterial,
   pixelMaterial,
+  pixelDeciduousMaterial,
   pixelBarkMaterial,
   treeDepth,
   waveDirection,
@@ -31,7 +32,13 @@ export function createMapMeshes({
     makeCrossing: createCrossingBuilder(materials),
   });
   const { makeTree, makeRock, makeGrass, makePuddle, makeReeds, makeCrops, makeWave } =
-    createNatureBuilder({ materials, propMaterial, pixelMaterial, pixelBarkMaterial });
+    createNatureBuilder({
+      materials,
+      propMaterial,
+      pixelMaterial,
+      pixelDeciduousMaterial,
+      pixelBarkMaterial,
+    });
   const { makeHouse, makeTower, makeHall, makeBarrier } = createSettlementBuilder({
     addMesh,
     propMaterial,
@@ -60,9 +67,14 @@ export function createMapMeshes({
       const propRoot = new THREE.Group();
       content.add(propRoot);
       makeRoads(propRoot, data);
+      const treeContext = {
+        terrain: data.terrain,
+        deciduousCount: data.props.filter((prop) => prop.kind === 'tree' && prop.variant === 1)
+          .length,
+      };
       for (const prop of data.props) {
         lightFeature = prop.kind === 'poi' ? prop.poiKind : data.pointOfLight?.type;
-        if (prop.kind === 'tree') makeTree(propRoot, prop, data.forest);
+        if (prop.kind === 'tree') makeTree(propRoot, prop, data.forest, treeContext);
         else if (prop.kind === 'house') makeHouse(propRoot, prop);
         else if (prop.kind === 'tower') makeTower(propRoot, prop);
         else if (prop.kind === 'hall') makeHall(propRoot, prop);

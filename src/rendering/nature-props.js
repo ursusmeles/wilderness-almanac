@@ -2,91 +2,69 @@ import * as THREE from 'three';
 import { randomStream } from '../generation/math.js';
 import { addMesh, geometryFrom } from './geometry.js';
 import { createFarmlandBuilder } from './farmland-props.js';
+import { createPixelDeciduousBuilder } from './pixel-deciduous.js';
 import {
   createPixelEvergreenBuilder,
   evergreenSpecies,
   evergreenForm,
 } from './pixel-evergreens.js';
 
-export function createNatureBuilder({ materials, propMaterial, pixelMaterial, pixelBarkMaterial }) {
+export function createNatureBuilder({
+  materials,
+  propMaterial,
+  pixelMaterial,
+  pixelDeciduousMaterial,
+  pixelBarkMaterial,
+}) {
   const makeField = createFarmlandBuilder({ propMaterial });
   const makeEvergreen = createPixelEvergreenBuilder({ pixelMaterial });
-  function makeTree(parent, prop, forest) {
-    const species = evergreenSpecies(prop, forest);
-    const style = ((prop.detailSeed ?? 0) >>> 0) % 8;
-    const form =
-      prop.variant === 1 ? { trunkHeight: 0.29 } : evergreenForm(species, prop.variant, style);
+  const makeDeciduous = createPixelDeciduousBuilder({
+    pixelDeciduousMaterial,
+    pixelBarkMaterial,
+    propMaterial,
+  });
+  function makeTree(parent, prop, forest, context) {
     const g = new THREE.Group();
     g.userData.tree = true;
     g.userData.wind = { height: 0.8, strength: 1 };
     g.position.set(prop.x, prop.y || 0, prop.z);
     g.rotation.y = prop.angle;
     g.scale.setScalar(prop.scale);
-    if (prop.variant === 1 || species !== 'pine')
+    if (prop.variant === 1) {
+      makeDeciduous(g, prop, forest, context);
+      parent.add(g);
+      return;
+    }
+    const species = evergreenSpecies(prop, forest);
+    const style = ((prop.detailSeed ?? 0) >>> 0) % 8;
+    const form = evergreenForm(species, prop.variant, style);
+    if (species !== 'pine')
       addMesh(
         g,
         new THREE.CylinderGeometry(0.025, 0.04, form.trunkHeight, 5),
-        prop.variant === 1
-          ? propMaterial('trunk', prop.temperature)
-          : pixelBarkMaterial(species, prop.temperature),
+        pixelBarkMaterial(species, prop.temperature),
         0,
         form.trunkHeight / 2,
         0,
       );
-    if (prop.variant === 1) {
-      const crown = addMesh(
-        g,
-        new THREE.DodecahedronGeometry(0.23, 0),
-        propMaterial('leaf', prop.temperature, prop.foliageTone),
-        0,
-        0.52,
-        0,
-      );
-      crown.scale.set(1, 1.25, 0.9);
-      addMesh(
-        g,
-        new THREE.DodecahedronGeometry(0.16, 0),
-        propMaterial('leafLight', prop.temperature, prop.foliageTone),
-        0,
-        0.73,
-        0,
-      );
-      if (prop.fruit) {
-        const random = randomStream(prop.detailSeed);
-        for (let i = 0; i < 10; i++) {
-          const angle = (i * Math.PI * 2) / 10 + random() * 0.3;
-          const y = 0.45 + random() * 0.18;
-          const radius = 0.22 * Math.sqrt(1 - ((y - 0.52) / 0.29) ** 2);
-          addMesh(
-            g,
-            new THREE.IcosahedronGeometry(0.03, 1),
-            propMaterial('fruit', 0, prop.detailSeed % 3),
-            Math.cos(angle) * radius,
-            y,
-            Math.sin(angle) * radius * 0.9,
-          );
-        }
+    if (species === 'pine') {
+      for (const limb of form.limbs) {
+        const start = new THREE.Vector3(...limb.start);
+        const end = new THREE.Vector3(...limb.end);
+        const axis = end.clone().sub(start);
+        const center = start.clone().add(end).multiplyScalar(0.5);
+        const branch = addMesh(
+          g,
+          new THREE.CylinderGeometry(limb.radius * 0.65, limb.radius, axis.length(), 4, 1, true),
+          pixelBarkMaterial(species, prop.temperature, start.y > form.height * 0.45 ? 1 : 0),
+          center.x,
+          center.y,
+          center.z,
+        );
+        branch.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), axis.normalize());
       }
-    } else {
-      if (species === 'pine') {
-        for (const limb of form.limbs) {
-          const start = new THREE.Vector3(...limb.start);
-          const end = new THREE.Vector3(...limb.end);
-          const axis = end.clone().sub(start);
-          const center = start.clone().add(end).multiplyScalar(0.5);
-          const branch = addMesh(
-            g,
-            new THREE.CylinderGeometry(limb.radius * 0.65, limb.radius, axis.length(), 4, 1, true),
-            pixelBarkMaterial(species, prop.temperature, start.y > form.height * 0.45 ? 1 : 0),
-            center.x,
-            center.y,
-            center.z,
-          );
-          branch.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), axis.normalize());
-        }
-      }
-      makeEvergreen(g, prop, species);
     }
+    makeEvergreen(g, prop, species);
     parent.add(g);
   }
   function makeRock(parent, prop) {

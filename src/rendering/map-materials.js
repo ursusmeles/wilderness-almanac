@@ -102,8 +102,8 @@ export function createMapMaterials() {
     if (!state || state === 'visited') return base;
     if (Array.isArray(base)) return base.map((material) => fogMaterial(material, state));
     if (base.userData.pixelFoliage) {
-      const { temperature, tone } = base.userData.pixelFoliage;
-      return pixelFoliage.material(temperature, tone, state);
+      const { temperature, tone, family } = base.userData.pixelFoliage;
+      return pixelFoliage.material(temperature, tone, state, family);
     }
     if (base.userData.pixelBark) {
       const { species, temperature, tone } = base.userData.pixelBark;
@@ -125,6 +125,8 @@ export function createMapMaterials() {
     fogMaterial,
     propMaterial,
     pixelMaterial: pixelFoliage.material,
+    pixelDeciduousMaterial: (temperature, tone) =>
+      pixelFoliage.material(temperature, tone, 'visited', 'deciduous'),
     pixelBarkMaterial: pixelFoliage.barkMaterial,
     treeDepth,
     ambientTime,
