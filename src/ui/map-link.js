@@ -1,5 +1,6 @@
 import { worldPreferences, PREFERENCE_NAMES } from '../generation/world-preferences.js';
 import { GENERATOR_VERSION, SUPPORTED_GENERATOR_VERSIONS } from '../generation/world.js';
+import { MAP_ART_STYLES } from '../application/map-art-style.js';
 
 const validColors = (colors) =>
   colors?.length === 3 && colors.every((c) => /^#[0-9a-f]{6}$/i.test(c));
@@ -16,6 +17,8 @@ export function readMapLink(href) {
     ?.split('-')
     .map((color) => `#${color}`);
   const version = params.has('generator') ? Number(params.get('generator')) : 6;
+  const artStyle = params.get('art');
+  if (artStyle !== null && !MAP_ART_STYLES.includes(artStyle)) return {};
   if (!SUPPORTED_GENERATOR_VERSIONS.includes(version)) return {};
   let preferences;
   if (params.has('world')) {
@@ -31,6 +34,7 @@ export function readMapLink(href) {
     );
   }
   return {
+    ...(artStyle !== null ? { artStyle } : {}),
     ...(params.has('generator') ? { generatorVersion: version } : {}),
     ...(preferences ? { preferences } : {}),
     seed: seed && seed.length <= 128 ? seed : undefined,
@@ -39,10 +43,12 @@ export function readMapLink(href) {
   };
 }
 
-export function mapLink(href, { seed, variant, colors, generatorVersion, preferences }) {
+export function mapLink(href, { seed, variant, colors, generatorVersion, preferences, artStyle }) {
   const url = new URL(href);
   url.searchParams.delete('generator');
   url.searchParams.delete('world');
+  url.searchParams.delete('art');
+  if (artStyle === 'pixelart') url.searchParams.set('art', artStyle);
   if (generatorVersion !== undefined || preferences !== undefined)
     url.searchParams.set('generator', String(generatorVersion ?? GENERATOR_VERSION));
   if (preferences !== undefined && (generatorVersion ?? GENERATOR_VERSION) >= 7) {

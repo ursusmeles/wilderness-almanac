@@ -3,6 +3,7 @@ import { worldPosition } from '../generation/hex.js';
 
 export const BEAM_LENGTH = 2 * Math.sqrt(3);
 export const LANDING_RADIUS = 0.42;
+export const BEAM_WIDTH = 0.1;
 const MAX_SWEEP = Math.PI / 3;
 const isWater = (cell) =>
   cell &&
@@ -28,19 +29,21 @@ function waterField(cells) {
 }
 
 // Leave clearance around the round landing and shaft, including between samples.
-function trace(position, angle, cellAt) {
+function trace(position, angle, cellAt, scale) {
+  const length = BEAM_LENGTH * scale;
+  const steps = Math.round(48 * scale);
   const dx = Math.cos(angle),
     dz = Math.sin(angle);
   let target = null,
     enteredWater = false,
     clearWater = false;
-  for (let step = 0; step <= 48; step++) {
-    const distance = (BEAM_LENGTH * step) / 48;
+  for (let step = 0; step <= steps; step++) {
+    const distance = (length * step) / steps;
     const x = position.x + dx * distance,
       z = position.z + dz * distance;
     const cell = cellAt(x, z);
     if (!cell || cell.fogState === 'undiscovered' || (enteredWater && !isWater(cell))) break;
-    const width = distance * 0.1 + 0.04;
+    const width = distance * BEAM_WIDTH * scale + 0.04;
     const edges = [-1, 1].map((side) => cellAt(x - dz * width * side, z + dx * width * side));
     if (
       edges.some(
@@ -53,7 +56,7 @@ function trace(position, angle, cellAt) {
     clearWater ||= edges.every(isWater);
     const roundLanding = Array.from({ length: 12 }, (_, k) => {
       const a = (k * Math.PI) / 6,
-        radius = LANDING_RADIUS + 0.05;
+        radius = LANDING_RADIUS * scale + 0.05;
       return cellAt(x + Math.cos(a) * radius, z + Math.sin(a) * radius);
     }).every(isWater);
     if (roundLanding) target = new THREE.Vector3(x, cell.top + 0.025, z);
@@ -62,7 +65,8 @@ function trace(position, angle, cellAt) {
 }
 
 // Precompute a continuous visible-water arc; animation performs no map searches.
-export function lighthouseSweep(position, cells) {
+export function lighthouseSweep(position, cells, { artStyle = 'low-poly' } = {}) {
+  const scale = artStyle === 'pixelart' ? 1.5 : 1;
   const water = cells.filter(isWater).map((cell) => {
     const { wx, wz } = worldPosition(cell);
     return new THREE.Vector3(wx, 0, wz);
@@ -73,11 +77,11 @@ export function lighthouseSweep(position, cells) {
   if (!nearest) return null;
   const dx = nearest.x - position.x,
     dz = nearest.z - position.z;
-  if (Math.hypot(dx, dz) > BEAM_LENGTH || Math.hypot(dx, dz) < 1e-6) return null;
+  if (Math.hypot(dx, dz) > BEAM_LENGTH * scale || Math.hypot(dx, dz) < 1e-6) return null;
   const bearing = Math.atan2(dz, dx),
     cellAt = waterField(cells);
   const samples = Array.from({ length: 61 }, (_, k) =>
-    trace(position, bearing - MAX_SWEEP + (2 * MAX_SWEEP * k) / 60, cellAt),
+    trace(position, bearing - MAX_SWEEP + (2 * MAX_SWEEP * k) / 60, cellAt, scale),
   );
   const arcs = [];
   let arc = [];
@@ -116,18 +120,26 @@ export function sweepTarget(sweep, progress, target = new THREE.Vector3()) {
   return target.copy(sweep[lo]).lerp(sweep[hi], index - lo);
 }
 
-export function lighthouseTarget(position, cells) {
-  const sweep = lighthouseSweep(position, cells);
+export function lighthouseTarget(position, cells, options) {
+  const sweep = lighthouseSweep(position, cells, options);
   return sweep ? sweepTarget(sweep, 0.5) : null;
 }
 
 // The footprint only contains visible water triangles, never a flat disc over
 // land/fog. Its moving radial UVs give the shaft a soft round landing on water.
-export function createWaterLanding(position, cells, texture, color) {
+export function createWaterLanding(
+  position,
+  cells,
+  texture,
+  color,
+  { artStyle = 'low-poly' } = {},
+) {
+  const scale = artStyle === 'pixelart' ? 1.5 : 1;
   const vertices = [];
   for (const cell of cells.filter(isWater)) {
     const { wx, wz } = worldPosition(cell);
-    if (Math.hypot(wx - position.x, wz - position.z) > BEAM_LENGTH + 1 + LANDING_RADIUS) continue;
+    if (Math.hypot(wx - position.x, wz - position.z) > (BEAM_LENGTH + LANDING_RADIUS) * scale + 1)
+      continue;
     const water = cell.riverSurface?.water;
     if (water) {
       for (const face of water.triangles)
@@ -171,16 +183,18 @@ export function createWaterLanding(position, cells, texture, color) {
   });
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = 'lighthouse:landing';
+  mesh.userData.landingRadius = LANDING_RADIUS * scale;
   return mesh;
 }
 
 export function updateWaterLanding(mesh, target) {
   const { position, uv } = mesh.geometry.attributes;
+  const radius = mesh.userData.landingRadius ?? LANDING_RADIUS;
   for (let i = 0; i < position.count; i++)
     uv.setXY(
       i,
-      0.5 + (position.getX(i) - target.x) / (2 * LANDING_RADIUS),
-      0.5 + (position.getZ(i) - target.z) / (2 * LANDING_RADIUS),
+      0.5 + (position.getX(i) - target.x) / (2 * radius),
+      0.5 + (position.getZ(i) - target.z) / (2 * radius),
     );
   uv.needsUpdate = true;
 }

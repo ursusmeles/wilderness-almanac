@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import { addMesh, geometryFrom } from './geometry.js';
 import { roadHeight } from '../generation/road-geometry.js';
+import { pixelUV } from './pixel-model-geometry.js';
 
-export function createRoadBuilder({ propMaterial }) {
+export function createRoadBuilder({ propMaterial, pixelModelMaterial, pixelPropMaterial }) {
   return function makeRoads(parent, data) {
     if (!data.roads?.length) return;
     const vertices = [];
@@ -34,17 +35,24 @@ export function createRoadBuilder({ propMaterial }) {
         );
       }
     }
+    const geometry = geometryFrom(vertices);
     const mesh = addMesh(
       parent,
-      geometryFrom(vertices),
-      propMaterial('road', 0, data.tone ? 1 : 0),
+      pixelModelMaterial
+        ? pixelUV(geometry, { offset: [data.wx, data.top, data.wz], horizontal: true })
+        : geometry,
+      (pixelModelMaterial ?? propMaterial)('road', 0, data.tone ? 1 : 0),
     );
     mesh.castShadow = false;
     for (const stone of data.roadStones ?? []) {
       const rock = addMesh(
         parent,
-        new THREE.OctahedronGeometry(stone.scale, 0),
-        propMaterial('roadStone', 0, data.tone ? 1 : 0),
+        pixelPropMaterial
+          ? new THREE.BoxGeometry(stone.scale * 1.4, stone.scale, stone.scale * 1.2)
+          : new THREE.OctahedronGeometry(stone.scale, 0),
+        pixelPropMaterial
+          ? pixelPropMaterial('roadStone')
+          : propMaterial('roadStone', 0, data.tone ? 1 : 0),
         stone.x,
         roadHeight(data, stone.x, stone.z, data.roadSurface) + 0.003 + stone.scale * 0.2,
         stone.z,

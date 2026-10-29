@@ -9,6 +9,7 @@ export function createPoiBuilder({
   makeTower,
   roofGeometry,
   registerLight = () => {},
+  pixelart = false,
 }) {
   return function makePoi(parent, prop) {
     const random = randomStream(prop.detailSeed);
@@ -68,7 +69,11 @@ export function createPoiBuilder({
       shape.lineTo(width, shoulder);
       for (let k = 1; k <= 8; k++) {
         const a = (k * Math.PI) / 8;
-        shape.lineTo(Math.cos(a) * width, shoulder + Math.sin(a) * (top - shoulder));
+        const x = Math.cos(a) * width,
+          y = shoulder + Math.sin(a) * (top - shoulder);
+        const previous = Math.cos(((k - 1) * Math.PI) / 8) * width;
+        if (pixelart) shape.lineTo(previous, y);
+        shape.lineTo(x, y);
       }
       shape.closePath();
       return shape;
@@ -204,7 +209,13 @@ export function createPoiBuilder({
           flag.lineTo(0.14, 0.605);
           flag.lineTo(-0.027, 0.63);
           flag.closePath();
-          const banner = mesh(new THREE.ShapeGeometry(flag), 'roofLight', 0, 0, 0);
+          const banner = mesh(
+            new THREE.ShapeGeometry(flag),
+            pixelart ? 'banner' : 'roofLight',
+            0,
+            0,
+            0,
+          );
           banner.material.side = THREE.DoubleSide;
           banner.userData.poiPart = 'banner';
           registerLight(model, { kind: 'warm', position: [0, 0.3, 0.124], size: [0.027, 0.075] });
@@ -386,7 +397,13 @@ export function createPoiBuilder({
       flag.lineTo(0.025, 0.34);
       flag.lineTo(-0.07, 0.36);
       flag.closePath();
-      const banner = mesh(new THREE.ShapeGeometry(flag), 'roofLight', 0, 0, -0.025);
+      const banner = mesh(
+        new THREE.ShapeGeometry(flag),
+        pixelart ? 'banner' : 'roofLight',
+        0,
+        0,
+        -0.025,
+      );
       banner.material.side = THREE.DoubleSide;
       banner.userData.poiPart = 'banner';
       const sites = [

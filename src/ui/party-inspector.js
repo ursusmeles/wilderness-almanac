@@ -37,7 +37,12 @@ export function createPartyInspector(
     if (!state || !visible()) return;
     const party = state.campaign.partyToken,
       color = party.color ?? colorFor(state.campaign.colors);
-    const key = JSON.stringify([party.style, color, state.campaign.colors]);
+    const key = JSON.stringify([
+      party.style,
+      color,
+      state.campaign.colors,
+      state.campaign.artStyle,
+    ]);
     if (signature === key) return;
     frame = requestAnimationFrame(() => {
       if (!visible()) return;

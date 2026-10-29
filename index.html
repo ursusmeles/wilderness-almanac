@@ -240,6 +240,28 @@
                   </button>
                 </div>
               </div>
+              <fieldset id="settings-art-style" class="settings-group stack map-art-style">
+                <legend>Default map art style</legend>
+                <div class="settings-toggle">
+                  <label
+                    ><input type="radio" name="settings-art-style" value="low-poly" checked /><span
+                      >Low poly</span
+                    ></label
+                  >
+                  <label
+                    ><input
+                      type="radio"
+                      name="settings-art-style"
+                      value="pixelart"
+                      aria-labelledby="settings-pixelart-label"
+                      aria-describedby="settings-pixelart-warning"
+                    /><span id="settings-pixelart-label">Pixelart</span
+                    ><small id="settings-pixelart-warning"
+                      >Warning: uses more resources.</small
+                    ></label
+                  >
+                </div>
+              </fieldset>
               <fieldset id="settings-panel-order" class="settings-group stack">
                 <legend>Top panel</legend>
                 <div class="settings-toggle">
@@ -583,6 +605,26 @@
                 ><span class="cc-field-label">Palette</span
                 ><select id="cc-palette"></select
               ></label>
+              <fieldset id="cc-art-style" class="settings-group stack map-art-style">
+                <legend>Map art style</legend>
+                <div class="settings-toggle">
+                  <label
+                    ><input type="radio" name="cc-art-style" value="low-poly" checked /><span
+                      >Low poly</span
+                    ></label
+                  >
+                  <label
+                    ><input
+                      type="radio"
+                      name="cc-art-style"
+                      value="pixelart"
+                      aria-labelledby="cc-pixelart-label"
+                      aria-describedby="cc-pixelart-warning"
+                    /><span id="cc-pixelart-label">Pixelart</span
+                    ><small id="cc-pixelart-warning">Warning: uses more resources.</small></label
+                  >
+                </div>
+              </fieldset>
             </section>
           </div>
           <footer class="palette-manager-actions cc-footer">

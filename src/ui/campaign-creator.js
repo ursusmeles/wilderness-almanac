@@ -16,6 +16,7 @@ export function createCampaignCreator({
   loadMapView,
   freshSeed,
   defaultTimeOfDay,
+  defaultMapArtStyle,
   onCreate,
 }) {
   const dialog = document.getElementById('create-campaign-dialog');
@@ -24,6 +25,8 @@ export function createCampaignCreator({
   const nameInput = el('name');
   const seedInput = el('seed');
   const paletteInput = el('palette');
+  const artInput = el('art-style');
+  const artStyle = () => artInput.querySelector('input:checked').value;
   const generateButton = el('generate');
   const createButton = el('create');
   const status = el('preview-status');
@@ -37,7 +40,13 @@ export function createCampaignCreator({
   const preferences = () =>
     Object.fromEntries(preferenceNames.map((name) => [name, Number(el(name).value)]));
   const snapshot = () =>
-    JSON.stringify([nameInput.value, seedInput.value, paletteInput.value, preferences()]);
+    JSON.stringify([
+      nameInput.value,
+      seedInput.value,
+      paletteInput.value,
+      artStyle(),
+      preferences(),
+    ]);
   const seedValid = () => Boolean(seedInput.value.trim()) && seedInput.value.length <= 128;
 
   function feedback(text, error = false) {
@@ -49,6 +58,7 @@ export function createCampaignCreator({
     if (!draft) return;
     const { busy, creating, needsGeneration, world } = draft;
     nameInput.disabled = seedInput.disabled = paletteInput.disabled = busy;
+    for (const input of artInput.querySelectorAll('input')) input.disabled = busy;
     el('random-seed').disabled = busy;
     for (const name of preferenceNames) el(name).disabled = busy;
     el('reset-preferences').disabled =
@@ -161,12 +171,16 @@ export function createCampaignCreator({
     });
   }
 
-  function paintPreview(view, world, layout) {
+  function paintPreview(view, world, layout, { preserveFraming = false } = {}) {
     const initialView = !renderer;
-    renderer ??= view.createMapRenderer(el('scene'), { motion: false });
+    renderer ??= view.createMapRenderer(el('scene'), { motion: false, artStyle: artStyle() });
     if (!renderer) throw new Error('The map preview needs WebGL. Try another browser.');
     renderer.setPalette(library.get(paletteInput.value).colors);
-    renderer.setMap(layout, { resetView: initialView });
+    renderer.setMap(layout, {
+      resetView: initialView,
+      artStyle: artStyle(),
+      preserveFraming: !initialView && preserveFraming,
+    });
     if (initialView) renderer.zoom(1.6);
     el('scene')
       .querySelector('canvas')
@@ -255,6 +269,12 @@ export function createCampaignCreator({
     renderer?.setPalette(library.get(paletteInput.value).colors);
     sync();
   });
+  listen(artInput, 'change', () => {
+    if (!draft || draft.busy) return;
+    if (draft.layout)
+      paintPreview(draft.view, draft.world, draft.layout, { preserveFraming: true });
+    sync();
+  });
   listen(generateButton, 'click', () => generate());
   listen(el('restore'), 'click', () => {
     const settings = draft.generatedSettings;
@@ -302,6 +322,7 @@ export function createCampaignCreator({
       palette.name,
       0,
       defaultTimeOfDay?.(),
+      artStyle(),
     );
     campaign.name = nameInput.value.trim();
     campaign.nameEdited = draft.nameEdited;
@@ -341,6 +362,8 @@ export function createCampaignCreator({
         }),
       );
       paletteInput.value = library.default().id;
+      for (const input of artInput.querySelectorAll('input'))
+        input.checked = input.value === (defaultMapArtStyle?.() ?? 'low-poly');
       for (const name of preferenceNames) el(name).value = '0';
       updateSliders();
       draft = {

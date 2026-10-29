@@ -1,6 +1,6 @@
 import { mapLink } from './map-link.js';
 
-const replayKeys = ['seed', 'variant', 'colors', 'generator', 'world'];
+const replayKeys = ['seed', 'variant', 'colors', 'generator', 'world', 'art'];
 
 // Keep the library behind campaign entries, including a directly opened replay.
 export function createCampaignHistory({ onNavigate, hasCampaign }) {

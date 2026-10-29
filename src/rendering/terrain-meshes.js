@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { addMesh, geometryFrom } from './geometry.js';
 import { surfaceHeight, TOP_RADIUS } from '../generation/math.js';
+import { pixelUV } from './pixel-model-geometry.js';
 import {
   riverBankValue,
   riverIslandValue,
@@ -9,7 +10,58 @@ import {
   riverTopHeight,
 } from '../generation/river-surfaces.js';
 
-export function createTerrainBuilder({ materials, makeCrossing }) {
+export function createTerrainBuilder({
+  materials,
+  makeCrossing,
+  pixelModelMaterial,
+  pixelTerrainMaterial,
+}) {
+  const modelMaterial = pixelModelMaterial ?? ((role) => materials[role]);
+  const terrainMaterial = pixelTerrainMaterial ?? ((role) => materials[role]);
+  const textured = (geometry, data, horizontal = false, verticalOffset = data.top) =>
+    pixelTerrainMaterial
+      ? pixelUV(geometry, {
+          repeat: 0.64,
+          offset: [data.wx, verticalOffset, data.wz],
+          horizontal,
+          indexed: false,
+        })
+      : geometry;
+  function groundMaterial(data) {
+    if (!pixelTerrainMaterial) return data.tone ? materials.groundLight : materials.ground;
+    const forest = data.terrain?.includes('forest') || data.terrain === 'taiga';
+    // Match existing dressing modifiers without changing saved/generated data.
+    const temperature =
+      data.pointOfLight || data.terrain === 'farmlands'
+        ? 2 / 3
+        : data.terrain === 'wetlands'
+          ? -2 / 3
+          : forest
+            ? data.treeVariant === 1
+              ? 2 / 3
+              : -2 / 3
+            : 0;
+    return pixelTerrainMaterial(
+      forest || data.terrain === 'meadow' ? 'foliage' : 'ground',
+      temperature,
+      !!data.tone,
+    );
+  }
+  function waterGeometry(geometry, data) {
+    if (!pixelTerrainMaterial) return geometry;
+    textured(geometry, data, true);
+    const positions = geometry.attributes.position,
+      colors = [];
+    for (let i = 0; i < positions.count; i++) {
+      const depth = data.waterDepth
+        ? surfaceHeight(data.waterDepth, positions.getX(i), positions.getZ(i))
+        : 0;
+      const shade = 1 - depth * 0.32;
+      colors.push(shade, shade, shade);
+    }
+    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+    return geometry;
+  }
   function bevelTile(height, isWater, corners = null, shared = null) {
     const rings = isWater
       ? [
@@ -52,7 +104,7 @@ export function createTerrainBuilder({ materials, makeCrossing }) {
     groups.forEach((g) => geo.addGroup(g.start, g.count, g.materialIndex));
     return geo;
   }
-  function makeRidge(parent, surface) {
+  function makeRidge(parent, surface, data) {
     const points = [],
       groups = [],
       buckets = [[], [], [], []];
@@ -78,11 +130,11 @@ export function createTerrainBuilder({ materials, makeCrossing }) {
     });
     const geo = geometryFrom(points);
     groups.forEach((g) => geo.addGroup(g.start, g.count, g.materialIndex));
-    addMesh(parent, geo, [
-      materials.ridge,
-      materials.ridgeLight,
-      materials.ridgeDark,
-      materials.ridgeMeadow,
+    addMesh(parent, textured(geo, data), [
+      modelMaterial('ridge'),
+      modelMaterial('ridgeLight'),
+      modelMaterial('ridgeDark'),
+      pixelTerrainMaterial ? groundMaterial(data) : materials.ridgeMeadow,
     ]);
   }
   function smoothTerrainGeometry(surface, cell) {
@@ -147,7 +199,8 @@ export function createTerrainBuilder({ materials, makeCrossing }) {
           d = corner(sector + 1, true);
         points.push(...a, ...c, ...d, ...a, ...d, ...b);
       }
-    if (points.length) addMesh(parent, geometryFrom(points), materials.riverGround);
+    if (points.length)
+      addMesh(parent, textured(geometryFrom(points), data, true), modelMaterial('riverGround'));
   }
   function makeRiver(parent, data) {
     const surface = data.riverSurface,
@@ -157,8 +210,10 @@ export function createTerrainBuilder({ materials, makeCrossing }) {
     if (surface.triangles.length)
       addMesh(
         parent,
-        smoothTerrainGeometry(surface, data),
-        data.bankBevel ? [materials.riverGround, materials.bevel] : materials.riverGround,
+        textured(smoothTerrainGeometry(surface, data), data, true),
+        data.bankBevel
+          ? [modelMaterial('riverGround'), terrainMaterial('bevel')]
+          : modelMaterial('riverGround'),
       );
     if (surface.water) {
       for (const face of surface.water.triangles)
@@ -169,7 +224,11 @@ export function createTerrainBuilder({ materials, makeCrossing }) {
           b = data.riverCorners[(k + 1) % 6];
         water.push(0, 0, 0, a[0], 0, a[1], b[0], 0, b[1]);
       }
-    const waterMesh = addMesh(parent, geometryFrom(water), materials.water);
+    const waterMesh = addMesh(
+      parent,
+      waterGeometry(geometryFrom(water), data),
+      terrainMaterial('water'),
+    );
     waterMesh.castShadow = false;
     function normal(p) {
       const x = data.wx + p[0],
@@ -226,9 +285,9 @@ export function createTerrainBuilder({ materials, makeCrossing }) {
       const g = new THREE.BufferGeometry();
       g.setAttribute('position', new THREE.Float32BufferAttribute(cliffs, 3));
       g.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
-      addMesh(parent, g, materials.riverCliff);
+      addMesh(parent, textured(g, data), modelMaterial('riverCliff'));
     }
-    if (data.crossing) makeCrossing(parent, data.crossing);
+    if (data.crossing && makeCrossing) makeCrossing(parent, data.crossing);
   }
   return function makeTerrain(data) {
     const g = new THREE.Group();
@@ -238,33 +297,42 @@ export function createTerrainBuilder({ materials, makeCrossing }) {
     const water = river || openWater;
     addMesh(
       g,
-      data.roadSurface
-        ? roadTerrainGeometry(data.roadSurface)
-        : bevelTile(
-            data.top,
-            water,
-            river
-              ? data.riverCorners
-              : openWater
-                ? Array.from({ length: 6 }, (_, k) => [
-                    Math.sin((k * Math.PI) / 3),
-                    Math.cos((k * Math.PI) / 3),
-                  ])
-                : data.corners,
-            water ? (data.riverShared ?? data.openWaterShared) : data.surface ? data.shared : null,
-          ),
+      textured(
+        data.roadSurface
+          ? roadTerrainGeometry(data.roadSurface)
+          : bevelTile(
+              data.top,
+              water,
+              river
+                ? data.riverCorners
+                : openWater
+                  ? Array.from({ length: 6 }, (_, k) => [
+                      Math.sin((k * Math.PI) / 3),
+                      Math.cos((k * Math.PI) / 3),
+                    ])
+                  : data.corners,
+              water
+                ? (data.riverShared ?? data.openWaterShared)
+                : data.surface
+                  ? data.shared
+                  : null,
+            ),
+        data,
+        false,
+        0,
+      ),
       [
-        materials.side,
+        terrainMaterial('side'),
         water && !(data.water === 'river' && data.clipWater)
-          ? materials.waterDeep
-          : materials.bevel,
-        water ? materials.water : data.tone ? materials.groundLight : materials.ground,
+          ? terrainMaterial('waterDeep')
+          : terrainMaterial('bevel'),
+        water ? materials.water : groundMaterial(data),
       ],
     );
     const content = new THREE.Group();
     content.position.y = data.top;
     g.add(content);
-    if (data.surface) makeRidge(content, data.surface);
+    if (data.surface) makeRidge(content, data.surface, data);
     if (river) makeRiver(content, data);
     else if (openWater) {
       const vertices = [];
@@ -273,7 +341,11 @@ export function createTerrainBuilder({ materials, makeCrossing }) {
           b = ((k + 1) * Math.PI) / 3;
         vertices.push(0, 0, 0, Math.sin(a), 0, Math.cos(a), Math.sin(b), 0, Math.cos(b));
       }
-      const surface = addMesh(content, geometryFrom(vertices), materials.water);
+      const surface = addMesh(
+        content,
+        waterGeometry(geometryFrom(vertices), data),
+        terrainMaterial('water'),
+      );
       surface.castShadow = false;
     } else makeLandBankJoin(content, data);
     return { g, content };

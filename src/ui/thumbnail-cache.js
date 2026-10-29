@@ -1,5 +1,5 @@
 const LIMIT = 32;
-const CACHE_VERSION = 7;
+const CACHE_VERSION = 17;
 const memory = new Map();
 let database;
 
@@ -35,6 +35,7 @@ async function signature(campaign) {
       campaign.preferences,
       campaign.variant,
       campaign.colors,
+      campaign.artStyle ?? 'low-poly',
       Object.entries(campaign.hexEdits?.cells ?? {}).flatMap(
         ([key, { visited: _visited, ...appearance }]) =>
           Object.keys(appearance).length ? [[key, appearance]] : [],
@@ -101,6 +102,7 @@ export async function loadThumbnails(campaign, { allowStale = false } = {}) {
           allowStale &&
           record.seed === campaign.seed &&
           record.generatorVersion === campaign.generatorVersion &&
+          record.artStyle === (campaign.artStyle ?? 'low-poly') &&
           JSON.stringify(record.preferences) === JSON.stringify(campaign.preferences)
         ))
     )
@@ -121,6 +123,7 @@ export async function saveThumbnails(campaign, entries) {
       seed: campaign.seed,
       generatorVersion: campaign.generatorVersion,
       preferences: campaign.preferences,
+      artStyle: campaign.artStyle ?? 'low-poly',
       images,
       savedAt: Date.now(),
     };

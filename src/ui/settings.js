@@ -23,6 +23,7 @@ export function createSettings({ library, read, onSave }) {
   const values = () => ({
     defaultPalette: el('palette').value,
     defaultTimeOfDay: selected('time'),
+    defaultMapArtStyle: selected('art-style'),
     motion: selected('motion') === 'true',
     journalFirst: selected('panel-order') === 'tracker',
     timeIncrement: selected('time-increment'),
@@ -78,6 +79,7 @@ export function createSettings({ library, read, onSave }) {
     fileInput.value = '';
     palettes(saved.defaultPalette);
     select('time', saved.defaultTimeOfDay);
+    select('art-style', saved.defaultMapArtStyle);
     select('panel-order', saved.journalFirst ? 'tracker' : 'inspector');
     select('time-increment', saved.timeIncrement);
     select('motion', saved.motion);
@@ -90,7 +92,7 @@ export function createSettings({ library, read, onSave }) {
     paletteEdited = true;
     sync();
   });
-  for (const name of ['motion', 'time', 'time-increment', 'panel-order'])
+  for (const name of ['motion', 'time', 'art-style', 'time-increment', 'panel-order'])
     listen(el(name), 'change', sync);
   listen(document.getElementById('palette-manager-dialog'), 'close', () => {
     if (!dialog.open) return;

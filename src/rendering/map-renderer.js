@@ -10,6 +10,7 @@ import { createPartyKeyHints } from './party-key-hints.js';
 import { createDaylight } from './daylight.js';
 import { createFeatureLighting } from './feature-lighting.js';
 import { DAYLIGHT } from '../application/time-of-day.js';
+import { mapArtStyle } from '../application/map-art-style.js';
 
 export function createMapRenderer(
   host,
@@ -20,15 +21,17 @@ export function createMapRenderer(
     onPartySelect,
     motion = true,
     touchMultiSelect = false,
+    artStyle = 'low-poly',
   } = {},
 ) {
+  artStyle = mapArtStyle(artStyle);
   const loading = host.querySelector('#hp-loading');
   let renderer;
   try {
     renderer = new THREE.WebGLRenderer({
       antialias: true,
       alpha: false,
-      powerPreference: 'low-power',
+      powerPreference: 'default',
     });
   } catch (error) {
     if (loading) loading.textContent = 'This preview needs WebGL support.';
@@ -49,6 +52,11 @@ export function createMapRenderer(
   );
   const scene = new THREE.Scene();
   const daylight = createDaylight(scene);
+  // The sun and its shadow camera are fixed while the view pans/zooms.
+  daylight.sun.shadow.autoUpdate = false;
+  let shadowTime = NaN,
+    frame = 0,
+    disposed = false;
   const featureLighting = createFeatureLighting(scene);
   let dayMode = 'day';
   const shadowFloor = new THREE.Mesh(
@@ -60,10 +68,10 @@ export function createMapRenderer(
   shadowFloor.receiveShadow = true;
   scene.add(shadowFloor);
   const palette = createMapMaterials();
-  const meshes = createMapMeshes(palette);
+  const meshes = createMapMeshes(palette, { artStyle });
   scene.add(meshes.group);
   const party = onPartyMove
-    ? createPartyToken({ host, draw, onMove: onPartyMove, onSelect: onPartySelect })
+    ? createPartyToken({ host, draw, onMove: onPartyMove, onSelect: onPartySelect, artStyle })
     : null;
   const keyHints = onPartyMove ? createPartyKeyHints(host) : null;
   let partyKey,
@@ -82,7 +90,18 @@ export function createMapRenderer(
     onHover,
     party,
   });
+  // Input, token animation and ambient motion may all request the same frame.
   function draw() {
+    if (!frame && !disposed) frame = requestAnimationFrame(renderNow);
+  }
+  function renderNow() {
+    cancelAnimationFrame(frame);
+    frame = 0;
+    if (disposed) return;
+    if (shadowTime !== palette.ambientTime.value) {
+      daylight.sun.shadow.needsUpdate = true;
+      shadowTime = palette.ambientTime.value;
+    }
     renderer.domElement.dataset.zoom = String(controls.camera.zoom);
     featureLighting.update(palette.ambientTime.value, controls.camera);
     renderer.clear();
@@ -111,12 +130,19 @@ export function createMapRenderer(
       return dayMode;
     },
     setMap(layout, options) {
+      const previousStyle = artStyle;
+      artStyle = mapArtStyle(options?.artStyle ?? artStyle);
       previewPiece?.group.removeFromParent();
       previewPiece?.dispose();
       previewPiece = null;
       if (options?.resetView) party?.deselect();
-      meshes.setMap(layout);
-      featureLighting.setSources(meshes.lightSources, layout);
+      meshes.setMap(layout, { artStyle });
+      if (previousStyle === 'pixelart' && artStyle !== previousStyle)
+        palette.releasePixelMaterials();
+      party?.setArtStyle(artStyle);
+      renderer.domElement.dataset.artStyle = artStyle;
+      daylight.sun.shadow.needsUpdate = true;
+      featureLighting.setSources(meshes.lightSources, layout, { artStyle });
       controls.refresh(options);
     },
     cancelInteraction: controls.cancelInteraction,
@@ -136,19 +162,24 @@ export function createMapRenderer(
     },
     isInteracting: controls.isInteracting,
     setPartySelected: (selected) => party?.setSelected(selected),
-    setPartyPiece(style, color) {
+    setPartyPiece(style, color, styleOfArt = 'low-poly') {
+      const previousStyle = artStyle;
+      artStyle = mapArtStyle(styleOfArt);
       previewPiece?.group.removeFromParent();
       previewPiece?.dispose();
-      meshes.setMap([]);
-      featureLighting.setSources([], []);
-      previewPiece = createPartyPiece(PARTY_STYLES.indexOf(style), color);
+      meshes.setMap([], { artStyle });
+      if (previousStyle === 'pixelart' && artStyle !== previousStyle)
+        palette.releasePixelMaterials();
+      featureLighting.setSources([], [], { artStyle });
+      previewPiece = createPartyPiece(PARTY_STYLES.indexOf(style), color, artStyle);
       meshes.group.add(previewPiece.group);
+      daylight.sun.shadow.needsUpdate = true;
       controls.refresh({ resetView: true, fitContent: true });
     },
     zoom: controls.zoom,
     pan: controls.pan,
     snapshot() {
-      draw();
+      renderNow();
       return renderer.domElement.toDataURL('image/png');
     },
     setPalette(seeds) {
@@ -157,6 +188,8 @@ export function createMapRenderer(
       draw();
     },
     dispose() {
+      disposed = true;
+      cancelAnimationFrame(frame);
       ambientLoop.dispose();
       party?.dispose();
       keyHints?.dispose();

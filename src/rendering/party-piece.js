@@ -1,6 +1,8 @@
 import * as THREE from 'three';
+import { createPartyPiece as createPixelPartyPiece } from './pixel-party-piece.js';
 
-export function createPartyPiece(style = 0, color = '#ec405c') {
+export function createPartyPiece(style = 0, color = '#ec405c', artStyle = 'low-poly') {
+  if (artStyle === 'pixelart') return createPixelPartyPiece(style, color);
   const group = new THREE.Group();
   const materials = [];
   const mat = (value) => {

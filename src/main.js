@@ -91,6 +91,7 @@ const initialVariant =
   linked.variant ?? (linked.seed && linked.seed !== saved.seed ? 0 : (saved.variant ?? 0));
 let movement = saved.motion ?? true;
 let defaultTimeOfDay = saved.defaultTimeOfDay ?? 'dawn';
+let defaultMapArtStyle = saved.defaultMapArtStyle ?? 'low-poly';
 let campaignTimeIncrement = saved.timeIncrement ?? 'week';
 let campaignHistory;
 const selection = element('selection');
@@ -163,6 +164,7 @@ function persistPreferences() {
   return saveUIPreferences(storage, {
     motion: movement,
     defaultTimeOfDay,
+    defaultMapArtStyle,
     timeIncrement: campaignTimeIncrement,
     ...panels.preferences(),
   });
@@ -311,6 +313,7 @@ async function cacheCampaignIcons(revision) {
         const image = mapView.tilePreview(
           tiles?.find((tile) => tile.key === key),
           campaign.colors,
+          { artStyle: campaign.artStyle },
         );
         if (image) entry = { key, image };
       }
@@ -391,7 +394,11 @@ function refreshPresentation({ resetView = false } = {}) {
       return option;
     }),
   );
-  renderer?.setMap(displayView.layout, { resetView, preserveFraming: !resetView });
+  renderer?.setMap(displayView.layout, {
+    resetView,
+    preserveFraming: !resetView,
+    artStyle: campaign.artStyle ?? 'low-poly',
+  });
   renderer?.select(session.snapshot().selected, { notify: false });
   syncParty();
 }
@@ -460,9 +467,19 @@ function syncParty() {
     const option = selection.querySelector(`option[value="${PARTY_SELECTION}"]`);
     if (option) option.textContent = campaign.partyToken.name ?? 'Adventurers';
     const color = campaign.partyToken.color ?? mapView.partyColor(campaign.colors);
-    const signature = JSON.stringify([campaign.partyToken.style, color, campaign.colors]);
+    const signature = JSON.stringify([
+      campaign.partyToken.style,
+      color,
+      campaign.colors,
+      campaign.artStyle,
+    ]);
     if (signature !== partyButtonSignature) {
-      const src = mapView.partyPreview(campaign.partyToken, campaign.colors, color);
+      const src = mapView.partyPreview(
+        campaign.partyToken,
+        campaign.colors,
+        color,
+        campaign.artStyle,
+      );
       if (src) {
         const image = element('find-party-preview');
         image.src = src;
@@ -790,13 +807,18 @@ partyInspector = createPartyInspector(partyInspectorHost, {
       },
       'Selecting…',
     ),
-  preview: (party, colors, color) => mapView?.partyPreview(party, colors, color) ?? '',
+  preview: (party, colors, color) =>
+    mapView?.partyPreview(party, colors, color, session.snapshot()?.campaign.artStyle) ?? '',
   colorFor: (colors) => mapView.partyColor(colors),
   visible: panels.partyVisible,
 });
 inspector = createHexInspector(singleInspectorHost, {
   visible: panels.inspectorVisible,
-  preview: (tile, colors) => mapView?.tilePreview(tile, colors, { fitContent: true }) ?? '',
+  preview: (tile, colors) =>
+    mapView?.tilePreview(tile, colors, {
+      fitContent: true,
+      artStyle: session.snapshot()?.campaign.artStyle,
+    }) ?? '',
   onApply: (patch, button) => mapAction.run(button, () => handleAction(session.apply(patch))),
   onVisit: (event) =>
     mapAction.run(event.currentTarget, () => handleAction(session.visit()), 'Updating visit…'),
@@ -871,6 +893,7 @@ const campaignCreator = createCampaignCreator({
   loadMapView,
   freshSeed,
   defaultTimeOfDay: () => defaultTimeOfDay,
+  defaultMapArtStyle: () => defaultMapArtStyle,
   async onCreate(campaign) {
     await campaignMenu.add(campaign);
     return campaignMenu.enter(campaign);
@@ -889,6 +912,7 @@ const settings = createSettings({
   library: paletteLibrary,
   read: () => ({
     defaultTimeOfDay,
+    defaultMapArtStyle,
     motion: movement,
     journalFirst: panels.journalFirst(),
     timeIncrement: campaignTimeIncrement,
@@ -896,6 +920,7 @@ const settings = createSettings({
   async onSave(values, imported) {
     paletteLibrary.setDefault(values.defaultPalette);
     defaultTimeOfDay = values.defaultTimeOfDay;
+    defaultMapArtStyle = values.defaultMapArtStyle;
     campaignTimeIncrement = timeIncrementLabels(values.timeIncrement).unit;
     movement = values.motion;
     panels.setJournalFirst(values.journalFirst);
@@ -947,6 +972,7 @@ listen(accountButton, 'click', async () => {
   }
 });
 const replayState = {
+  artStyle: linked.artStyle,
   seed: linked.seed,
   generatorVersion: linked.generatorVersion ?? 6,
   preferences: linked.preferences,
@@ -1001,6 +1027,7 @@ if (routedCampaign && matchesLink(routedCampaign)) {
       paletteLabel(initialColors),
       initialVariant,
       defaultTimeOfDay,
+      linked.artStyle ?? 'low-poly',
     );
     await campaignMenu.add(campaign);
   }

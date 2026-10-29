@@ -15,18 +15,18 @@ function prepareRenderer() {
   return renderer;
 }
 
-export function partyPreview(party, colors, color) {
+export function partyPreview(party, colors, color, artStyle = 'low-poly') {
   if (!prepareRenderer()) return '';
-  renderer.setPartyPiece(party.style, color);
+  renderer.setPartyPiece(party.style, color, artStyle);
   renderer.setPalette(colors);
   return renderer.snapshot();
 }
 
-export function tilePreview(tile, colors, { fitContent = false } = {}) {
+export function tilePreview(tile, colors, { fitContent = false, artStyle = 'low-poly' } = {}) {
   if (!tile) return '';
   prepareRenderer();
   if (!renderer) return '';
-  renderer.setMap([{ ...tile, q: 0, r: 0 }], { resetView: true, fitContent });
+  renderer.setMap([{ ...tile, q: 0, r: 0 }], { resetView: true, fitContent, artStyle });
   renderer.setPalette(colors);
   if (!fitContent) renderer.zoom(4.1);
   return renderer.snapshot();

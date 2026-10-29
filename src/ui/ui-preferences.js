@@ -1,6 +1,7 @@
 import { storageKey } from '../persistence/storage-namespace.js';
 import { TIMES_OF_DAY } from '../application/time-of-day.js';
 import { TIME_INCREMENTS } from '../application/campaign-time.js';
+import { MAP_ART_STYLES } from '../application/map-art-style.js';
 
 export const UI_PREFERENCES_KEY = 'wilderness-almanac:ui-v1';
 
@@ -55,6 +56,9 @@ function pick(value = {}) {
       : {}),
     ...(TIMES_OF_DAY.includes(value.defaultTimeOfDay)
       ? { defaultTimeOfDay: value.defaultTimeOfDay }
+      : {}),
+    ...(MAP_ART_STYLES.includes(value.defaultMapArtStyle)
+      ? { defaultMapArtStyle: value.defaultMapArtStyle }
       : {}),
     ...(typeof value.settingsOpen === 'boolean' ? { settingsOpen: value.settingsOpen } : {}),
     ...(Object.keys(campaignPanels).length ? { campaignPanels } : {}),

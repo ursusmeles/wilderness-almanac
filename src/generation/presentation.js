@@ -150,6 +150,7 @@ export function prepareMap(world, dressing, { cellKeys } = {}) {
       );
       data.riverSurface = riverSurface(data);
     }
+    if (cell.water) data.waterDepth = waterDepthSurface(cell, byKey);
     if (openWater) {
       data.openWaterShared = DIRECTIONS.map(
         ([q, r]) => !!byKey.get(`${cell.q + q},${cell.r + r}`)?.water,
@@ -157,4 +158,26 @@ export function prepareMap(world, dressing, { cellKeys } = {}) {
     }
     return data;
   });
+}
+
+// Presentation-only depth. Retain full-world shoreline context in cropped and
+// recentered previews; this never enters the generated world or saved dressing.
+function waterDepthSurface(cell, byKey) {
+  const nearby = [];
+  for (let dr = -3; dr <= 3; dr++)
+    for (let dq = -3; dq <= 3; dq++) {
+      const land = byKey.get(`${cell.q + dq},${cell.r + dr}`);
+      if (land && !land.water) nearby.push(land);
+    }
+  const vertices = [[0, 0], ...corners()].map(([x, z]) => {
+    let distance = 4;
+    for (const land of nearby)
+      distance = Math.min(distance, Math.hypot(cell.wx + x - land.wx, cell.wz + z - land.wz));
+    const depth = Math.max(0, Math.min(1, (distance - 0.8) / 3.2));
+    return [x, depth, z];
+  });
+  return {
+    vertices,
+    triangles: Array.from({ length: 6 }, (_, k) => [0, k + 1, ((k + 1) % 6) + 1]),
+  };
 }

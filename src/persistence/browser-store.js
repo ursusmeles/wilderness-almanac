@@ -249,6 +249,7 @@ export async function createBrowserStore({
             'partyToken',
             'fogOfWar',
             'timeOfDay',
+            'artStyle',
             'preferences',
             'journalSequence',
           ])

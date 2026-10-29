@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import { addMesh, geometryFrom } from './geometry.js';
+import { addMesh as defaultAddMesh, geometryFrom } from './geometry.js';
 
-export function createCrossingBuilder(materials) {
+export function createCrossingBuilder(materials, { addMesh = defaultAddMesh } = {}) {
   function timberBetween(parent, a, b, width, material) {
     const start = new THREE.Vector3(...a),
       end = new THREE.Vector3(...b),

@@ -14,7 +14,7 @@ export function partyNudgeAngle(progress) {
 }
 
 // A separately rendered piece shares the map camera, but never moves it.
-export function createPartyToken({ host, draw, onMove, onSelect }) {
+export function createPartyToken({ host, draw, onMove, onSelect, artStyle = 'low-poly' }) {
   const scene = new THREE.Scene(),
     root = new THREE.Group();
   scene.add(root);
@@ -146,17 +146,20 @@ export function createPartyToken({ host, draw, onMove, onSelect }) {
     { signal: listeners.signal },
   );
   return {
+    setArtStyle(value) {
+      artStyle = value;
+    },
     set(value, cells, seeds) {
       tiles = cells;
       const next = position(value.key);
       if (!next) return;
       const changed = state && state.key !== value.key;
       const color = value.color ?? partyColor(seeds),
-        signature = `${value.style}:${color}`;
+        signature = `${artStyle}:${value.style}:${color}`;
       if (appearance !== signature) {
         piece?.group.removeFromParent();
         piece?.dispose();
-        piece = createPartyPiece(PARTY_STYLES.indexOf(value.style), color);
+        piece = createPartyPiece(PARTY_STYLES.indexOf(value.style), color, artStyle);
         piece.setSelected(selected);
         root.add(piece.group);
         appearance = signature;

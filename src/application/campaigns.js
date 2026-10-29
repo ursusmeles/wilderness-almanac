@@ -5,6 +5,7 @@ import { campaignWorld, campaignDressing } from '../generation/campaign-world.js
 import { validatePartyToken } from './party-token.js';
 import { TIMES_OF_DAY } from './time-of-day.js';
 import { validateJournal } from './party-journal.js';
+import { MAP_ART_STYLES, mapArtStyle } from './map-art-style.js';
 
 export const MAX_CAMPAIGN_BYTES = 16 * 1024 * 1024;
 const text = (value, max) =>
@@ -30,6 +31,7 @@ export function validateCampaign(value) {
     !text(value.paletteName, 60) ||
     (value.fogOfWar !== undefined && typeof value.fogOfWar !== 'boolean') ||
     (value.timeOfDay !== undefined && !TIMES_OF_DAY.includes(value.timeOfDay)) ||
+    (value.artStyle !== undefined && !MAP_ART_STYLES.includes(value.artStyle)) ||
     (value.nameEdited !== undefined && typeof value.nameEdited !== 'boolean') ||
     (value.journalSequence !== undefined &&
       (!Number.isSafeInteger(value.journalSequence) || value.journalSequence < 1)) ||
@@ -49,6 +51,7 @@ export function validateCampaign(value) {
     ...(value.preferences !== undefined ? { preferences } : {}),
     ...(value.fogOfWar !== undefined ? { fogOfWar: value.fogOfWar } : {}),
     ...(value.timeOfDay !== undefined ? { timeOfDay: value.timeOfDay } : {}),
+    ...(value.artStyle !== undefined ? { artStyle: value.artStyle } : {}),
     id: value.id,
     name: value.name.trim(),
     createdAt: new Date(value.createdAt).toISOString(),
@@ -81,7 +84,14 @@ export function validateCampaign(value) {
   return campaign;
 }
 
-export function createCampaign(world, colors, paletteName, variant = 0, defaultTimeOfDay = 'dawn') {
+export function createCampaign(
+  world,
+  colors,
+  paletteName,
+  variant = 0,
+  defaultTimeOfDay = 'dawn',
+  artStyle = 'low-poly',
+) {
   return validateCampaign({
     id: crypto.randomUUID(),
     name: world.name,
@@ -94,6 +104,7 @@ export function createCampaign(world, colors, paletteName, variant = 0, defaultT
     colors,
     paletteName,
     timeOfDay: defaultTimeOfDay,
+    artStyle,
     iconKey: chooseCampaignIcon(world),
   });
 }
@@ -221,6 +232,7 @@ export function findCampaignReplay(campaigns, state) {
     JSON.stringify(worldPreferences(campaign.preferences)) ===
       JSON.stringify(worldPreferences(state.preferences)) &&
     campaign.seed === state.seed &&
+    mapArtStyle(campaign.artStyle) === mapArtStyle(state.artStyle) &&
     campaign.variant === state.variant &&
     campaign.colors.every(
       (color, index) => color.toLowerCase() === state.colors[index].toLowerCase(),

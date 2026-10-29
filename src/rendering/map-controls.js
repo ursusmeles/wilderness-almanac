@@ -92,6 +92,7 @@ export function createMapControls({
   }
   function choose(key, { notify = true, additive = false, fromMap = false } = {}) {
     cancelTap();
+    cancelHover();
     lastTap = null;
     const cell = cells.find((cell) => cell.key === key);
     if (!cell) return;
@@ -139,6 +140,7 @@ export function createMapControls({
     draw();
   }
   function pan(horizontal, vertical) {
+    cancelHover();
     if (pointers.size || partyPointer !== null) return false;
     camera.updateMatrixWorld();
     const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0);
@@ -157,6 +159,7 @@ export function createMapControls({
     return true;
   }
   function focus(key, { hexesWide } = {}) {
+    cancelHover();
     const cell = cells.find((cell) => cell.key === key);
     if (!cell) return false;
     camera.updateMatrixWorld();
@@ -186,6 +189,7 @@ export function createMapControls({
   function hit(x, y) {
     const rect = host.getBoundingClientRect();
     mouse.set(((x - rect.left) / rect.width) * 2 - 1, (-(y - rect.top) / rect.height) * 2 + 1);
+    camera.updateMatrixWorld();
     raycaster.setFromCamera(mouse, camera);
     const hits = raycaster.intersectObjects(map.children, true);
     if (!hits.length) return null;
@@ -200,6 +204,29 @@ export function createMapControls({
       else low = mid + 1;
     }
     return ranges[low].key;
+  }
+  let hoverFrame = 0,
+    pendingHover;
+  function cancelHover() {
+    if (hoverFrame) cancelAnimationFrame(hoverFrame);
+    hoverFrame = 0;
+    pendingHover = undefined;
+  }
+  function updateHover() {
+    hoverFrame = 0;
+    const { x, y } = pendingHover;
+    pendingHover = undefined;
+    const key = hit(x, y);
+    if (key === hovered) return;
+    hovered = key;
+    onHover(key);
+    hoverRing.visible = !!key && !(selectionKeys ?? [selected]).includes(key);
+    if (hoverRing.visible)
+      setRing(
+        hoverRing,
+        cells.find((cell) => cell.key === key),
+      );
+    draw();
   }
   const pointers = new Map();
   let partyPointer = null;
@@ -231,6 +258,7 @@ export function createMapControls({
   }
   listen(host, 'pointerdown', (e) => {
     if (e.button !== 0) return;
+    cancelHover();
     cancelLongPress();
     const secondTap =
       e.pointerType === 'touch' &&
@@ -327,18 +355,9 @@ export function createMapControls({
       }
       return;
     }
-    if (e.pointerType === 'mouse') {
-      const key = hit(e.clientX, e.clientY);
-      if (key !== hovered) {
-        hovered = key;
-        onHover(key);
-        hoverRing.visible = !!key && !(selectionKeys ?? [selected]).includes(key);
-        if (hoverRing.visible) {
-          const c = cells.find((c) => c.key === key);
-          setRing(hoverRing, c);
-        }
-        draw();
-      }
+    if (e.pointerType === 'mouse' && !pointers.size && partyPointer === null) {
+      pendingHover = { x: e.clientX, y: e.clientY };
+      if (!hoverFrame) hoverFrame = requestAnimationFrame(updateHover);
     }
   });
   function release(e) {
@@ -414,6 +433,7 @@ export function createMapControls({
     if (longPressTimer !== undefined || longPressed) event.preventDefault();
   });
   listen(host, 'pointerleave', () => {
+    cancelHover();
     hovered = null;
     onHover(null);
     hoverRing.visible = false;
@@ -424,7 +444,10 @@ export function createMapControls({
     'wheel',
     (e) => {
       e.preventDefault();
-      changeZoom(Math.exp(-e.deltaY * 0.001));
+      // Firefox and some mouse drivers report lines/pages rather than pixels.
+      const mode = e.deltaMode;
+      const unit = mode === 1 ? 16 : mode === 2 ? host.clientHeight : 1;
+      changeZoom(Math.exp(-e.deltaY * unit * 0.001));
     },
     { passive: false },
   );
@@ -434,6 +457,8 @@ export function createMapControls({
     camera,
     isInteracting: () => pointers.size > 0 || partyPointer !== null,
     refresh({ resetView = false, fitContent: fit = false, preserveFraming = false } = {}) {
+      cancelHover();
+      map.updateWorldMatrix(true, true);
       fitContent = fit;
       hovered = null;
       onHover(null);
@@ -450,6 +475,7 @@ export function createMapControls({
       else resize();
     },
     cancelInteraction() {
+      cancelHover();
       interactionRevision++;
       cancelLongPress();
       cancelTap();
@@ -474,6 +500,7 @@ export function createMapControls({
     zoom: changeZoom,
     pan,
     dispose() {
+      cancelHover();
       cancelLongPress();
       cancelTap();
       listeners.abort();
