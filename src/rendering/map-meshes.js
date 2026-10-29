@@ -13,6 +13,7 @@ import { createRoadBuilder } from './roads.js';
 export function createMapMeshes({
   materials,
   propMaterial,
+  pixelMaterial,
   treeDepth,
   waveDirection,
   fogMaterial = (material) => material,
@@ -29,7 +30,7 @@ export function createMapMeshes({
     makeCrossing: createCrossingBuilder(materials),
   });
   const { makeTree, makeRock, makeGrass, makePuddle, makeReeds, makeCrops, makeWave } =
-    createNatureBuilder({ materials, propMaterial });
+    createNatureBuilder({ materials, propMaterial, pixelMaterial });
   const { makeHouse, makeTower, makeHall, makeBarrier } = createSettlementBuilder({
     addMesh,
     propMaterial,
@@ -97,12 +98,15 @@ export function createMapMeshes({
           lightSources.push({ ...source, matrix: parent.matrixWorld.clone(), tile: data });
       propRoot.traverse((object) => {
         if (!object.isMesh) return;
-        const geometry = object.geometry.index
-          ? object.geometry.toNonIndexed()
-          : object.geometry.clone();
+        const pixelFoliage = Boolean(object.material.userData.pixelFoliage);
+        const geometry =
+          object.geometry.index && !pixelFoliage
+            ? object.geometry.toNonIndexed()
+            : object.geometry.clone();
         geometry.applyMatrix4(object.matrixWorld);
         for (const name of Object.keys(geometry.attributes))
-          if (name !== 'position' && name !== 'normal') geometry.deleteAttribute(name);
+          if (name !== 'position' && name !== 'normal' && !(name === 'uv' && object.material.map))
+            geometry.deleteAttribute(name);
         let plant = object;
         while (plant && !plant.userData.wind) plant = plant.parent;
         const base = plant ? new THREE.Vector3().setFromMatrixPosition(plant.matrixWorld).y : 0;
@@ -115,7 +119,10 @@ export function createMapMeshes({
         }
         geometry.setAttribute('swayWeight', new THREE.BufferAttribute(sway, 1));
         geometry.setAttribute('wavePhase', new THREE.BufferAttribute(phase, 1));
-        const batchKey = `${object.material.uuid}:${object.castShadow}`;
+        // Evergreen chunks keep off-screen forest geometry out of the main
+        // view and raycasts. Other props retain their existing batch layout.
+        const chunk = pixelFoliage ? `${Math.floor(data.q / 4)},${Math.floor(data.r / 4)}` : '';
+        const batchKey = `${object.material.uuid}:${object.castShadow}:${chunk}`;
         if (!propBatches.has(batchKey))
           propBatches.set(batchKey, {
             material: object.material,
@@ -126,7 +133,7 @@ export function createMapMeshes({
           });
         const batch = propBatches.get(batchKey);
         batch.geometries.push(geometry);
-        batch.faces += geometry.attributes.position.count / 3;
+        batch.faces += (geometry.index?.count ?? geometry.attributes.position.count) / 3;
         batch.faceRanges.push({ end: batch.faces, key: data.key });
         object.geometry.dispose();
       });
@@ -141,6 +148,10 @@ export function createMapMeshes({
     for (const batch of propBatches.values()) {
       const geometry = mergeGeometries(batch.geometries);
       batch.geometries.forEach((part) => part.dispose());
+      if (batch.material.userData.pixelFoliage) {
+        geometry.computeBoundingSphere();
+        geometry.boundingSphere.radius += 0.35; // Include the strongest wind gust.
+      }
       const mesh = addMesh(map, geometry, batch.material);
       mesh.castShadow = batch.castShadow;
       mesh.userData.faceRanges = batch.faceRanges;

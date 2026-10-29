@@ -4,6 +4,7 @@ import { createMapPalette, materialRoles } from '../map-palette.js';
 import { installTreeSway, installWaveDrift } from './ambient-motion.js';
 import { applyNightColor } from './daylight.js';
 import { timeOfDay, windForTimeOfDay } from '../application/time-of-day.js';
+import { createPixelFoliageMaterials } from './pixel-foliage-materials.js';
 
 export function createMapMaterials() {
   let color = createMapPalette(palettes[DEFAULT_PALETTE]);
@@ -44,6 +45,12 @@ export function createMapMaterials() {
   const tintedMaterials = new Map();
   const ambientTime = { value: 0 };
   const wind = { strength: { value: 1.2 }, gustPeriod: { value: 18 } };
+  const pixelFoliage = createPixelFoliageMaterials({
+    getColor: (...args) => applyNightColor(new THREE.Color(color.role(...args)), mode),
+    getHiddenColor: () => applyNightColor(new THREE.Color(theme.bg), mode),
+    time: ambientTime,
+    wind,
+  });
   const waveDirection = { value: new THREE.Vector2(1, 0) };
   for (const role of [
     'leaf',
@@ -93,6 +100,10 @@ export function createMapMaterials() {
   function fogMaterial(base, state) {
     if (!state || state === 'visited') return base;
     if (Array.isArray(base)) return base.map((material) => fogMaterial(material, state));
+    if (base.userData.pixelFoliage) {
+      const { temperature, tone } = base.userData.pixelFoliage;
+      return pixelFoliage.material(temperature, tone, state);
+    }
     if (!fogMaterials.has(base)) fogMaterials.set(base, new Map());
     const variants = fogMaterials.get(base);
     if (!variants.has(state)) {
@@ -108,6 +119,7 @@ export function createMapMaterials() {
     materials,
     fogMaterial,
     propMaterial,
+    pixelMaterial: pixelFoliage.material,
     treeDepth,
     ambientTime,
     waveDirection,
@@ -130,6 +142,7 @@ export function createMapMaterials() {
       for (const variants of fogMaterials.values())
         for (const material of variants.values()) material.dispose();
       treeDepth.dispose();
+      pixelFoliage.dispose();
     },
   };
   function repaint() {
@@ -147,5 +160,6 @@ export function createMapMaterials() {
     applyNightColor(materials.wave.color, mode);
     for (const [base, variants] of fogMaterials)
       for (const [state, material] of variants) updateFogMaterial(base, material, state);
+    pixelFoliage.repaint();
   }
 }

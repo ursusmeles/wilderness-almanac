@@ -1,11 +1,12 @@
+import { BufferGeometry, Float32BufferAttribute } from 'three';
 import { randomStream } from '../generation/math.js';
-import { addMesh, geometryFrom } from './geometry.js';
+import { addMesh } from './geometry.js';
 
 const SIZE = 11;
 const WIDTH = 0.48;
 const BASE = 0.205;
 // The same foliage palette supplies six steps, from deep recesses to branch tips.
-const SHADES = [
+export const EVERGREEN_SHADES = [
   ['leafDark', -3],
   ['leafDark', 1],
   ['leaf', -4],
@@ -15,7 +16,7 @@ const SHADES = [
 ];
 
 // Solid stepped crowns retain the original prop transforms and palette roles.
-export function evergreenCrown(variant, style) {
+function crownFaces(variant, style) {
   const tall = variant === 2;
   const height = tall ? 1.065 : 0.945;
   const dims = [SIZE, Math.ceil((height - BASE) / (WIDTH / SIZE)), SIZE];
@@ -51,7 +52,7 @@ export function evergreenCrown(variant, style) {
       }
     }
   }
-  const points = SHADES.map(() => []);
+  const faces = [];
   function shade(coords, axis, sign) {
     if (axis === 1 && sign < 0) return 1;
     const [x, y, z] = coords;
@@ -90,7 +91,7 @@ export function evergreenCrown(variant, style) {
             if (!at(coords)) continue;
             const next = coords.slice();
             next[axis] += sign;
-            if (!at(next)) mask[j * width + i] = shade(coords, axis, sign);
+            if (!at(next)) mask[j * width + i] = 1;
           }
         }
         for (let j = 0; j < depth; j++) {
@@ -118,11 +119,23 @@ export function evergreenCrown(variant, style) {
             b[u] += w * step[u];
             b[v] += h * step[v];
             c[v] += h * step[v];
-            points[tone - 1].push(
-              ...(sign > 0
-                ? [...p, ...a, ...b, ...p, ...b, ...c]
-                : [...p, ...b, ...a, ...p, ...c, ...b]),
-            );
+            const texels = [];
+            for (let row = 0; row < h; row++)
+              for (let col = 0; col < w; col++) {
+                const coords = [];
+                coords[axis] = slice;
+                coords[u] = i + col;
+                coords[v] = j + row;
+                texels.push(shade(coords, axis, sign));
+              }
+            faces.push({
+              points: [...p, ...a, ...b, ...c],
+              width: w,
+              height: h,
+              sign,
+              normal: [0, 1, 2].map((direction) => (direction === axis ? sign : 0)),
+              texels,
+            });
             for (let row = 0; row < h; row++)
               mask.fill(0, (j + row) * width + i, (j + row) * width + i + w);
             i += w;
@@ -131,22 +144,74 @@ export function evergreenCrown(variant, style) {
       }
     }
   }
-  return SHADES.map(([role, tone], index) => ({ role, tone, points: points[index] }));
+  return faces;
 }
 
-export function createPixelEvergreenBuilder({ propMaterial }) {
+let atlas;
+// One numeric atlas for every seeded shape. Colour/lighting remain the material
+// registry's responsibility; flat surfaces no longer need a quad per colour.
+export function evergreenAtlas() {
+  if (atlas) return atlas;
+  const width = 256;
+  let x = 0,
+    y = 0,
+    rowHeight = 0;
   const crowns = new Map();
+  for (const variant of [0, 2])
+    for (let style = 0; style < 8; style++) {
+      const faces = crownFaces(variant, style);
+      for (const face of faces) {
+        if (x + face.width + 2 > width) {
+          x = 0;
+          y += rowHeight;
+          rowHeight = 0;
+        }
+        face.x = x + 1;
+        face.y = y + 1;
+        x += face.width + 2;
+        rowHeight = Math.max(rowHeight, face.height + 2);
+      }
+      crowns.set(`${variant}:${style}`, { faces, points: [], normals: [], uvs: [], indices: [] });
+    }
+  const height = 2 ** Math.ceil(Math.log2(y + rowHeight));
+  const indices = new Uint8Array(width * height);
+  for (const crown of crowns.values()) {
+    for (const face of crown.faces) {
+      // A one-texel gutter protects adjacent atlas patches at their edges.
+      for (let row = -1; row <= face.height; row++)
+        for (let col = -1; col <= face.width; col++) {
+          const u = Math.max(0, Math.min(face.width - 1, col));
+          const v = Math.max(0, Math.min(face.height - 1, row));
+          indices[(face.y + row) * width + face.x + col] = face.texels[v * face.width + u];
+        }
+      const p = [face.x / width, face.y / height];
+      const a = [(face.x + face.width) / width, p[1]];
+      const b = [a[0], (face.y + face.height) / height];
+      const c = [p[0], b[1]];
+      const start = crown.points.length / 3;
+      crown.points.push(...face.points);
+      for (let corner = 0; corner < 4; corner++) crown.normals.push(...face.normal);
+      crown.uvs.push(...p, ...a, ...b, ...c);
+      const order = face.sign > 0 ? [0, 1, 2, 0, 2, 3] : [0, 2, 1, 0, 3, 2];
+      crown.indices.push(...order.map((index) => start + index));
+    }
+    delete crown.faces;
+  }
+  atlas = { width, height, indices, crowns };
+  return atlas;
+}
+
+export function createPixelEvergreenBuilder({ pixelMaterial }) {
   return (parent, prop) => {
     const variant = prop.variant === 2 ? 2 : 0;
     const style = ((prop.detailSeed ?? 0) >>> 0) % 8;
     const key = `${variant}:${style}`;
-    if (!crowns.has(key)) crowns.set(key, evergreenCrown(variant, style));
-    for (const { role, tone, points } of crowns.get(key))
-      if (points.length)
-        addMesh(
-          parent,
-          geometryFrom(points),
-          propMaterial(role, prop.temperature, (prop.foliageTone ?? 0) + tone),
-        );
+    const crown = evergreenAtlas().crowns.get(key);
+    const geometry = new BufferGeometry();
+    geometry.setAttribute('position', new Float32BufferAttribute(crown.points, 3));
+    geometry.setAttribute('normal', new Float32BufferAttribute(crown.normals, 3));
+    geometry.setAttribute('uv', new Float32BufferAttribute(crown.uvs, 2));
+    geometry.setIndex(crown.indices);
+    addMesh(parent, geometry, pixelMaterial(prop.temperature, prop.foliageTone));
   };
 }
