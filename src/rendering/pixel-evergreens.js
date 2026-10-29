@@ -4,7 +4,15 @@ import { addMesh, geometryFrom } from './geometry.js';
 const SIZE = 11;
 const WIDTH = 0.48;
 const BASE = 0.205;
-const ROLES = ['leafDark', 'leaf', 'leafLight'];
+// The same foliage palette supplies six steps, from deep recesses to branch tips.
+const SHADES = [
+  ['leafDark', -3],
+  ['leafDark', 1],
+  ['leaf', -4],
+  ['leaf', 0],
+  ['leafLight', -2],
+  ['leafLight', 1],
+];
 
 // Solid stepped crowns retain the original prop transforms and palette roles.
 export function evergreenCrown(variant, style) {
@@ -16,6 +24,8 @@ export function evergreenCrown(variant, style) {
   const random = randomStream(1987 + style * 731 + variant * 2917);
   const phase = random() * Math.PI * 2;
   const lean = [(random() - 0.5) * 0.025, (random() - 0.5) * 0.025];
+  const tierOffset = style % 3;
+  const branches = 5 + (style % 3);
   const data = new Uint8Array(dims[0] * dims[1] * dims[2]);
   const at = ([x, y, z]) =>
     x < 0 || y < 0 || z < 0 || x >= dims[0] || y >= dims[1] || z >= dims[2]
@@ -32,25 +42,34 @@ export function evergreenCrown(variant, style) {
       for (let x = 0; x < SIZE; x++) {
         const dx = origin[0] + (x + 0.5) * step[0] - lean[0] * rise;
         const dz = origin[2] + (z + 0.5) * step[2] - lean[1] * rise;
-        const branch = Math.sin(Math.atan2(dz, dx) * 5 + phase + Math.floor(y / 3) * 0.8);
-        const radius = Math.min(0.24, Math.max(lower, upper) * (1 + branch * 0.1));
+        const tier = Math.floor((y + tierOffset) / 4);
+        const branch = Math.sin(Math.atan2(dz, dx) * branches + phase + tier * 0.8);
+        const taper = 1 - ((y + tierOffset) % 4) * 0.025;
+        const radius = Math.min(0.24, Math.max(lower, upper) * taper * (1 + branch * 0.1));
         if (Math.hypot(dx, dz) <= Math.max(step[0] * 0.51, radius))
           data[(y * SIZE + z) * SIZE + x] = 1;
       }
     }
   }
-  const points = ROLES.map(() => []);
+  const points = SHADES.map(() => []);
   function shade(coords, axis, sign) {
     if (axis === 1 && sign < 0) return 1;
-    const cluster =
-      (Math.floor(coords[0] / 3) * 7 +
-        Math.floor(coords[1] / 3) * 11 +
-        Math.floor(coords[2] / 3) * 13 +
-        style * 3) %
-      17;
-    let tone = axis === 1 ? 1 : axis === 0 ? (sign > 0 ? 1 : 0) : 1;
-    if (cluster < 3) tone = Math.max(0, tone - 1);
-    else if (cluster === 8) tone = Math.min(2, tone + 1);
+    const [x, y, z] = coords;
+    const angle = Math.atan2(z + 0.5 - SIZE / 2, x + 0.5 - SIZE / 2);
+    const sector = ((angle + phase) * branches) / (Math.PI * 2);
+    const offset = (((Math.floor(sector) * 7 + style) % 3) + 3) % 3;
+    const tier = Math.floor((y + tierOffset + offset) / 5);
+    const row = (y + tierOffset + offset) % 5;
+    const fan = sector + tier * 0.37;
+    const edge = Math.abs(fan - Math.floor(fan) - 0.5) * 2;
+    // Stepped needle fans wrap around each branch tier. Their dark, hanging
+    // edges connect into clusters instead of independent random pixel noise.
+    const fringe = Math.floor(edge * 2);
+    let tone = row <= fringe ? 1 : row === fringe + 1 ? 2 : edge < 0.45 ? 4 : 3;
+    // Direct light already lifts the upward faces; reserve pale pixels for
+    // branch tips instead of outlining every horizontal ledge in highlights.
+    if (axis === 1) tone = edge > 0.7 ? 2 : row > 2 && edge < 0.4 ? 4 : 3;
+    if (tone === 4 && edge < 0.3 && (x + z + tier + style) % 3 === 0) tone = 5;
     return tone + 1;
   }
   // Merge adjacent exposed voxel faces into rectangles, including hidden undersides.
@@ -112,7 +131,7 @@ export function evergreenCrown(variant, style) {
       }
     }
   }
-  return ROLES.map((role, index) => ({ role, points: points[index] }));
+  return SHADES.map(([role, tone], index) => ({ role, tone, points: points[index] }));
 }
 
 export function createPixelEvergreenBuilder({ propMaterial }) {
@@ -122,12 +141,12 @@ export function createPixelEvergreenBuilder({ propMaterial }) {
     const style = ((prop.detailSeed ?? 0) >>> 0) % 8;
     const key = `${variant}:${style}`;
     if (!crowns.has(key)) crowns.set(key, evergreenCrown(variant, style));
-    for (const { role, points } of crowns.get(key))
+    for (const { role, tone, points } of crowns.get(key))
       if (points.length)
         addMesh(
           parent,
           geometryFrom(points),
-          propMaterial(role, prop.temperature, prop.foliageTone),
+          propMaterial(role, prop.temperature, (prop.foliageTone ?? 0) + tone),
         );
   };
 }

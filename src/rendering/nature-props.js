@@ -4,9 +4,9 @@ import { addMesh, geometryFrom } from './geometry.js';
 import { createFarmlandBuilder } from './farmland-props.js';
 import { createPixelEvergreenBuilder } from './pixel-evergreens.js';
 
-export function createNatureBuilder({ materials, propMaterial, pixelMaterial = propMaterial }) {
+export function createNatureBuilder({ materials, propMaterial }) {
   const makeField = createFarmlandBuilder({ propMaterial });
-  const makeEvergreen = createPixelEvergreenBuilder({ propMaterial: pixelMaterial });
+  const makeEvergreen = createPixelEvergreenBuilder({ propMaterial });
   function makeTree(parent, prop) {
     const g = new THREE.Group();
     g.userData.tree = true;

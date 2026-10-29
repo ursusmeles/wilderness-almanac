@@ -79,18 +79,6 @@ export function createMapMaterials() {
     }
     return tintedMaterials.get(key).material;
   }
-  function pixelMaterial(role, temperature = 0, colorTone = 0) {
-    const key = `pixel:${role}:${temperature}:${colorTone}`;
-    if (!tintedMaterials.has(key)) {
-      const material = new THREE.MeshBasicMaterial({
-        color: color.role(role, temperature, colorTone),
-      });
-      applyNightColor(material.color, mode);
-      installTreeSway(material, ambientTime, wind);
-      tintedMaterials.set(key, { material, role, temperature, colorTone });
-    }
-    return tintedMaterials.get(key).material;
-  }
   function updateFogMaterial(base, material, state) {
     material.color.copy(base.color);
     if (state === 'unvisited') {
@@ -120,7 +108,6 @@ export function createMapMaterials() {
     materials,
     fogMaterial,
     propMaterial,
-    pixelMaterial,
     treeDepth,
     ambientTime,
     waveDirection,
