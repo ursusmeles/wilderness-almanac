@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { addMesh, geometryFrom } from './geometry.js';
+import { geometryFrom } from './geometry.js';
+import { pixelModelMesh as addMesh } from './pixel-model-geometry.js';
 
 export function createCrossingBuilder(materials) {
   function timberBetween(parent, a, b, width, material) {

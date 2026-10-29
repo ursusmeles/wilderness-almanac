@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { addMesh, geometryFrom } from './geometry.js';
 import { surfaceHeight, TOP_RADIUS } from '../generation/math.js';
+import { pixelUV } from './pixel-model-geometry.js';
 import {
   riverBankValue,
   riverIslandValue,
@@ -9,7 +10,14 @@ import {
   riverTopHeight,
 } from '../generation/river-surfaces.js';
 
-export function createTerrainBuilder({ materials, makeCrossing }) {
+export function createTerrainBuilder({ materials, pixelModelMaterial }) {
+  const textured = (geometry, data, horizontal = false) =>
+    pixelUV(geometry, {
+      repeat: 0.64,
+      offset: [data.wx, data.top, data.wz],
+      horizontal,
+      indexed: false,
+    });
   function bevelTile(height, isWater, corners = null, shared = null) {
     const rings = isWater
       ? [
@@ -52,7 +60,7 @@ export function createTerrainBuilder({ materials, makeCrossing }) {
     groups.forEach((g) => geo.addGroup(g.start, g.count, g.materialIndex));
     return geo;
   }
-  function makeRidge(parent, surface) {
+  function makeRidge(parent, surface, data) {
     const points = [],
       groups = [],
       buckets = [[], [], [], []];
@@ -78,10 +86,10 @@ export function createTerrainBuilder({ materials, makeCrossing }) {
     });
     const geo = geometryFrom(points);
     groups.forEach((g) => geo.addGroup(g.start, g.count, g.materialIndex));
-    addMesh(parent, geo, [
-      materials.ridge,
-      materials.ridgeLight,
-      materials.ridgeDark,
+    addMesh(parent, textured(geo, data), [
+      pixelModelMaterial('ridge'),
+      pixelModelMaterial('ridgeLight'),
+      pixelModelMaterial('ridgeDark'),
       materials.ridgeMeadow,
     ]);
   }
@@ -147,7 +155,12 @@ export function createTerrainBuilder({ materials, makeCrossing }) {
           d = corner(sector + 1, true);
         points.push(...a, ...c, ...d, ...a, ...d, ...b);
       }
-    if (points.length) addMesh(parent, geometryFrom(points), materials.riverGround);
+    if (points.length)
+      addMesh(
+        parent,
+        textured(geometryFrom(points), data, true),
+        pixelModelMaterial('riverGround'),
+      );
   }
   function makeRiver(parent, data) {
     const surface = data.riverSurface,
@@ -157,8 +170,10 @@ export function createTerrainBuilder({ materials, makeCrossing }) {
     if (surface.triangles.length)
       addMesh(
         parent,
-        smoothTerrainGeometry(surface, data),
-        data.bankBevel ? [materials.riverGround, materials.bevel] : materials.riverGround,
+        textured(smoothTerrainGeometry(surface, data), data, true),
+        data.bankBevel
+          ? [pixelModelMaterial('riverGround'), materials.bevel]
+          : pixelModelMaterial('riverGround'),
       );
     if (surface.water) {
       for (const face of surface.water.triangles)
@@ -169,7 +184,11 @@ export function createTerrainBuilder({ materials, makeCrossing }) {
           b = data.riverCorners[(k + 1) % 6];
         water.push(0, 0, 0, a[0], 0, a[1], b[0], 0, b[1]);
       }
-    const waterMesh = addMesh(parent, geometryFrom(water), materials.water);
+    const waterMesh = addMesh(
+      parent,
+      textured(geometryFrom(water), data, true),
+      pixelModelMaterial('riverWater'),
+    );
     waterMesh.castShadow = false;
     function normal(p) {
       const x = data.wx + p[0],
@@ -226,9 +245,8 @@ export function createTerrainBuilder({ materials, makeCrossing }) {
       const g = new THREE.BufferGeometry();
       g.setAttribute('position', new THREE.Float32BufferAttribute(cliffs, 3));
       g.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
-      addMesh(parent, g, materials.riverCliff);
+      addMesh(parent, textured(g, data), pixelModelMaterial('riverCliff'));
     }
-    if (data.crossing) makeCrossing(parent, data.crossing);
   }
   return function makeTerrain(data) {
     const g = new THREE.Group();
@@ -264,7 +282,7 @@ export function createTerrainBuilder({ materials, makeCrossing }) {
     const content = new THREE.Group();
     content.position.y = data.top;
     g.add(content);
-    if (data.surface) makeRidge(content, data.surface);
+    if (data.surface) makeRidge(content, data.surface, data);
     if (river) makeRiver(content, data);
     else if (openWater) {
       const vertices = [];

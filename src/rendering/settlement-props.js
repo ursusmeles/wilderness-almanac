@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { terrainFootingGeometry } from './geometry.js';
+import { steppedRoofGeometry } from './pixel-model-geometry.js';
 
 // Reuse cosmetic detail seeds without consuming any placement randomness.
 export const settlementRoofTone = (prop) =>
@@ -183,39 +184,5 @@ export function createSettlementBuilder({
 }
 
 export function roofGeometry(w, d, h) {
-  const a = [-w / 2, 0, -d / 2],
-    b = [w / 2, 0, -d / 2],
-    c = [0, h, -d / 2],
-    d0 = [-w / 2, 0, d / 2],
-    e = [w / 2, 0, d / 2],
-    f = [0, h, d / 2];
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute(
-    'position',
-    new THREE.Float32BufferAttribute(
-      [
-        ...a,
-        ...c,
-        ...b,
-        ...d0,
-        ...e,
-        ...f,
-        ...a,
-        ...d0,
-        ...f,
-        ...a,
-        ...f,
-        ...c,
-        ...b,
-        ...c,
-        ...f,
-        ...b,
-        ...f,
-        ...e,
-      ],
-      3,
-    ),
-  );
-  geometry.computeVertexNormals();
-  return geometry;
+  return steppedRoofGeometry(w, d, h);
 }

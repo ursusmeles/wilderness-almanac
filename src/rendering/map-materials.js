@@ -6,6 +6,7 @@ import { applyNightColor } from './daylight.js';
 import { timeOfDay, windForTimeOfDay } from '../application/time-of-day.js';
 import { createPixelFoliageMaterials } from './pixel-foliage-materials.js';
 import { createPixelDressingMaterials } from './pixel-dressing-materials.js';
+import { createPixelModelMaterials } from './pixel-model-materials.js';
 
 export function createMapMaterials() {
   let color = createMapPalette(palettes[DEFAULT_PALETTE]);
@@ -55,6 +56,7 @@ export function createMapMaterials() {
   };
   const pixelFoliage = createPixelFoliageMaterials(pixelOptions);
   const pixelDressing = createPixelDressingMaterials(pixelOptions);
+  const pixelModels = createPixelModelMaterials(pixelOptions);
   const waveDirection = { value: new THREE.Vector2(1, 0) };
   for (const role of [
     'leaf',
@@ -116,6 +118,15 @@ export function createMapMaterials() {
       const { kind, temperature } = base.userData.pixelDressing;
       return pixelDressing.material(kind, temperature, state);
     }
+    if (base.userData.pixelModel) {
+      const { role, temperature, tone } = base.userData.pixelModel;
+      const material = pixelModels.material(role, temperature, tone, state);
+      if (material.side !== base.side) {
+        material.side = base.side;
+        material.needsUpdate = true;
+      }
+      return material;
+    }
     if (!fogMaterials.has(base)) fogMaterials.set(base, new Map());
     const variants = fogMaterials.get(base);
     if (!variants.has(state)) {
@@ -136,6 +147,7 @@ export function createMapMaterials() {
       pixelFoliage.material(temperature, tone, 'visited', 'deciduous'),
     pixelBarkMaterial: pixelFoliage.barkMaterial,
     pixelPropMaterial: pixelDressing.material,
+    pixelModelMaterial: pixelModels.material,
     treeDepth,
     ambientTime,
     waveDirection,
@@ -160,6 +172,7 @@ export function createMapMaterials() {
       treeDepth.dispose();
       pixelFoliage.dispose();
       pixelDressing.dispose();
+      pixelModels.dispose();
     },
   };
   function repaint() {
@@ -179,5 +192,6 @@ export function createMapMaterials() {
       for (const [state, material] of variants) updateFogMaterial(base, material, state);
     pixelFoliage.repaint();
     pixelDressing.repaint();
+    pixelModels.repaint();
   }
 }

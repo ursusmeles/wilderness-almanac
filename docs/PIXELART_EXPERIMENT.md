@@ -1,6 +1,6 @@
 # Pixelart map rework
 
-The `pixelart` branch is the independent map-art rework. Sandbox features can continue on `main`; bring those changes into this branch periodically and merge the art only after visual approval. Trees, grass, stones, wetland dressing, wheat and vineyards use the new presentation. Other props retain their existing presentation until converted deliberately.
+The `pixelart` branch is the independent map-art rework. Sandbox features can continue on `main`; bring those changes into this branch periodically and merge the art only after visual approval. Natural dressing, settlements, landmarks, crossings, roads, river surfaces/banks and mountains use pixel textures and selected stepped forms. Tile bases, general ground, open-water tiles and their waves, the party token and the existing illumination/glow system retain their presentation.
 
 ## Accepted direction
 
@@ -31,7 +31,7 @@ Fruit-bearing trees retain a separate rounded orchard form and their original te
 
 ## Ground dressing, wetlands and farmland
 
-`pixel-ground-props.js` renders sparse grass tufts, stepped stones, shallow puddles and cattails at their existing reserved positions. Stones and vine foliage use coarse solid voxel forms, sharing the exposed-face merger rather than adding individual cubes. Small road stones use textured boxes and keep their terrain-relative colouring. Puddles have low, stepped shorelines and quiet patches of water colour; no extra floating debris, sparkles or decorative scatter is added. The main water, river and mountain surfaces remain unchanged.
+`pixel-ground-props.js` renders sparse grass tufts, stepped stones, shallow puddles and cattails at their existing reserved positions. Stones and vine foliage use coarse solid voxel forms, sharing the exposed-face merger rather than adding individual cubes. Small road stones use textured boxes and keep their terrain-relative colouring. Puddles have low, stepped shorelines and quiet patches of water colour; no extra floating debris, sparkles or decorative scatter is added. Open-water tiles remain unchanged; river and mountain presentation is described below.
 
 Grass uses two crossing, fixed-world blades with nearest-filtered alpha-test cutouts, four seed-selected silhouettes and several connected colour patches. These are lit 3D meshes, not camera-facing sprites. Reed leaves use the same technique around three solid stems and textured brown cattail heads. Ordinary grass and rocks stay static; wetland grass, reed blades, stems and heads retain the shared wind settings. Cutout blades do not cast shadows; solid reed stems/heads use the existing matching wind depth shader.
 
@@ -39,15 +39,27 @@ Wheat retains every sampled plant, the dense staggered coverage, original convex
 
 Vineyards retain three trellis rows per existing crop footprint. Each row has three overlapping textured foliage clumps and restrained solid grape bunches, replacing numerous polyhedral leaves and individual berries. Dark timber, furrowed soil, foliage and purple fruit have separate small colour ramps. Vine foliage follows the deciduous seasonal palette response. Grass can warm toward straw in warm palettes; rocks retain muted cool/mineral accents, and wetland vegetation stays greener. Pixel variation is carried by shared textures rather than extra materials per pixel.
 
+## Structures, crossings and terrain
+
+`pixel-model-geometry.js` adapts building and landmark components to merged stepped roofs, radial towers, stone/bone details and open rings. Existing boxes, beams, doors and walls keep their economical geometry. Arches use stepped profiles with genuine openings and recessed tunnel backs. The coarse forms stay within their original radial bounds; hierarchy, placement transforms and light anchors remain intact. A bounded cache holds at most 192 numeric templates, never shared WebGL resources. This avoids voxelising each small masonry or cloth colour change.
+
+`pixel-model-materials.js` adds small nearest-filtered textures for plaster, masonry, roof tiles, thatch, wood, cloth, rock strata, river banks/water and roads. Each role retains eight related swatches with connected patches, restrained joints and highlights. Most prop hue influence is 18–35%, with bounded lightness/chroma changes, retaining native material identity and the five seeded roof finishes. Existing tree and ground-dressing ramps are retained. Roads and banks follow the original terrain colour more strongly; river water retains its palette-water family so mouths meet unchanged open-water tiles coherently.
+
+Rivers, banks, roads and mountains receive projected pixel UVs over their original numeric surfaces. Their vertices, normals, tile-edge joins, road routes, drainage, crossings and foundation heights are unchanged. World-aligned UVs keep neighbouring banks and mountain faces coherent. Relief stays in the existing surface mesh; colour cells and strata do not add per-pixel landscape geometry. The lower mountain ground material, ordinary ground, tile sides/bevels and every open-water base/top/wave keep their original materials. No party rendering code or settings are changed.
+
+Window halos, warm ground pools, mystical/dungeon glows, supplementary lights and lighthouse sweeps remain in the original lighting modules. Model groups retain the same registered light positions, sizes and transforms; surface materials remain lit Standard materials. Night tinting and fog grayscale repaint the textures, preserving double-sided roofs, bridge surfaces and boat hulls in fog.
+
 ## Rendering and ownership
 
 `pixel-foliage-geometry.js` owns the shared exposed-face merger, padded atlas packing and indexed crown geometry. Numeric templates are cached; WebGL resources remain renderer-owned. Evergreen and deciduous atlases each encode species and swatch indices, with nearest filtering, no mipmaps, one-texel gutters and size-sorted packing. This avoids one material per species and extra triangles along colour boundaries. The evergreen geometry and atlas data remain identical through the shared-helper extraction.
 
 `pixel-foliage-colors.js` defines the species ramps. `pixel-foliage-materials.js` owns palette/temperature/tone/fog variants, bark materials and the small birch-bark texture. Palette/time changes repaint existing resources; disposal releases every owned material and texture. The shared depth material and wind uniforms keep crowns, trunks and shadows moving together.
 
-`map-meshes.js` passes the existing forest profile, terrain and deciduous-tree count into the tree builder. Both foliage families retain UVs and indices through batching. Four-by-four axial groups permit frustum culling and bounded raycasts; a conservative bounding-sphere margin includes wind displacement. Picking ranges count indexed triangles. Other props retain their existing batching behaviour.
+`map-meshes.js` passes the existing forest profile, terrain and deciduous-tree count into the tree builder. Both foliage families retain UVs and indices through batching. Four-by-four axial groups permit frustum culling and bounded raycasts; a conservative bounding-sphere margin includes wind displacement. Picking ranges count indexed triangles.
 
 `pixel-dressing-geometry.js` supplies the small solid-form atlas, cutout patterns, indexed plant blades and ground UVs. `pixel-dressing-materials.js` owns all dressing texture/material variants by kind, temperature and fog state, and repaints them in place for palette and night changes. All texture data is generated locally; no image downloads or dependencies are introduced. Alpha-test cutouts remain opaque render passes, avoiding transparent-object sorting. Every geometry using the `pixelDressing` material tag must be indexed with UVs so mixed forms merge safely and retain correct picking ranges. Expensive grain uses four-by-four axial chunks; vine foliage uses eight-by-eight chunks. Tiny ground props share map-wide batches to limit draw calls. Renderer rebuilds release geometry, and the material registry releases each owned texture/material once on disposal.
+
+Structural props use the same indexed batching contract through the `pixelModel` material tag. Bridge/ferry components now join the shared prop batches instead of retaining individual draws under each terrain cell; their local transforms, fog rules and hex picking are preserved. Terrain meshes keep their original index layout and gain only UV buffers. The model material registry owns and disposes its role/temperature/roof-tone/fog texture variants, repainting them in place on palette/time changes.
 
 ## Performance and review
 
@@ -58,3 +70,5 @@ Use representative 469-hex forest maps as well as isolated model previews when r
 Review individual variants, dense woods, the 40% birch light-forest mix, orchard fruit, mixed forest edges, multiple palettes, all four lighting modes and fog. Check indexed picking and resource disposal when changing batching/materials. Prefer focused lint/format checks and visual inspection to broad suites for each iteration. The approved renderer fixtures still describe the original low-poly presentation; refresh them only after accepting the rework. Keep this branch off `main` until approval.
 
 For ground dressing also compare sparse meadow/wetland tiles with dense wheat and vineyards, inspect cutout silhouettes close up and at map scale, and check old rectangular crop descriptors. Keep the original grain sample count and clearance boundaries; reduce decorative mesh complexity rather than adding scatter or thinning the field unpredictably.
+
+For structures and terrain, compare every landmark family, roof finishes, all crossing types, entrances/ring openings, connected mountain tiles, river joins and roads. Inspect dusk/night lights and a lighthouse with visible water. Compare protected base/terrain geometry and registered light transforms against the previous revision. Account for extra UV-buffer and texture memory as well as triangles; fewer bridge/ferry draw calls can offset modest added stepped geometry. Renderer diagnostics and software-WebGL previews still do not establish physical-phone performance.

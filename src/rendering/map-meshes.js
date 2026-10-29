@@ -8,6 +8,7 @@ import { createCrossingBuilder } from './crossings.js';
 import { createPoiBuilder } from './poi-props.js';
 import { createSettlementBuilder, roofGeometry } from './settlement-props.js';
 import { createRoadBuilder } from './roads.js';
+import { pixelModelMesh } from './pixel-model-geometry.js';
 
 // Own map geometry and prop batches; the material registry outlives rebuilds.
 export function createMapMeshes({
@@ -17,6 +18,7 @@ export function createMapMeshes({
   pixelDeciduousMaterial,
   pixelBarkMaterial,
   pixelPropMaterial,
+  pixelModelMaterial,
   treeDepth,
   waveDirection,
   fogMaterial = (material) => material,
@@ -28,10 +30,15 @@ export function createMapMeshes({
   let lightFeature;
   const registerLight = (parent, source) =>
     pendingLights.push({ parent, feature: lightFeature, ...source });
-  const makeTerrain = createTerrainBuilder({
-    materials,
-    makeCrossing: createCrossingBuilder(materials),
-  });
+  const makeTerrain = createTerrainBuilder({ materials, pixelModelMaterial });
+  const makeCrossing = createCrossingBuilder(
+    Object.fromEntries(
+      ['rock', 'rockLight', 'rockMid', 'bridgeWood', 'bridgeLight', 'bridgeDark'].map((role) => [
+        role,
+        pixelModelMaterial(role),
+      ]),
+    ),
+  );
   const { makeTree, makeRock, makeGrass, makePuddle, makeReeds, makeCrops, makeWave } =
     createNatureBuilder({
       materials,
@@ -42,20 +49,20 @@ export function createMapMeshes({
       pixelPropMaterial,
     });
   const { makeHouse, makeTower, makeHall, makeBarrier } = createSettlementBuilder({
-    addMesh,
-    propMaterial,
+    addMesh: pixelModelMesh,
+    propMaterial: pixelModelMaterial,
     roofGeometry,
     registerLight,
   });
   const makePoi = createPoiBuilder({
-    addMesh,
-    propMaterial,
+    addMesh: pixelModelMesh,
+    propMaterial: pixelModelMaterial,
     makeHouse,
     makeTower,
     roofGeometry,
     registerLight,
   });
-  const makeRoads = createRoadBuilder({ propMaterial, pixelPropMaterial });
+  const makeRoads = createRoadBuilder({ pixelModelMaterial, pixelPropMaterial });
   function buildMap(layout) {
     clearGeometries(map);
     cells.length = 0;
@@ -69,6 +76,7 @@ export function createMapMeshes({
       const propRoot = new THREE.Group();
       content.add(propRoot);
       makeRoads(propRoot, data);
+      if (data.crossing) makeCrossing(propRoot, data.crossing);
       const treeContext = {
         terrain: data.terrain,
         deciduousCount: data.props.filter((prop) => prop.kind === 'tree' && prop.variant === 1)
@@ -114,7 +122,9 @@ export function createMapMeshes({
       propRoot.traverse((object) => {
         if (!object.isMesh) return;
         const pixelProp = Boolean(
-          object.material.userData.pixelFoliage || object.material.userData.pixelDressing,
+          object.material.userData.pixelFoliage ||
+          object.material.userData.pixelDressing ||
+          object.material.userData.pixelModel,
         );
         const geometry =
           object.geometry.index && !pixelProp

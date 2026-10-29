@@ -68,7 +68,11 @@ export function createPoiBuilder({
       shape.lineTo(width, shoulder);
       for (let k = 1; k <= 8; k++) {
         const a = (k * Math.PI) / 8;
-        shape.lineTo(Math.cos(a) * width, shoulder + Math.sin(a) * (top - shoulder));
+        const x = Math.cos(a) * width,
+          y = shoulder + Math.sin(a) * (top - shoulder);
+        const previous = Math.cos(((k - 1) * Math.PI) / 8) * width;
+        shape.lineTo(previous, y);
+        shape.lineTo(x, y);
       }
       shape.closePath();
       return shape;

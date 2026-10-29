@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import { addMesh, geometryFrom } from './geometry.js';
 import { roadHeight } from '../generation/road-geometry.js';
+import { pixelUV } from './pixel-model-geometry.js';
 
-export function createRoadBuilder({ propMaterial, pixelPropMaterial }) {
+export function createRoadBuilder({ pixelModelMaterial, pixelPropMaterial }) {
   return function makeRoads(parent, data) {
     if (!data.roads?.length) return;
     const vertices = [];
@@ -36,8 +37,8 @@ export function createRoadBuilder({ propMaterial, pixelPropMaterial }) {
     }
     const mesh = addMesh(
       parent,
-      geometryFrom(vertices),
-      propMaterial('road', 0, data.tone ? 1 : 0),
+      pixelUV(geometryFrom(vertices), { offset: [data.wx, data.top, data.wz], horizontal: true }),
+      pixelModelMaterial('road', 0, data.tone ? 1 : 0),
     );
     mesh.castShadow = false;
     for (const stone of data.roadStones ?? []) {
