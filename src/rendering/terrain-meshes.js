@@ -10,7 +10,7 @@ import {
   riverTopHeight,
 } from '../generation/river-surfaces.js';
 
-export function createTerrainBuilder({ materials, pixelModelMaterial }) {
+export function createTerrainBuilder({ materials, pixelModelMaterial, pixelTerrainMaterial }) {
   const textured = (geometry, data, horizontal = false) =>
     pixelUV(geometry, {
       repeat: 0.64,
@@ -18,6 +18,39 @@ export function createTerrainBuilder({ materials, pixelModelMaterial }) {
       horizontal,
       indexed: false,
     });
+  function groundMaterial(data) {
+    const forest = data.terrain?.includes('forest') || data.terrain === 'taiga';
+    // Match existing dressing modifiers without changing saved/generated data.
+    const temperature =
+      data.pointOfLight || data.terrain === 'farmlands'
+        ? 2 / 3
+        : data.terrain === 'wetlands'
+          ? -2 / 3
+          : forest
+            ? data.treeVariant === 1
+              ? 2 / 3
+              : -2 / 3
+            : 0;
+    return pixelTerrainMaterial(
+      forest || data.terrain === 'meadow' ? 'foliage' : 'ground',
+      temperature,
+      !!data.tone,
+    );
+  }
+  function waterGeometry(geometry, data) {
+    textured(geometry, data, true);
+    const positions = geometry.attributes.position,
+      colors = [];
+    for (let i = 0; i < positions.count; i++) {
+      const depth = data.waterDepth
+        ? surfaceHeight(data.waterDepth, positions.getX(i), positions.getZ(i))
+        : 0;
+      const shade = 1 - depth * 0.32;
+      colors.push(shade, shade, shade);
+    }
+    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+    return geometry;
+  }
   function bevelTile(height, isWater, corners = null, shared = null) {
     const rings = isWater
       ? [
@@ -90,7 +123,7 @@ export function createTerrainBuilder({ materials, pixelModelMaterial }) {
       pixelModelMaterial('ridge'),
       pixelModelMaterial('ridgeLight'),
       pixelModelMaterial('ridgeDark'),
-      materials.ridgeMeadow,
+      groundMaterial(data),
     ]);
   }
   function smoothTerrainGeometry(surface, cell) {
@@ -186,8 +219,8 @@ export function createTerrainBuilder({ materials, pixelModelMaterial }) {
       }
     const waterMesh = addMesh(
       parent,
-      textured(geometryFrom(water), data, true),
-      pixelModelMaterial('riverWater'),
+      waterGeometry(geometryFrom(water), data),
+      pixelTerrainMaterial('water'),
     );
     waterMesh.castShadow = false;
     function normal(p) {
@@ -256,27 +289,35 @@ export function createTerrainBuilder({ materials, pixelModelMaterial }) {
     const water = river || openWater;
     addMesh(
       g,
-      data.roadSurface
-        ? roadTerrainGeometry(data.roadSurface)
-        : bevelTile(
-            data.top,
-            water,
-            river
-              ? data.riverCorners
-              : openWater
-                ? Array.from({ length: 6 }, (_, k) => [
-                    Math.sin((k * Math.PI) / 3),
-                    Math.cos((k * Math.PI) / 3),
-                  ])
-                : data.corners,
-            water ? (data.riverShared ?? data.openWaterShared) : data.surface ? data.shared : null,
-          ),
+      textured(
+        data.roadSurface
+          ? roadTerrainGeometry(data.roadSurface)
+          : bevelTile(
+              data.top,
+              water,
+              river
+                ? data.riverCorners
+                : openWater
+                  ? Array.from({ length: 6 }, (_, k) => [
+                      Math.sin((k * Math.PI) / 3),
+                      Math.cos((k * Math.PI) / 3),
+                    ])
+                  : data.corners,
+              water
+                ? (data.riverShared ?? data.openWaterShared)
+                : data.surface
+                  ? data.shared
+                  : null,
+            ),
+        data,
+        true,
+      ),
       [
         materials.side,
         water && !(data.water === 'river' && data.clipWater)
           ? materials.waterDeep
           : materials.bevel,
-        water ? materials.water : data.tone ? materials.groundLight : materials.ground,
+        water ? materials.water : groundMaterial(data),
       ],
     );
     const content = new THREE.Group();
@@ -291,7 +332,11 @@ export function createTerrainBuilder({ materials, pixelModelMaterial }) {
           b = ((k + 1) * Math.PI) / 3;
         vertices.push(0, 0, 0, Math.sin(a), 0, Math.cos(a), Math.sin(b), 0, Math.cos(b));
       }
-      const surface = addMesh(content, geometryFrom(vertices), materials.water);
+      const surface = addMesh(
+        content,
+        waterGeometry(geometryFrom(vertices), data),
+        pixelTerrainMaterial('water'),
+      );
       surface.castShadow = false;
     } else makeLandBankJoin(content, data);
     return { g, content };

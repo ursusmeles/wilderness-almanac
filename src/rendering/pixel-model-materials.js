@@ -17,9 +17,9 @@ const profiles = {
   rock: ['masonry', 0.61, 0.025, 255, 0.22],
   rockMid: ['masonry', 0.48, 0.025, 260, 0.22],
   rockLight: ['masonry', 0.77, 0.018, 240, 0.22],
-  ridge: ['strata', 0.46, 0.035, 65, 0.35],
-  ridgeLight: ['strata', 0.55, 0.03, 80, 0.35],
-  ridgeDark: ['strata', 0.31, 0.025, 65, 0.3],
+  ridge: ['stone', 0.46, 0.035, 65, 1],
+  ridgeLight: ['stone', 0.55, 0.03, 80, 1],
+  ridgeDark: ['stone', 0.31, 0.025, 65, 1],
   riverGround: ['bank', 0.39, 0.04, 65, 0.9],
   riverCliff: ['bank', 0.3, 0.035, 65, 0.6],
   riverWater: ['water', 0.48, 0.08, 210, 1],
@@ -48,9 +48,12 @@ function pattern(type) {
       } else if (type === 'wood')
         shade = x % 5 === 0 ? 2 : (x + Math.floor(y / 5)) % 7 === 1 ? 5 : cluster < 3 ? 3 : 4;
       else if (type === 'thatch') shade = x % 3 === 0 ? 3 : y % 5 === 0 ? 5 : cluster === 9 ? 6 : 4;
-      else if (type === 'strata')
-        shade = y % 8 === 0 ? 2 : y % 8 === 1 ? 5 : cluster === 9 ? 6 : cluster < 3 ? 3 : 4;
-      else if (type === 'bank' || type === 'road') shade = cluster === 9 ? 5 : cluster < 3 ? 3 : 4;
+      else if (type === 'stone') {
+        const patch = ((x >> 1) * 17 + (y >> 1) * 29 + ((x >> 2) ^ (y >> 2)) * 13) % 23;
+        shade = patch < 3 ? 2 : patch < 8 ? 3 : patch > 19 ? 5 : 4;
+        if ((x * 31 + y * 47) % 101 === 0) shade = 6;
+      } else if (type === 'bank' || type === 'road')
+        shade = cluster === 9 ? 5 : cluster < 3 ? 3 : 4;
       else if (type === 'water') shade = y % 8 === 0 && x % 8 < 3 ? 6 : cluster < 3 ? 3 : 4;
       else if (type === 'crystal') shade = (x + y) % 9 < 2 ? 6 : cluster < 3 ? 2 : 4;
       indices[y * 16 + x] = shade;
@@ -64,11 +67,13 @@ function ramp(role, mapHex, tone, temperature) {
     hue = (mapH * 180) / Math.PI;
   const roof = role === 'roof' || role === 'roofLight';
   const H = roof ? [35, 65, 145, 245, 45][clamp(tone + 2, 0, 4)] : nativeH;
-  const terrain = ['road', 'riverGround', 'riverCliff', 'riverWater'].includes(role);
+  const mountain = role.startsWith('ridge');
+  const terrain = mountain || ['road', 'riverGround', 'riverCliff', 'riverWater'].includes(role);
   const L = terrain ? mapL : baseL + clamp((mapL - baseL) * 0.25, -0.035, 0.035);
-  const C = role === 'riverWater' ? mapC : baseC + clamp((mapC - baseC) * 0.2, -0.01, 0.015);
+  const C =
+    mountain || role === 'riverWater' ? mapC : baseC + clamp((mapC - baseC) * 0.2, -0.01, 0.015);
   const h = H + delta(hue, H) * influence;
-  const quiet = ['bank', 'road', 'water'].includes(profiles[role][0]);
+  const quiet = mountain || ['bank', 'road', 'water'].includes(profiles[role][0]);
   const offsets = quiet
     ? [-0.045, -0.026, -0.009, 0, 0.013, 0.026, 0.04, -0.016]
     : [-0.12, -0.065, -0.025, 0, 0.025, 0.055, 0.085, -0.035];

@@ -19,6 +19,7 @@ export function createMapMeshes({
   pixelBarkMaterial,
   pixelPropMaterial,
   pixelModelMaterial,
+  pixelTerrainMaterial,
   treeDepth,
   waveDirection,
   fogMaterial = (material) => material,
@@ -30,7 +31,7 @@ export function createMapMeshes({
   let lightFeature;
   const registerLight = (parent, source) =>
     pendingLights.push({ parent, feature: lightFeature, ...source });
-  const makeTerrain = createTerrainBuilder({ materials, pixelModelMaterial });
+  const makeTerrain = createTerrainBuilder({ materials, pixelModelMaterial, pixelTerrainMaterial });
   const makeCrossing = createCrossingBuilder(
     Object.fromEntries(
       ['rock', 'rockLight', 'rockMid', 'bridgeWood', 'bridgeLight', 'bridgeDark'].map((role) => [

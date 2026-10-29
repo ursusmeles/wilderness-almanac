@@ -28,7 +28,7 @@ export function createMapRenderer(
     renderer = new THREE.WebGLRenderer({
       antialias: true,
       alpha: false,
-      powerPreference: 'low-power',
+      powerPreference: 'default',
     });
   } catch (error) {
     if (loading) loading.textContent = 'This preview needs WebGL support.';
@@ -49,6 +49,11 @@ export function createMapRenderer(
   );
   const scene = new THREE.Scene();
   const daylight = createDaylight(scene);
+  // The sun and its shadow camera are fixed while the view pans/zooms.
+  daylight.sun.shadow.autoUpdate = false;
+  let shadowTime = NaN,
+    frame = 0,
+    disposed = false;
   const featureLighting = createFeatureLighting(scene);
   let dayMode = 'day';
   const shadowFloor = new THREE.Mesh(
@@ -82,7 +87,18 @@ export function createMapRenderer(
     onHover,
     party,
   });
+  // Input, token animation and ambient motion may all request the same frame.
   function draw() {
+    if (!frame && !disposed) frame = requestAnimationFrame(renderNow);
+  }
+  function renderNow() {
+    cancelAnimationFrame(frame);
+    frame = 0;
+    if (disposed) return;
+    if (shadowTime !== palette.ambientTime.value) {
+      daylight.sun.shadow.needsUpdate = true;
+      shadowTime = palette.ambientTime.value;
+    }
     renderer.domElement.dataset.zoom = String(controls.camera.zoom);
     featureLighting.update(palette.ambientTime.value, controls.camera);
     renderer.clear();
@@ -116,6 +132,7 @@ export function createMapRenderer(
       previewPiece = null;
       if (options?.resetView) party?.deselect();
       meshes.setMap(layout);
+      daylight.sun.shadow.needsUpdate = true;
       featureLighting.setSources(meshes.lightSources, layout);
       controls.refresh(options);
     },
@@ -143,12 +160,13 @@ export function createMapRenderer(
       featureLighting.setSources([], []);
       previewPiece = createPartyPiece(PARTY_STYLES.indexOf(style), color);
       meshes.group.add(previewPiece.group);
+      daylight.sun.shadow.needsUpdate = true;
       controls.refresh({ resetView: true, fitContent: true });
     },
     zoom: controls.zoom,
     pan: controls.pan,
     snapshot() {
-      draw();
+      renderNow();
       return renderer.domElement.toDataURL('image/png');
     },
     setPalette(seeds) {
@@ -157,6 +175,8 @@ export function createMapRenderer(
       draw();
     },
     dispose() {
+      disposed = true;
+      cancelAnimationFrame(frame);
       ambientLoop.dispose();
       party?.dispose();
       keyHints?.dispose();

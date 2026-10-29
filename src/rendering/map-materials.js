@@ -7,6 +7,7 @@ import { timeOfDay, windForTimeOfDay } from '../application/time-of-day.js';
 import { createPixelFoliageMaterials } from './pixel-foliage-materials.js';
 import { createPixelDressingMaterials } from './pixel-dressing-materials.js';
 import { createPixelModelMaterials } from './pixel-model-materials.js';
+import { createPixelTerrainMaterials } from './pixel-terrain-materials.js';
 
 export function createMapMaterials() {
   let color = createMapPalette(palettes[DEFAULT_PALETTE]);
@@ -57,6 +58,7 @@ export function createMapMaterials() {
   const pixelFoliage = createPixelFoliageMaterials(pixelOptions);
   const pixelDressing = createPixelDressingMaterials(pixelOptions);
   const pixelModels = createPixelModelMaterials(pixelOptions);
+  const pixelTerrain = createPixelTerrainMaterials(pixelOptions);
   const waveDirection = { value: new THREE.Vector2(1, 0) };
   for (const role of [
     'leaf',
@@ -118,6 +120,10 @@ export function createMapMaterials() {
       const { kind, temperature } = base.userData.pixelDressing;
       return pixelDressing.material(kind, temperature, state);
     }
+    if (base.userData.pixelTerrain) {
+      const { kind, temperature, light } = base.userData.pixelTerrain;
+      return pixelTerrain.material(kind, temperature, light, state);
+    }
     if (base.userData.pixelModel) {
       const { role, temperature, tone } = base.userData.pixelModel;
       const material = pixelModels.material(role, temperature, tone, state);
@@ -148,6 +154,7 @@ export function createMapMaterials() {
     pixelBarkMaterial: pixelFoliage.barkMaterial,
     pixelPropMaterial: pixelDressing.material,
     pixelModelMaterial: pixelModels.material,
+    pixelTerrainMaterial: pixelTerrain.material,
     treeDepth,
     ambientTime,
     waveDirection,
@@ -173,6 +180,7 @@ export function createMapMaterials() {
       pixelFoliage.dispose();
       pixelDressing.dispose();
       pixelModels.dispose();
+      pixelTerrain.dispose();
     },
   };
   function repaint() {
@@ -193,5 +201,6 @@ export function createMapMaterials() {
     pixelFoliage.repaint();
     pixelDressing.repaint();
     pixelModels.repaint();
+    pixelTerrain.repaint();
   }
 }

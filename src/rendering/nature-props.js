@@ -82,33 +82,14 @@ export function createNatureBuilder({
   }
   function makeWave(parent, prop) {
     const points = [];
-    // Three shallow arcs, well inside the hex throughout the slow drift loop.
+    // Broken pixel crests stay inside the existing drift footprint.
     for (let row = 0; row < 3; row++) {
-      for (let step = 0; step < 6; step++) {
-        const a = -0.22 + (step * 0.44) / 6,
-          b = a + 0.44 / 6;
-        const za = (row - 1) * 0.08 + a * a * 0.6,
-          zb = (row - 1) * 0.08 + b * b * 0.6;
-        points.push(
-          a,
-          0,
-          za,
-          b,
-          0,
-          zb,
-          a,
-          0,
-          za + 0.024,
-          b,
-          0,
-          zb,
-          b,
-          0,
-          zb + 0.024,
-          a,
-          0,
-          za + 0.024,
-        );
+      for (let step = 0; step < 5; step++) {
+        if ((row + step) % 5 === 0) continue;
+        const a = -0.2 + step * 0.08,
+          b = a + 0.08;
+        const z = (row - 1) * 0.09 + (step === 0 || step === 4 ? 0.035 : 0);
+        points.push(a, 0, z, b, 0, z, a, 0, z + 0.025, b, 0, z, b, 0, z + 0.025, a, 0, z + 0.025);
       }
     }
     const mesh = addMesh(parent, geometryFrom(points), materials.wave, prop.x, prop.y, prop.z);

@@ -5,6 +5,15 @@ import { createMapControls } from '../src/rendering/map-controls.js';
 
 function fixture(t, party, touchMultiSelect = true) {
   const original = globalThis.ResizeObserver;
+  const originalFrame = globalThis.requestAnimationFrame;
+  const originalCancel = globalThis.cancelAnimationFrame;
+  const frames = new Map();
+  let frameId = 0;
+  globalThis.requestAnimationFrame = (callback) => {
+    frames.set(++frameId, callback);
+    return frameId;
+  };
+  globalThis.cancelAnimationFrame = (id) => frames.delete(id);
   globalThis.ResizeObserver = class {
     observe() {}
     disconnect() {}
@@ -26,6 +35,7 @@ function fixture(t, party, touchMultiSelect = true) {
   map.add(mesh, neighbour);
   scene.add(map);
   const selections = [];
+  const hovers = [];
   const controls = createMapControls({
     host,
     scene,
@@ -40,7 +50,7 @@ function fixture(t, party, touchMultiSelect = true) {
       scene.updateMatrixWorld(true);
     },
     onSelect: (key, options) => selections.push({ key, ...options }),
-    onHover() {},
+    onHover: (key) => hovers.push(key),
     party,
     touchMultiSelect,
   });
@@ -50,9 +60,18 @@ function fixture(t, party, touchMultiSelect = true) {
     mesh.geometry.dispose();
     material.dispose();
     globalThis.ResizeObserver = original;
+    globalThis.requestAnimationFrame = originalFrame;
+    globalThis.cancelAnimationFrame = originalCancel;
   });
   return {
     selections,
+    hovers,
+    frames,
+    flushFrame() {
+      const pending = [...frames.values()];
+      frames.clear();
+      for (const callback of pending) callback(0);
+    },
     controls,
     mesh,
     pointer(type, options = {}) {
@@ -328,4 +347,48 @@ test('creation previews can retain ordinary touch selection without multiselect 
   pointer('pointerup', { pointerType: 'touch' });
   t.mock.timers.tick(300);
   assert.deepEqual(selections, [{ key: '0,0', additive: false, fromMap: true }]);
+});
+
+test('wheel zoom normalizes pixel, line and page units', (t) => {
+  const { pointer, controls } = fixture(t);
+  for (const [deltaMode, deltaY] of [
+    [0, 48],
+    [1, 3],
+    [2, 0.12],
+  ]) {
+    const before = controls.camera.zoom;
+    pointer('wheel', { deltaMode, deltaY });
+    assert.ok(Math.abs(controls.camera.zoom / before - Math.exp(-0.048)) < 1e-10);
+  }
+});
+
+test('hover raycasts once per frame, keeps the latest position, and cancels stale work', (t) => {
+  const { pointer, mesh, hovers, flushFrame, frames, controls } = fixture(t);
+  let casts = 0;
+  const raycast = mesh.raycast;
+  mesh.raycast = function (...args) {
+    casts++;
+    return raycast.apply(this, args);
+  };
+  hovers.length = 0;
+  for (let i = 0; i < 20; i++) pointer('pointermove', { clientX: 2000 });
+  pointer('pointermove', { clientX: 200 });
+  assert.equal(casts, 0);
+  assert.equal(frames.size, 1);
+  flushFrame();
+  assert.equal(casts, 1);
+  assert.deepEqual(hovers, ['0,0']);
+  pointer('pointermove');
+  pointer('pointerleave');
+  assert.equal(frames.size, 0);
+  pointer('pointermove');
+  pointer('pointerdown');
+  assert.equal(frames.size, 0);
+  pointer('pointerup');
+  pointer('pointermove');
+  controls.refresh();
+  assert.equal(frames.size, 0);
+  pointer('pointermove');
+  controls.dispose();
+  assert.equal(frames.size, 0);
 });
