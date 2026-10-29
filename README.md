@@ -4,7 +4,7 @@
 
 Build a world, find a place worth exploring, and make it your own. Wilderness Almanac creates interactive hex maps with connected forests, mountain ranges, winding rivers, settlements and points of interest—in an isometric view with Low poly art by default and optional Pixelart.
 
-**[Open Wilderness Almanac](https://wilderness-almanac.vercel.app)** · [Releases](https://github.com/ursusmeles/wilderness-almanac/releases) · [Report a bug or suggest a feature](https://github.com/ursusmeles/wilderness-almanac/issues)
+**[Open Wilderness Almanac](https://the.wilderness.al)** · [Releases](https://github.com/ursusmeles/wilderness-almanac/releases) · [Report a bug or suggest a feature](https://github.com/ursusmeles/wilderness-almanac/issues)
 
 ![Wilderness Almanac map with the Inspector open](docs/images/wilderness-almanac.jpg)
 
