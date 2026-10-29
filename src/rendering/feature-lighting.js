@@ -39,57 +39,82 @@ const point = (cell) => {
 
 // Use the tile's actual top triangles: the texture clips the radius while the
 // geometry clips the light to dry ground, including slopes and river banks.
-function groundGlow(tile, position, radius) {
-  const centre = point(tile);
-  const surface = tile.surface || tile.riverSurface || tile.roadSurface;
-  const vertices = surface?.vertices ?? [
-    [0, 0, 0],
-    ...Array.from({ length: 6 }, (_, k) => [
-      Math.sin((k * Math.PI) / 3) * TOP_RADIUS,
-      0,
-      Math.cos((k * Math.PI) / 3) * TOP_RADIUS,
-    ]),
-  ];
-  const triangles = surface
-    ? surface.triangles.filter(
-        (_, i) => surface !== tile.roadSurface || surface.materialIndices[i] === 2,
-      )
-    : Array.from({ length: 6 }, (_, k) => [0, k + 1, ((k + 1) % 6) + 1]);
-  const height = surface && surface === tile.roadSurface ? 0 : tile.top;
-  const x = position.x - centre.x,
-    z = position.z - centre.z;
-  const bounds = [
-    [0, x - radius, 1],
-    [0, x + radius, -1],
-    [2, z - radius, 1],
-    [2, z + radius, -1],
-  ];
+function groundGlow(tiles, position, radius, includeBevel = false) {
   const clipped = [];
-  for (const face of triangles) {
-    let polygon = face.map((i) => vertices[i]);
-    for (const [axis, limit, sign] of bounds) {
-      const output = [];
-      for (let i = 0; i < polygon.length; i++) {
-        const a = polygon[i],
-          b = polygon[(i + 1) % polygon.length];
-        const da = (a[axis] - limit) * sign,
-          db = (b[axis] - limit) * sign;
-        if (da >= 0) output.push(a);
-        if (da >= 0 !== db >= 0) {
-          const t = da / (da - db);
-          output.push(a.map((value, k) => value + (b[k] - value) * t));
-        }
+  for (const tile of tiles) {
+    const centre = point(tile);
+    const surface = tile.surface || tile.riverSurface || tile.roadSurface;
+    const vertices = surface
+      ? [...surface.vertices]
+      : [
+          [0, 0, 0],
+          ...Array.from({ length: 6 }, (_, k) => [
+            Math.sin((k * Math.PI) / 3) * TOP_RADIUS,
+            0,
+            Math.cos((k * Math.PI) / 3) * TOP_RADIUS,
+          ]),
+        ];
+    const triangles = surface
+      ? surface.triangles.filter(
+          (_, i) =>
+            surface !== tile.roadSurface ||
+            surface.materialIndices[i] === 2 ||
+            (includeBevel && surface.materialIndices[i] === 1),
+        )
+      : Array.from({ length: 6 }, (_, k) => [0, k + 1, ((k + 1) % 6) + 1]);
+    const height = surface && surface === tile.roadSurface ? 0 : tile.top;
+    const x = position.x - centre.x,
+      z = position.z - centre.z;
+    const bounds = [
+      [0, x - radius, 1],
+      [0, x + radius, -1],
+      [2, z - radius, 1],
+      [2, z + radius, -1],
+    ];
+    if (includeBevel && !surface && !tile.water) {
+      const outer = vertices.length;
+      for (let k = 0; k < 6; k++)
+        vertices.push([Math.sin((k * Math.PI) / 3), -0.075, Math.cos((k * Math.PI) / 3)]);
+      for (let k = 0; k < 6; k++) {
+        const a = k + 1,
+          b = ((k + 1) % 6) + 1,
+          c = outer + k,
+          d = outer + ((k + 1) % 6);
+        triangles.push([a, c, b], [b, c, d]);
       }
-      polygon = output;
     }
-    for (let i = 1; i < polygon.length - 1; i++)
-      clipped.push(polygon[0], polygon[i], polygon[i + 1]);
+    for (const face of triangles) {
+      let polygon = face.map((i) => vertices[i]);
+      for (const [axis, limit, sign] of bounds) {
+        const output = [];
+        for (let i = 0; i < polygon.length; i++) {
+          const a = polygon[i],
+            b = polygon[(i + 1) % polygon.length];
+          const da = (a[axis] - limit) * sign,
+            db = (b[axis] - limit) * sign;
+          if (da >= 0) output.push(a);
+          if (da >= 0 !== db >= 0) {
+            const t = da / (da - db);
+            output.push(a.map((value, k) => value + (b[k] - value) * t));
+          }
+        }
+        polygon = output;
+      }
+      for (let i = 1; i < polygon.length - 1; i++)
+        clipped.push(
+          ...[polygon[0], polygon[i], polygon[i + 1]].map(([x, y, z]) => [
+            centre.x + x,
+            height + y,
+            centre.z + z,
+          ]),
+        );
+    }
   }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute(
     'position',
     new THREE.Float32BufferAttribute(
-      clipped.flatMap(([x, y, z]) => [centre.x + x, height + y + 0.012, centre.z + z]),
+      clipped.flatMap(([x, y, z]) => [x, y + 0.012, z]),
       3,
     ),
   );
@@ -97,8 +122,8 @@ function groundGlow(tile, position, radius) {
     'uv',
     new THREE.Float32BufferAttribute(
       clipped.flatMap(([x, , z]) => [
-        0.5 + (centre.x + x - position.x) / (2 * radius),
-        0.5 + (centre.z + z - position.z) / (2 * radius),
+        0.5 + (x - position.x) / (2 * radius),
+        0.5 + (z - position.z) / (2 * radius),
       ]),
       2,
     ),
@@ -183,6 +208,7 @@ export function createFeatureLighting(scene) {
   function setSources(entries, cells) {
     clear();
     const batches = new Map();
+    const byKey = new Map(cells.map((cell) => [cell.key, cell]));
     function add(key, geometry) {
       if (!batches.has(key)) batches.set(key, []);
       batches.get(key).push(geometry);
@@ -201,19 +227,41 @@ export function createFeatureLighting(scene) {
         position,
         kind,
         radiusScale,
-        strength: enhanced ? GLOW_STRENGTH : 1,
+        strength: feature === 'city' ? 0.7 : enhanced ? GLOW_STRENGTH : 1,
         ...glowTiming(source, position),
       };
       sources.push(record);
       const window = new THREE.PlaneGeometry(...source.size.map((size) => size * radiusScale));
       window.translate(...source.position).applyMatrix4(source.matrix);
       add(`${kind}:window`, addGlowTiming(window, record));
+      const targets = [source.tile];
+      if (feature === 'city') {
+        // Only adjacent visible dry surfaces at this level receive spill.
+        for (let dr = -1; dr <= 1; dr++)
+          for (let dq = -1; dq <= 1; dq++) {
+            const next = byKey.get(`${source.tile.q + dq},${source.tile.r + dr}`);
+            if (
+              !next ||
+              next.key === source.tile.key ||
+              next.water ||
+              next.terrain === 'open water' ||
+              (next.fogState && next.fogState !== 'visited') ||
+              Math.abs(next.top - source.tile.top) > 0.08
+            )
+              continue;
+            targets.push(next);
+          }
+      }
       const halo = groundGlow(
-        source.tile,
+        targets,
         position,
         (GLOW_RADIUS[feature] ?? GLOW_RADIUS[kind]) * radiusScale,
+        feature === 'city',
       );
-      add(`${kind}:ground`, addGlowTiming(halo, record));
+      add(
+        `${kind}:ground`,
+        addGlowTiming(halo, feature === 'city' ? { ...record, strength: 0.35 } : record),
+      );
       if (source.kind === 'lighthouse') {
         const sweep = lighthouseSweep(position, cells);
         if (sweep) {

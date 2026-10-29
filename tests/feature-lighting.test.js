@@ -383,12 +383,13 @@ test('source positions follow actual model transforms and the fog projection wit
   registry.dispose();
 });
 
-test('cities and POIs gain larger, stronger per-source glows without changing villages or towns', () => {
+test('city pools stay soft while POIs retain enhanced per-source glows', () => {
   const lighting = createFeatureLighting(new THREE.Scene());
   lighting.setMode('night');
   const view = camera(),
     windows = [],
-    strength = [];
+    strength = [],
+    groundStrength = [];
   try {
     for (const feature of ['village', 'town', 'city', 'abbey', 'mystic', 'dungeon']) {
       const kind = ['mystic', 'dungeon'].includes(feature) ? feature : 'warm';
@@ -398,6 +399,9 @@ test('cities and POIs gain larger, stronger per-source glows without changing vi
       window.geometry.computeBoundingBox();
       windows.push(window.geometry.boundingBox.getSize(new THREE.Vector3()).x);
       strength.push(window.geometry.attributes.glowStrength.getX(0));
+      groundStrength.push(
+        lighting.group.getObjectByName(`${kind}:ground`).geometry.attributes.glowStrength.getX(0),
+      );
       assert.equal(lighting.group.children.length, 2);
       if (kind !== 'warm') {
         const point = lighting.points.find((light) => light.visible);
@@ -407,9 +411,40 @@ test('cities and POIs gain larger, stronger per-source glows without changing vi
     assert.ok(Math.abs(windows[0] - windows[1]) < 1e-6);
     assert.ok(windows.slice(2).every((width) => Math.abs(width / windows[1] - 1.5) < 1e-6));
     assert.deepEqual(strength.slice(0, 2), [1, 1]);
-    assert.ok(strength.slice(2).every((value) => Math.abs(value - 1.3) < 1e-6));
+    assert.ok(Math.abs(strength[2] - 0.7) < 1e-6);
+    assert.ok(Math.abs(groundStrength[2] - 0.35) < 1e-6);
+    assert.ok(strength.slice(3).every((value) => Math.abs(value - 1.3) < 1e-6));
     assert.equal(lighting.points.length, 4);
     assert.equal(lighting.beams.length, 2);
+  } finally {
+    lighting.dispose();
+  }
+});
+
+test('city light crosses shared bevels onto dry neighbours, stopping at water, fog and cliffs', () => {
+  const lighting = createFeatureLighting(new THREE.Scene());
+  const city = { ...land, pointOfLight: { type: 'city' } };
+  const neighbour = { ...land, key: '1,0', q: 1 };
+  const emitter = { ...source('warm', city), feature: 'city', position: [0.72, 0.3, 0] };
+  lighting.setMode('night');
+  try {
+    lighting.setSources([emitter], [city, neighbour]);
+    lighting.update(0, camera());
+    const mesh = lighting.group.getObjectByName('warm:ground');
+    assert.ok(glowAt(mesh, 0.85, 0) > 0.001, 'city bevel receives light');
+    assert.ok(glowAt(mesh, 0.89, 0) > 0.001, 'neighbour bevel receives the same pool');
+    assert.ok(glowAt(mesh, 1.02, 0) > 0.001, 'light continues onto the neighbouring top');
+    assert.equal(lighting.group.children.length, 2, 'spill shares the existing glow batches');
+    for (const blocked of [
+      { ...neighbour, water: 'ocean', terrain: 'open water' },
+      { ...neighbour, fogState: 'undiscovered' },
+      { ...neighbour, fogState: 'unvisited' },
+      { ...neighbour, top: neighbour.top + 0.22 },
+    ]) {
+      lighting.setSources([emitter], [city, blocked]);
+      lighting.update(0, camera());
+      assert.equal(glowAt(lighting.group.getObjectByName('warm:ground'), 1.02, 0), 0);
+    }
   } finally {
     lighting.dispose();
   }
