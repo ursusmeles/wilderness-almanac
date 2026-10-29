@@ -43,15 +43,30 @@ function glowAt(mesh, x, z, time = 0) {
     const u = uv.getX(a) * weights.x + uv.getX(b) * weights.y + uv.getX(c) * weights.z;
     const v = uv.getY(a) * weights.x + uv.getY(b) * weights.y + uv.getY(c) * weights.z;
     const { data, width, height } = mesh.material.map.image;
-    const tx = Math.max(0, Math.min(width - 1, Math.floor(u * width)));
-    const ty = Math.max(0, Math.min(height - 1, Math.floor(v * height)));
+    // Match the glow texture's linear filtering, including pixel centres.
+    const tx = Math.max(0, Math.min(width - 1, u * width - 0.5));
+    const ty = Math.max(0, Math.min(height - 1, v * height - 0.5));
+    const x0 = Math.floor(tx),
+      y0 = Math.floor(ty);
+    const alpha = (x, y) => data[(y * width + x) * 4 + 3] / 255;
+    const lerp = (a, b, t) => a + (b - a) * t;
+    const opacity = lerp(
+      lerp(alpha(x0, y0), alpha(Math.min(x0 + 1, width - 1), y0), tx - x0),
+      lerp(
+        alpha(x0, Math.min(y0 + 1, height - 1)),
+        alpha(Math.min(x0 + 1, width - 1), Math.min(y0 + 1, height - 1)),
+        tx - x0,
+      ),
+      ty - y0,
+    );
     const phase = mesh.geometry.attributes.glowPhase?.getX(a);
     const rate = mesh.geometry.attributes.glowRate?.getX(a);
     const key = phase === undefined ? 'landing' : `${phase}:${rate}`;
     if (sampled.has(key)) continue;
     sampled.add(key);
     const pulse = phase === undefined ? 1 : glowPulse(time, { phase, rate });
-    result += (data[(ty * width + tx) * 4 + 3] / 255) * mesh.material.opacity * pulse;
+    const strength = mesh.geometry.attributes.glowStrength?.getX(a) ?? 1;
+    result += opacity * mesh.material.opacity * pulse * strength;
   }
   return result;
 }
@@ -137,7 +152,7 @@ test('every lighthouse has a broad sweeping shaft and a round water landing whil
     ) < 0.04,
     'the soft water footprint is circular',
   );
-  assert.equal(glowAt(landing, target.x + 0.5, target.z), 0);
+  assert.equal(glowAt(landing, target.x + 0.75, target.z), 0);
   assert.equal(glowAt(landing, 0, 0), 0, 'no landing geometry covers the lighthouse land hex');
   let disposed = 0;
   landing.geometry.addEventListener('dispose', () => disposed++);
@@ -191,7 +206,7 @@ test('each building has its own stronger glow instead of one settlement-wide poo
     lighting.update(0, camera());
     spread.push(glowAt(lighting.group.getObjectByName('warm:ground'), 0.34, 0.05));
   }
-  assert.equal(spread[0], 0);
+  assert.ok(spread[0] < 0.002, 'village spill remains negligible at this distance');
   assert.ok(spread[1] > spread[0] && spread[2] > spread[1]);
   lighting.dispose();
 });
@@ -366,4 +381,36 @@ test('source positions follow actual model transforms and the fog projection wit
   assert.equal(JSON.stringify(layout), saved);
   meshes.dispose();
   registry.dispose();
+});
+
+test('cities and POIs gain larger, stronger per-source glows without changing villages or towns', () => {
+  const lighting = createFeatureLighting(new THREE.Scene());
+  lighting.setMode('night');
+  const view = camera(),
+    windows = [],
+    strength = [];
+  try {
+    for (const feature of ['village', 'town', 'city', 'abbey', 'mystic', 'dungeon']) {
+      const kind = ['mystic', 'dungeon'].includes(feature) ? feature : 'warm';
+      lighting.setSources([{ ...source(kind), feature }], [land]);
+      lighting.update(0, view);
+      const window = lighting.group.getObjectByName(`${kind}:window`);
+      window.geometry.computeBoundingBox();
+      windows.push(window.geometry.boundingBox.getSize(new THREE.Vector3()).x);
+      strength.push(window.geometry.attributes.glowStrength.getX(0));
+      assert.equal(lighting.group.children.length, 2);
+      if (kind !== 'warm') {
+        const point = lighting.points.find((light) => light.visible);
+        assert.ok(Math.abs(point.distance - 2.4) < 1e-10);
+      }
+    }
+    assert.ok(Math.abs(windows[0] - windows[1]) < 1e-6);
+    assert.ok(windows.slice(2).every((width) => Math.abs(width / windows[1] - 1.5) < 1e-6));
+    assert.deepEqual(strength.slice(0, 2), [1, 1]);
+    assert.ok(strength.slice(2).every((value) => Math.abs(value - 1.3) < 1e-6));
+    assert.equal(lighting.points.length, 4);
+    assert.equal(lighting.beams.length, 2);
+  } finally {
+    lighting.dispose();
+  }
 });

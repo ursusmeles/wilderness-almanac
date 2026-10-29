@@ -35,6 +35,7 @@ export const materialRoles = {
   wall: [2, 0.87, 0.12],
   roof: [2, 0.49, 1.1],
   roofLight: [2, 0.62, 1],
+  banner: [2, 0.66, 1.2],
   straw: [2, 0.76, 0.8],
   strawDark: [2, 0.64, 0.75],
   door: [2, 0.26, 0.6],

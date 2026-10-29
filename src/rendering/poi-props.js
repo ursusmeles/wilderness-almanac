@@ -208,7 +208,7 @@ export function createPoiBuilder({
           flag.lineTo(0.14, 0.605);
           flag.lineTo(-0.027, 0.63);
           flag.closePath();
-          const banner = mesh(new THREE.ShapeGeometry(flag), 'roofLight', 0, 0, 0);
+          const banner = mesh(new THREE.ShapeGeometry(flag), 'banner', 0, 0, 0);
           banner.material.side = THREE.DoubleSide;
           banner.userData.poiPart = 'banner';
           registerLight(model, { kind: 'warm', position: [0, 0.3, 0.124], size: [0.027, 0.075] });
@@ -390,7 +390,7 @@ export function createPoiBuilder({
       flag.lineTo(0.025, 0.34);
       flag.lineTo(-0.07, 0.36);
       flag.closePath();
-      const banner = mesh(new THREE.ShapeGeometry(flag), 'roofLight', 0, 0, -0.025);
+      const banner = mesh(new THREE.ShapeGeometry(flag), 'banner', 0, 0, -0.025);
       banner.material.side = THREE.DoubleSide;
       banner.userData.poiPart = 'banner';
       const sites = [

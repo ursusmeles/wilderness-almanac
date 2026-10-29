@@ -51,7 +51,13 @@ export function createMapMaterials() {
   const pixelOptions = {
     getColor: (...args) => new THREE.Color(color.role(...args)),
     shadeColor: (color) => applyNightColor(color, mode),
-    getHiddenColor: () => applyNightColor(new THREE.Color(theme.bg), mode),
+    getHiddenColor: (role) => {
+      const hidden = applyNightColor(
+        new THREE.Color(role === 'bevel' ? theme.line : theme.bg),
+        mode,
+      );
+      return role === 'side' ? hidden.multiplyScalar(0.55) : hidden;
+    },
     time: ambientTime,
     wind,
   };

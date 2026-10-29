@@ -56,13 +56,14 @@ export function createPixelTerrainMaterials({ getColor, shadeColor, getHiddenCol
   const patterns = new Map();
   function repaint(entry) {
     const { kind, temperature, light, state, texture } = entry;
-    const source = kind === 'water' ? 'water' : light ? 'groundLight' : 'ground';
+    const edge = ['side', 'bevel', 'waterDeep'].includes(kind);
+    const source = edge ? kind : kind === 'water' ? 'water' : light ? 'groundLight' : 'ground';
     const [L, C, h] = hexToOklch(`#${getColor(source, temperature).getHexString()}`);
     const offsets = [-0.035, -0.021, -0.01, 0, 0.012, 0.025, 0.065, -0.015];
     const colors = offsets.map((d, i) => {
       const hex = scale(
         0,
-        clamp(L + d, 0.12, 0.94),
+        clamp(L + d * (edge ? 0.45 : 1), 0.12, 0.94),
         C / seedC,
         0,
         ((h - seedH) * 180) / Math.PI + (i === 7 ? 5 : 0),
@@ -75,7 +76,7 @@ export function createPixelTerrainMaterials({ getColor, shadeColor, getHiddenCol
       if (state === 'unvisited') {
         const gray = color.r * 0.2126 + color.g * 0.7152 + color.b * 0.0722;
         color.setRGB(gray, gray, gray);
-      } else if (state !== 'visited') color.copy(getHiddenColor());
+      } else if (state !== 'visited') color.copy(getHiddenColor(kind));
       return color.getHex();
     });
     const data = texture.image.data;
@@ -101,6 +102,7 @@ export function createPixelTerrainMaterials({ getColor, shadeColor, getHiddenCol
         const material = new THREE.MeshStandardMaterial({
           map: texture,
           roughness: 1,
+          flatShading: ['side', 'bevel', 'waterDeep'].includes(kind),
           metalness: 0,
           vertexColors: kind === 'water' && ['visited', 'unvisited'].includes(state),
         });

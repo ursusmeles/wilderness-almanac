@@ -11,10 +11,10 @@ import {
 } from '../generation/river-surfaces.js';
 
 export function createTerrainBuilder({ materials, pixelModelMaterial, pixelTerrainMaterial }) {
-  const textured = (geometry, data, horizontal = false) =>
+  const textured = (geometry, data, horizontal = false, verticalOffset = data.top) =>
     pixelUV(geometry, {
       repeat: 0.64,
-      offset: [data.wx, data.top, data.wz],
+      offset: [data.wx, verticalOffset, data.wz],
       horizontal,
       indexed: false,
     });
@@ -205,7 +205,7 @@ export function createTerrainBuilder({ materials, pixelModelMaterial, pixelTerra
         parent,
         textured(smoothTerrainGeometry(surface, data), data, true),
         data.bankBevel
-          ? [pixelModelMaterial('riverGround'), materials.bevel]
+          ? [pixelModelMaterial('riverGround'), pixelTerrainMaterial('bevel')]
           : pixelModelMaterial('riverGround'),
       );
     if (surface.water) {
@@ -310,13 +310,14 @@ export function createTerrainBuilder({ materials, pixelModelMaterial, pixelTerra
                   : null,
             ),
         data,
-        true,
+        false,
+        0,
       ),
       [
-        materials.side,
+        pixelTerrainMaterial('side'),
         water && !(data.water === 'river' && data.clipWater)
-          ? materials.waterDeep
-          : materials.bevel,
+          ? pixelTerrainMaterial('waterDeep')
+          : pixelTerrainMaterial('bevel'),
         water ? materials.water : groundMaterial(data),
       ],
     );

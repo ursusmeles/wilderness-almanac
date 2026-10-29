@@ -6,6 +6,7 @@ import { DAYLIGHT, timeOfDay } from '../application/time-of-day.js';
 import { addGlowTiming, glowTiming, glowPulse, installGlowPulse } from './feature-glow.js';
 import {
   lighthouseSweep,
+  BEAM_WIDTH,
   sweepTarget,
   createWaterLanding,
   updateWaterLanding,
@@ -27,6 +28,9 @@ const GLOW_RADIUS = {
   mystic: 0.45,
   dungeon: 0.23,
 };
+const ENHANCED = new Set(['city', 'watchtower', 'abbey', 'stronghold', 'mystic', 'dungeon']);
+const GLOW_SCALE = 1.5,
+  GLOW_STRENGTH = 1.3;
 const Y = new THREE.Vector3(0, 1, 0);
 const point = (cell) => {
   const { wx, wz } = worldPosition(cell);
@@ -146,14 +150,14 @@ export function createFeatureLighting(scene) {
       installGlowPulse(material, clock);
       materials.set(`${kind}:${layer}`, material);
     }
-  const cone = new THREE.CylinderGeometry(0, 0.1, 1, 24, 8, true);
+  const cone = new THREE.CylinderGeometry(0, BEAM_WIDTH, 1, 24, 8, true);
   cone.translate(0, -0.5, 0);
   const points = Array.from(
     { length: POINT_LIMIT },
     () => new THREE.PointLight(0xffffff, 0, 1.6, 2),
   );
   const beams = Array.from({ length: BEAM_LIMIT }, () => {
-    const light = new THREE.SpotLight(COLORS.warm, 0, 8, 0.1, 0.8, 2);
+    const light = new THREE.SpotLight(COLORS.warm, 0, 12, Math.atan(BEAM_WIDTH), 0.8, 2);
     scene.add(light, light.target);
     return light;
   });
@@ -191,12 +195,24 @@ export function createFeatureLighting(scene) {
         source.kind === 'lighthouse'
           ? 'warm'
           : (source.feature ?? (kind === 'warm' ? source.tile.pointOfLight?.type : null) ?? kind);
-      const record = { position, kind, ...glowTiming(source, position) };
+      const enhanced = source.kind === 'lighthouse' || ENHANCED.has(feature);
+      const radiusScale = enhanced ? GLOW_SCALE : 1;
+      const record = {
+        position,
+        kind,
+        radiusScale,
+        strength: enhanced ? GLOW_STRENGTH : 1,
+        ...glowTiming(source, position),
+      };
       sources.push(record);
-      const window = new THREE.PlaneGeometry(...source.size);
+      const window = new THREE.PlaneGeometry(...source.size.map((size) => size * radiusScale));
       window.translate(...source.position).applyMatrix4(source.matrix);
       add(`${kind}:window`, addGlowTiming(window, record));
-      const halo = groundGlow(source.tile, position, GLOW_RADIUS[feature] ?? GLOW_RADIUS[kind]);
+      const halo = groundGlow(
+        source.tile,
+        position,
+        (GLOW_RADIUS[feature] ?? GLOW_RADIUS[kind]) * radiusScale,
+      );
       add(`${kind}:ground`, addGlowTiming(halo, record));
       if (source.kind === 'lighthouse') {
         const sweep = lighthouseSweep(position, cells);
@@ -253,9 +269,13 @@ export function createFeatureLighting(scene) {
       const source = nearest[i];
       light.visible = Boolean(source);
       light.intensity = source
-        ? strength * glowPulse(time, source) * (source.kind === 'dungeon' ? 0.055 : 0.18)
+        ? strength *
+          source.strength *
+          glowPulse(time, source) *
+          (source.kind === 'dungeon' ? 0.055 : 0.18)
         : 0;
       if (source) {
+        light.distance = 1.6 * source.radiusScale;
         light.color.set(COLORS[source.kind]);
         light.position.copy(source.position);
       }
@@ -268,8 +288,8 @@ export function createFeatureLighting(scene) {
         const distance = source.position.distanceTo(aim);
         direction.copy(aim).sub(source.position);
         const pulse = glowPulse(time, source);
-        mesh.material.opacity = strength * pulse * 0.16;
-        source.landing.material.opacity = strength * pulse * 0.7;
+        mesh.material.opacity = strength * source.strength * pulse * 0.16;
+        source.landing.material.opacity = strength * source.strength * pulse * 0.7;
         updateWaterLanding(source.landing, aim);
         mesh.position.copy(source.position);
         mesh.scale.set(distance, distance, distance);
@@ -283,7 +303,7 @@ export function createFeatureLighting(scene) {
     beams.forEach((light, i) => {
       const source = nearby[i];
       light.visible = Boolean(source);
-      light.intensity = source ? strength * glowPulse(time, source) * 4.4 : 0;
+      light.intensity = source ? strength * source.strength * glowPulse(time, source) * 4.4 : 0;
       if (source) {
         light.position.copy(source.position);
         light.target.position.copy(source.aim);

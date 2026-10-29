@@ -13,6 +13,7 @@ const profiles = {
   bridgeWood: ['wood', 0.53, 0.06, 65, 0.25],
   bridgeLight: ['wood', 0.66, 0.065, 75, 0.25],
   bridgeDark: ['wood', 0.29, 0.035, 65, 0.2],
+  banner: ['cloth', 0.66, 0.18, 25, 0.08],
   rope: ['cloth', 0.68, 0.04, 85, 0.2],
   rock: ['masonry', 0.61, 0.025, 255, 0.22],
   rockMid: ['masonry', 0.48, 0.025, 260, 0.22],

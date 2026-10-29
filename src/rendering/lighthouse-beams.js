@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import { worldPosition } from '../generation/hex.js';
 
-export const BEAM_LENGTH = 2 * Math.sqrt(3);
-export const LANDING_RADIUS = 0.42;
+export const BEAM_LENGTH = 3 * Math.sqrt(3);
+export const LANDING_RADIUS = 0.63;
+export const BEAM_WIDTH = 0.15;
 const MAX_SWEEP = Math.PI / 3;
 const isWater = (cell) =>
   cell &&
@@ -34,13 +35,13 @@ function trace(position, angle, cellAt) {
   let target = null,
     enteredWater = false,
     clearWater = false;
-  for (let step = 0; step <= 48; step++) {
-    const distance = (BEAM_LENGTH * step) / 48;
+  for (let step = 0; step <= 72; step++) {
+    const distance = (BEAM_LENGTH * step) / 72;
     const x = position.x + dx * distance,
       z = position.z + dz * distance;
     const cell = cellAt(x, z);
     if (!cell || cell.fogState === 'undiscovered' || (enteredWater && !isWater(cell))) break;
-    const width = distance * 0.1 + 0.04;
+    const width = distance * BEAM_WIDTH + 0.04;
     const edges = [-1, 1].map((side) => cellAt(x - dz * width * side, z + dx * width * side));
     if (
       edges.some(
