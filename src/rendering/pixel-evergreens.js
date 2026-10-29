@@ -1,10 +1,10 @@
 import { BufferGeometry, Float32BufferAttribute } from 'three';
 import { randomStream } from '../generation/math.js';
 import { addMesh } from './geometry.js';
+import { EVERGREEN_SPECIES as SPECIES, FOLIAGE_TONE_COUNT } from './pixel-foliage-colors.js';
 
 const SIZE = 11;
 const WIDTH = 0.48;
-const SPECIES = ['fir', 'spruce', 'pine'];
 
 export function evergreenSpecies(prop, forest) {
   const type = forest?.family === 'deciduous' ? forest.neighbourType : forest?.type;
@@ -13,27 +13,82 @@ export function evergreenSpecies(prop, forest) {
   return SPECIES.includes(type) ? type : SPECIES[seed % SPECIES.length];
 }
 
-export function evergreenForm(species, variant) {
+const pineForms = new Map();
+function pineForm(variant, style) {
+  const key = `${variant}:${style}`;
+  if (pineForms.has(key)) return pineForms.get(key);
+  const height = variant === 2 ? 1.065 : 0.945;
+  const random = randomStream(7183 + style * 1741 + variant * 2917);
+  const phase = random() * Math.PI * 2;
+  const drift = [Math.cos(phase) * 0.1, Math.sin(phase) * 0.08];
+  const stem = [
+    [0, 0, 0],
+    [drift[0] * 0.25, height * 0.26, drift[1] * 0.1],
+    [-drift[0] * 0.4, height * 0.5, drift[1] * 0.5],
+    [drift[0] * 0.75, height * 0.72, drift[1] * 0.6],
+    [drift[0], height * 0.86, drift[1]],
+  ];
+  const limbs = stem.slice(1).map((end, i) => ({ start: stem[i], end, radius: 0.034 - i * 0.006 }));
+  const lobes = [{ center: stem[4], radius: [0.115, height * 0.14, 0.095], angle: phase }];
+  const count = 4 + (style % 2);
+  for (let i = 0; i < count; i++) {
+    const level = height * (0.4 + i * 0.095);
+    const segment = stem.findIndex((point, index) => index > 0 && point[1] >= level);
+    const a = stem[segment - 1],
+      b = stem[segment];
+    const t = (level - a[1]) / (b[1] - a[1]);
+    const start = a.map((value, axis) => value + (b[axis] - value) * t);
+    const angle = phase + i * 2.4 + (random() - 0.5) * 0.5;
+    const reach = 0.11 + random() * 0.035;
+    const end = [
+      start[0] + Math.cos(angle) * reach,
+      height * (0.66 + i * 0.045 + random() * 0.04),
+      start[2] + Math.sin(angle) * reach,
+    ];
+    const distance = Math.hypot(end[0], end[2]);
+    if (distance > 0.115) {
+      end[0] *= 0.115 / distance;
+      end[2] *= 0.115 / distance;
+    }
+    const elbow = [
+      start[0] + (end[0] - start[0]) * 0.55,
+      level + height * 0.025,
+      start[2] + (end[2] - start[2]) * 0.65,
+    ];
+    limbs.push({ start, end: elbow, radius: 0.018 }, { start: elbow, end, radius: 0.012 });
+    lobes.push({
+      center: end,
+      radius: [
+        0.105 + random() * 0.018,
+        height * (0.085 + random() * 0.025),
+        0.08 + random() * 0.02,
+      ],
+      angle,
+    });
+    lobes.push({
+      center: elbow.map((value, axis) => value + (end[axis] - value) * 0.6),
+      radius: [0.08, height * 0.07, 0.065],
+      angle: angle + 0.4,
+    });
+  }
+  const form = { height, base: height * 0.29, limbs, lobes };
+  pineForms.set(key, form);
+  return form;
+}
+
+export function evergreenForm(species, variant, style = 0) {
+  if (species === 'pine') return pineForm(variant, style);
   const height = variant === 2 ? 1.065 : 0.945;
   return {
     height,
-    base: species === 'pine' ? height * 0.65 : 0.16,
-    trunkHeight: species === 'pine' ? height * 0.82 : 0.29,
+    base: 0.16,
+    trunkHeight: 0.29,
   };
 }
-// The same foliage palette supplies six steps, from deep recesses to branch tips.
-export const EVERGREEN_SHADES = [
-  ['leafDark', -3],
-  ['leafDark', 1],
-  ['leaf', -4],
-  ['leaf', 0],
-  ['leafLight', -2],
-  ['leafLight', 1],
-];
 
 // Solid stepped crowns retain the original prop transforms and palette roles.
 function crownFaces(species, variant, style) {
-  const { height, base } = evergreenForm(species, variant);
+  const { height, base, lobes } = evergreenForm(species, variant, style);
   const dims = [SIZE, Math.ceil((height - base) / (WIDTH / SIZE)), SIZE];
   const step = [WIDTH / SIZE, (height - base) / dims[1], WIDTH / SIZE];
   const origin = [-WIDTH / 2, base, -WIDTH / 2];
@@ -44,19 +99,6 @@ function crownFaces(species, variant, style) {
   const lean = [(random() - 0.5) * 0.025, (random() - 0.5) * 0.025];
   const tierOffset = style % 3;
   const branches = 5 + (style % 3);
-  // Overlapping rounded boughs give pine a raised, irregular umbrella crown.
-  const lobes = [{ x: 0, z: 0, y: 0.66, radius: 0.14, reach: 0.34 }];
-  for (let i = 0; i < 3; i++) {
-    const angle = phase + (i * Math.PI * 2) / 3;
-    const offset = 0.075 + random() * 0.025;
-    lobes.push({
-      x: Math.cos(angle) * offset,
-      z: Math.sin(angle) * offset,
-      y: 0.36 + random() * 0.14,
-      radius: 0.13 + random() * 0.015,
-      reach: 0.3 + random() * 0.09,
-    });
-  }
   const data = new Uint8Array(dims[0] * dims[1] * dims[2]);
   const at = ([x, y, z]) =>
     x < 0 || y < 0 || z < 0 || x >= dims[0] || y >= dims[1] || z >= dims[2]
@@ -71,13 +113,18 @@ function crownFaces(species, variant, style) {
         const dz = origin[2] + (z + 0.5) * step[2] - lean[1] * rise;
         let filled;
         if (species === 'pine') {
-          filled = lobes.some(
-            (lobe) =>
-              ((dx - lobe.x) / lobe.radius) ** 2 +
-                ((dz - lobe.z) / lobe.radius) ** 2 +
-                ((rise - lobe.y) / lobe.reach) ** 2 <=
-              1,
-          );
+          filled = lobes.some((lobe) => {
+            const lx = dx - lobe.center[0],
+              lz = dz - lobe.center[2];
+            const u = lx * Math.cos(lobe.angle) + lz * Math.sin(lobe.angle);
+            const v = lz * Math.cos(lobe.angle) - lx * Math.sin(lobe.angle);
+            return (
+              (u / lobe.radius[0]) ** 2 +
+                (v / lobe.radius[2]) ** 2 +
+                ((worldY - lobe.center[1]) / lobe.radius[1]) ** 2 <=
+              1
+            );
+          });
         } else {
           const angle = Math.atan2(dz, dx);
           const tier = Math.floor((y + tierOffset) / 4);
@@ -177,7 +224,15 @@ function crownFaces(species, variant, style) {
                 coords[axis] = slice;
                 coords[u] = i + col;
                 coords[v] = j + row;
-                texels.push(shade(coords, axis, sign));
+                const tone = [0, 1, 2, 3, 6, 7][shade(coords, axis, sign) - 1];
+                const patch =
+                  (Math.floor(coords[0] / 2) +
+                    Math.floor(coords[1] / 3) +
+                    Math.floor(coords[2] / 2) * 3 +
+                    style) %
+                  5;
+                const accent = tone === 3 && patch === 1 ? 4 : tone === 3 && patch === 3 ? 5 : tone;
+                texels.push(SPECIES.indexOf(species) * FOLIAGE_TONE_COUNT + accent + 1);
               }
             faces.push({
               points: [...p, ...a, ...b, ...c],

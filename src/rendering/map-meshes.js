@@ -14,6 +14,7 @@ export function createMapMeshes({
   materials,
   propMaterial,
   pixelMaterial,
+  pixelBarkMaterial,
   treeDepth,
   waveDirection,
   fogMaterial = (material) => material,
@@ -30,7 +31,7 @@ export function createMapMeshes({
     makeCrossing: createCrossingBuilder(materials),
   });
   const { makeTree, makeRock, makeGrass, makePuddle, makeReeds, makeCrops, makeWave } =
-    createNatureBuilder({ materials, propMaterial, pixelMaterial });
+    createNatureBuilder({ materials, propMaterial, pixelMaterial, pixelBarkMaterial });
   const { makeHouse, makeTower, makeHall, makeBarrier } = createSettlementBuilder({
     addMesh,
     propMaterial,

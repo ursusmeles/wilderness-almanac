@@ -46,7 +46,8 @@ export function createMapMaterials() {
   const ambientTime = { value: 0 };
   const wind = { strength: { value: 1.2 }, gustPeriod: { value: 18 } };
   const pixelFoliage = createPixelFoliageMaterials({
-    getColor: (...args) => applyNightColor(new THREE.Color(color.role(...args)), mode),
+    getColor: (...args) => new THREE.Color(color.role(...args)),
+    shadeColor: (color) => applyNightColor(color, mode),
     getHiddenColor: () => applyNightColor(new THREE.Color(theme.bg), mode),
     time: ambientTime,
     wind,
@@ -104,6 +105,10 @@ export function createMapMaterials() {
       const { temperature, tone } = base.userData.pixelFoliage;
       return pixelFoliage.material(temperature, tone, state);
     }
+    if (base.userData.pixelBark) {
+      const { species, temperature, tone } = base.userData.pixelBark;
+      return pixelFoliage.barkMaterial(species, temperature, tone, state);
+    }
     if (!fogMaterials.has(base)) fogMaterials.set(base, new Map());
     const variants = fogMaterials.get(base);
     if (!variants.has(state)) {
@@ -120,6 +125,7 @@ export function createMapMaterials() {
     fogMaterial,
     propMaterial,
     pixelMaterial: pixelFoliage.material,
+    pixelBarkMaterial: pixelFoliage.barkMaterial,
     treeDepth,
     ambientTime,
     waveDirection,

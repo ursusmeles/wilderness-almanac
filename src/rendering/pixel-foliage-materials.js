@@ -1,20 +1,31 @@
 import * as THREE from 'three';
-import { evergreenAtlas, EVERGREEN_SHADES } from './pixel-evergreens.js';
+import { evergreenAtlas } from './pixel-evergreens.js';
+import { EVERGREEN_SPECIES, pixelFoliageRamp, pixelBarkColor } from './pixel-foliage-colors.js';
 import { installTreeSway } from './ambient-motion.js';
 
 // All shape variants share an atlas; only palette/temperature/fog need variants.
-export function createPixelFoliageMaterials({ getColor, getHiddenColor, time, wind }) {
+export function createPixelFoliageMaterials({ getColor, shadeColor, getHiddenColor, time, wind }) {
   const variants = new Map();
+  function shaded(hex, state) {
+    const color = shadeColor(new THREE.Color(hex));
+    if (state === 'unvisited') {
+      const gray = color.r * 0.2126 + color.g * 0.7152 + color.b * 0.0722;
+      color.setRGB(gray, gray, gray);
+    } else if (state !== 'visited') color.copy(getHiddenColor());
+    return color;
+  }
   function repaint(entry) {
-    const { texture, temperature, tone, state } = entry;
-    const colors = EVERGREEN_SHADES.map(([role, offset]) => {
-      const color = getColor(role, temperature, tone + offset);
-      if (state === 'unvisited') {
-        const gray = color.r * 0.2126 + color.g * 0.7152 + color.b * 0.0722;
-        color.setRGB(gray, gray, gray);
-      } else if (state !== 'visited') color.copy(getHiddenColor());
-      return color.getHex();
-    });
+    const { material, texture, temperature, tone, state, species } = entry;
+    const mapHex = `#${getColor('leaf', temperature).getHexString()}`;
+    if (species) {
+      material.color.copy(shaded(pixelBarkColor(species, mapHex, temperature, tone), state));
+      return;
+    }
+    const colors = EVERGREEN_SPECIES.flatMap((species) =>
+      pixelFoliageRamp(species, mapHex, temperature, tone).map((hex) =>
+        shaded(hex, state).getHex(),
+      ),
+    );
     const { indices } = evergreenAtlas();
     const pixels = texture.image.data;
     for (let i = 0; i < indices.length; i++) {
@@ -49,13 +60,29 @@ export function createPixelFoliageMaterials({ getColor, getHiddenColor, time, wi
       }
       return variants.get(key).material;
     },
+    barkMaterial(species, temperature = 0, tone = 0, state = 'visited') {
+      const key = `bark:${species}:${temperature}:${tone}:${state}`;
+      if (!variants.has(key)) {
+        const material = new THREE.MeshStandardMaterial({
+          roughness: 1,
+          metalness: 0,
+          flatShading: true,
+        });
+        material.userData.pixelBark = { species, temperature, tone };
+        installTreeSway(material, time, wind);
+        const entry = { material, species, temperature, tone, state };
+        repaint(entry);
+        variants.set(key, entry);
+      }
+      return variants.get(key).material;
+    },
     repaint() {
       for (const entry of variants.values()) repaint(entry);
     },
     dispose() {
       for (const { material, texture } of variants.values()) {
         material.dispose();
-        texture.dispose();
+        texture?.dispose();
       }
       variants.clear();
     },
