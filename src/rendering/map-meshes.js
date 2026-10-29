@@ -61,7 +61,7 @@ export function createMapMeshes({
       makeRoads(propRoot, data);
       for (const prop of data.props) {
         lightFeature = prop.kind === 'poi' ? prop.poiKind : data.pointOfLight?.type;
-        if (prop.kind === 'tree') makeTree(propRoot, prop);
+        if (prop.kind === 'tree') makeTree(propRoot, prop, data.forest);
         else if (prop.kind === 'house') makeHouse(propRoot, prop);
         else if (prop.kind === 'tower') makeTower(propRoot, prop);
         else if (prop.kind === 'hall') makeHall(propRoot, prop);

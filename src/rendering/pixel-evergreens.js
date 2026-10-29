@@ -4,7 +4,23 @@ import { addMesh } from './geometry.js';
 
 const SIZE = 11;
 const WIDTH = 0.48;
-const BASE = 0.205;
+const SPECIES = ['fir', 'spruce', 'pine'];
+
+export function evergreenSpecies(prop, forest) {
+  const type = forest?.family === 'deciduous' ? forest.neighbourType : forest?.type;
+  const seed = (prop.detailSeed ?? 0) >>> 0;
+  if (type === 'taiga') return ['spruce', 'spruce', 'fir', 'fir', 'pine'][seed % 5];
+  return SPECIES.includes(type) ? type : SPECIES[seed % SPECIES.length];
+}
+
+export function evergreenForm(species, variant) {
+  const height = variant === 2 ? 1.065 : 0.945;
+  return {
+    height,
+    base: species === 'pine' ? height * 0.65 : 0.16,
+    trunkHeight: species === 'pine' ? height * 0.82 : 0.29,
+  };
+}
 // The same foliage palette supplies six steps, from deep recesses to branch tips.
 export const EVERGREEN_SHADES = [
   ['leafDark', -3],
@@ -16,39 +32,64 @@ export const EVERGREEN_SHADES = [
 ];
 
 // Solid stepped crowns retain the original prop transforms and palette roles.
-function crownFaces(variant, style) {
-  const tall = variant === 2;
-  const height = tall ? 1.065 : 0.945;
-  const dims = [SIZE, Math.ceil((height - BASE) / (WIDTH / SIZE)), SIZE];
-  const step = [WIDTH / SIZE, (height - BASE) / dims[1], WIDTH / SIZE];
-  const origin = [-WIDTH / 2, BASE, -WIDTH / 2];
-  const random = randomStream(1987 + style * 731 + variant * 2917);
+function crownFaces(species, variant, style) {
+  const { height, base } = evergreenForm(species, variant);
+  const dims = [SIZE, Math.ceil((height - base) / (WIDTH / SIZE)), SIZE];
+  const step = [WIDTH / SIZE, (height - base) / dims[1], WIDTH / SIZE];
+  const origin = [-WIDTH / 2, base, -WIDTH / 2];
+  const random = randomStream(
+    1987 + style * 731 + variant * 2917 + SPECIES.indexOf(species) * 1337,
+  );
   const phase = random() * Math.PI * 2;
   const lean = [(random() - 0.5) * 0.025, (random() - 0.5) * 0.025];
   const tierOffset = style % 3;
   const branches = 5 + (style % 3);
+  // Overlapping rounded boughs give pine a raised, irregular umbrella crown.
+  const lobes = [{ x: 0, z: 0, y: 0.66, radius: 0.14, reach: 0.34 }];
+  for (let i = 0; i < 3; i++) {
+    const angle = phase + (i * Math.PI * 2) / 3;
+    const offset = 0.075 + random() * 0.025;
+    lobes.push({
+      x: Math.cos(angle) * offset,
+      z: Math.sin(angle) * offset,
+      y: 0.36 + random() * 0.14,
+      radius: 0.13 + random() * 0.015,
+      reach: 0.3 + random() * 0.09,
+    });
+  }
   const data = new Uint8Array(dims[0] * dims[1] * dims[2]);
   const at = ([x, y, z]) =>
     x < 0 || y < 0 || z < 0 || x >= dims[0] || y >= dims[1] || z >= dims[2]
       ? 0
       : data[(y * dims[2] + z) * dims[0] + x];
   for (let y = 0; y < dims[1]; y++) {
-    const worldY = BASE + (y + 0.5) * step[1];
-    const rise = (worldY - BASE) / (height - BASE);
-    const lower = worldY <= 0.735 ? 0.24 * ((0.735 - worldY) / 0.53) : 0;
-    const upperBase = tall ? 0.435 : 0.455;
-    const upper =
-      worldY >= upperBase ? (tall ? 0.16 : 0.19) * ((height - worldY) / (height - upperBase)) : 0;
+    const worldY = base + (y + 0.5) * step[1];
+    const rise = (worldY - base) / (height - base);
     for (let z = 0; z < SIZE; z++) {
       for (let x = 0; x < SIZE; x++) {
         const dx = origin[0] + (x + 0.5) * step[0] - lean[0] * rise;
         const dz = origin[2] + (z + 0.5) * step[2] - lean[1] * rise;
-        const tier = Math.floor((y + tierOffset) / 4);
-        const branch = Math.sin(Math.atan2(dz, dx) * branches + phase + tier * 0.8);
-        const taper = 1 - ((y + tierOffset) % 4) * 0.025;
-        const radius = Math.min(0.24, Math.max(lower, upper) * taper * (1 + branch * 0.1));
-        if (Math.hypot(dx, dz) <= Math.max(step[0] * 0.51, radius))
-          data[(y * SIZE + z) * SIZE + x] = 1;
+        let filled;
+        if (species === 'pine') {
+          filled = lobes.some(
+            (lobe) =>
+              ((dx - lobe.x) / lobe.radius) ** 2 +
+                ((dz - lobe.z) / lobe.radius) ** 2 +
+                ((rise - lobe.y) / lobe.reach) ** 2 <=
+              1,
+          );
+        } else {
+          const angle = Math.atan2(dz, dx);
+          const tier = Math.floor((y + tierOffset) / 4);
+          const branch = Math.sin(angle * branches + phase + tier * 0.55);
+          const row = (y + tierOffset) % 4;
+          const fir = species === 'fir';
+          const envelope = (fir ? 0.24 : 0.205) * (1 - rise) ** (fir ? 0.8 : 1.05);
+          const taper = fir ? 1 - row * 0.055 : 0.82 + row * 0.06;
+          const radius = Math.min(0.24, envelope * taper * (1 + branch * (fir ? 0.09 : 0.17)));
+          filled = Math.hypot(dx, dz) <= Math.max(step[0] * 0.51, radius);
+        }
+        if (filled) data[(y * SIZE + z) * SIZE + x] = 1;
       }
     }
   }
@@ -56,11 +97,21 @@ function crownFaces(variant, style) {
   function shade(coords, axis, sign) {
     if (axis === 1 && sign < 0) return 1;
     const [x, y, z] = coords;
+    if (species === 'pine') {
+      const patch =
+        (Math.floor((x + tierOffset) / 2) + Math.floor(z / 2) * 3 + Math.floor(y / 2) * 2 + style) %
+        7;
+      let tone = [2, 3, 3, 4, 1, 3, 4][patch];
+      if (axis === 1) tone = patch % 3 === 0 ? 4 : 3;
+      if (tone === 4 && (x + z + style) % 4 === 0) tone = 5;
+      return tone + 1;
+    }
     const angle = Math.atan2(z + 0.5 - SIZE / 2, x + 0.5 - SIZE / 2);
     const sector = ((angle + phase) * branches) / (Math.PI * 2);
     const offset = (((Math.floor(sector) * 7 + style) % 3) + 3) % 3;
-    const tier = Math.floor((y + tierOffset + offset) / 5);
-    const row = (y + tierOffset + offset) % 5;
+    const tierHeight = species === 'fir' ? 4 : 6;
+    const tier = Math.floor((y + tierOffset + offset) / tierHeight);
+    const row = (y + tierOffset + offset) % tierHeight;
     const fan = sector + tier * 0.37;
     const edge = Math.abs(fan - Math.floor(fan) - 0.5) * 2;
     // Stepped needle fans wrap around each branch tier. Their dark, hanging
@@ -157,22 +208,32 @@ export function evergreenAtlas() {
     y = 0,
     rowHeight = 0;
   const crowns = new Map();
-  for (const variant of [0, 2])
-    for (let style = 0; style < 8; style++) {
-      const faces = crownFaces(variant, style);
-      for (const face of faces) {
-        if (x + face.width + 2 > width) {
-          x = 0;
-          y += rowHeight;
-          rowHeight = 0;
-        }
-        face.x = x + 1;
-        face.y = y + 1;
-        x += face.width + 2;
-        rowHeight = Math.max(rowHeight, face.height + 2);
+  for (const species of SPECIES)
+    for (const variant of [0, 2])
+      for (let style = 0; style < 8; style++) {
+        const faces = crownFaces(species, variant, style);
+        crowns.set(`${species}:${variant}:${style}`, {
+          faces,
+          points: [],
+          normals: [],
+          uvs: [],
+          indices: [],
+        });
       }
-      crowns.set(`${variant}:${style}`, { faces, points: [], normals: [], uvs: [], indices: [] });
+  const patches = [...crowns.values()]
+    .flatMap((crown) => crown.faces)
+    .sort((a, b) => b.height - a.height || b.width - a.width);
+  for (const face of patches) {
+    if (x + face.width + 2 > width) {
+      x = 0;
+      y += rowHeight;
+      rowHeight = 0;
     }
+    face.x = x + 1;
+    face.y = y + 1;
+    x += face.width + 2;
+    rowHeight = Math.max(rowHeight, face.height + 2);
+  }
   const height = 2 ** Math.ceil(Math.log2(y + rowHeight));
   const indices = new Uint8Array(width * height);
   for (const crown of crowns.values()) {
@@ -202,10 +263,10 @@ export function evergreenAtlas() {
 }
 
 export function createPixelEvergreenBuilder({ pixelMaterial }) {
-  return (parent, prop) => {
+  return (parent, prop, species) => {
     const variant = prop.variant === 2 ? 2 : 0;
     const style = ((prop.detailSeed ?? 0) >>> 0) % 8;
-    const key = `${variant}:${style}`;
+    const key = `${species}:${variant}:${style}`;
     const crown = evergreenAtlas().crowns.get(key);
     const geometry = new BufferGeometry();
     geometry.setAttribute('position', new Float32BufferAttribute(crown.points, 3));

@@ -2,12 +2,19 @@ import * as THREE from 'three';
 import { randomStream } from '../generation/math.js';
 import { addMesh, geometryFrom } from './geometry.js';
 import { createFarmlandBuilder } from './farmland-props.js';
-import { createPixelEvergreenBuilder } from './pixel-evergreens.js';
+import {
+  createPixelEvergreenBuilder,
+  evergreenSpecies,
+  evergreenForm,
+} from './pixel-evergreens.js';
 
 export function createNatureBuilder({ materials, propMaterial, pixelMaterial }) {
   const makeField = createFarmlandBuilder({ propMaterial });
   const makeEvergreen = createPixelEvergreenBuilder({ pixelMaterial });
-  function makeTree(parent, prop) {
+  function makeTree(parent, prop, forest) {
+    const species = evergreenSpecies(prop, forest);
+    const trunkHeight =
+      prop.variant === 1 ? 0.29 : evergreenForm(species, prop.variant).trunkHeight;
     const g = new THREE.Group();
     g.userData.tree = true;
     g.userData.wind = { height: 0.8, strength: 1 };
@@ -16,10 +23,10 @@ export function createNatureBuilder({ materials, propMaterial, pixelMaterial }) 
     g.scale.setScalar(prop.scale);
     addMesh(
       g,
-      new THREE.CylinderGeometry(0.025, 0.04, 0.29, 5),
+      new THREE.CylinderGeometry(0.025, 0.04, trunkHeight, 5),
       propMaterial('trunk', prop.temperature),
       0,
-      0.145,
+      trunkHeight / 2,
       0,
     );
     if (prop.variant === 1) {
@@ -57,7 +64,25 @@ export function createNatureBuilder({ materials, propMaterial, pixelMaterial }) 
         }
       }
     } else {
-      makeEvergreen(g, prop);
+      if (species === 'pine') {
+        const { height } = evergreenForm(species, prop.variant);
+        for (const direction of [-1, 1]) {
+          const start = new THREE.Vector3(0, height * 0.55, 0);
+          const end = new THREE.Vector3(direction * 0.12, height * 0.8, direction * 0.04);
+          const axis = end.clone().sub(start);
+          const center = start.clone().add(end).multiplyScalar(0.5);
+          const branch = addMesh(
+            g,
+            new THREE.CylinderGeometry(0.01, 0.022, axis.length(), 4),
+            propMaterial('trunk', prop.temperature),
+            center.x,
+            center.y,
+            center.z,
+          );
+          branch.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), axis.normalize());
+        }
+      }
+      makeEvergreen(g, prop, species);
     }
     parent.add(g);
   }
