@@ -16,6 +16,7 @@ export function createMapMeshes({
   pixelMaterial,
   pixelDeciduousMaterial,
   pixelBarkMaterial,
+  pixelPropMaterial,
   treeDepth,
   waveDirection,
   fogMaterial = (material) => material,
@@ -38,6 +39,7 @@ export function createMapMeshes({
       pixelMaterial,
       pixelDeciduousMaterial,
       pixelBarkMaterial,
+      pixelPropMaterial,
     });
   const { makeHouse, makeTower, makeHall, makeBarrier } = createSettlementBuilder({
     addMesh,
@@ -53,7 +55,7 @@ export function createMapMeshes({
     roofGeometry,
     registerLight,
   });
-  const makeRoads = createRoadBuilder({ propMaterial });
+  const makeRoads = createRoadBuilder({ propMaterial, pixelPropMaterial });
   function buildMap(layout) {
     clearGeometries(map);
     cells.length = 0;
@@ -111,9 +113,11 @@ export function createMapMeshes({
           lightSources.push({ ...source, matrix: parent.matrixWorld.clone(), tile: data });
       propRoot.traverse((object) => {
         if (!object.isMesh) return;
-        const pixelFoliage = Boolean(object.material.userData.pixelFoliage);
+        const pixelProp = Boolean(
+          object.material.userData.pixelFoliage || object.material.userData.pixelDressing,
+        );
         const geometry =
-          object.geometry.index && !pixelFoliage
+          object.geometry.index && !pixelProp
             ? object.geometry.toNonIndexed()
             : object.geometry.clone();
         geometry.applyMatrix4(object.matrixWorld);
@@ -132,9 +136,18 @@ export function createMapMeshes({
         }
         geometry.setAttribute('swayWeight', new THREE.BufferAttribute(sway, 1));
         geometry.setAttribute('wavePhase', new THREE.BufferAttribute(phase, 1));
-        // Evergreen chunks keep off-screen forest geometry out of the main
-        // view and raycasts. Other props retain their existing batch layout.
-        const chunk = pixelFoliage ? `${Math.floor(data.q / 4)},${Math.floor(data.r / 4)}` : '';
+        // Chunk the expensive crowns/fields. Tiny dressing stays in shared
+        // map-wide batches rather than adding draw calls for every patch.
+        const chunkSize =
+          object.material.userData.pixelFoliage ||
+          object.material.userData.pixelDressing?.kind === 'grain'
+            ? 4
+            : object.material.userData.pixelDressing?.kind === 'vine'
+              ? 8
+              : 0;
+        const chunk = chunkSize
+          ? `${Math.floor(data.q / chunkSize)},${Math.floor(data.r / chunkSize)}`
+          : '';
         const batchKey = `${object.material.uuid}:${object.castShadow}:${chunk}`;
         if (!propBatches.has(batchKey))
           propBatches.set(batchKey, {
@@ -161,7 +174,7 @@ export function createMapMeshes({
     for (const batch of propBatches.values()) {
       const geometry = mergeGeometries(batch.geometries);
       batch.geometries.forEach((part) => part.dispose());
-      if (batch.material.userData.pixelFoliage) {
+      if (batch.material.userData.pixelFoliage || batch.material.userData.pixelDressing) {
         geometry.computeBoundingSphere();
         geometry.boundingSphere.radius += 0.35; // Include the strongest wind gust.
       }

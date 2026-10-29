@@ -1,9 +1,10 @@
 import * as THREE from 'three';
 import { clipField, cropHeight, grainPlants, polygonArea } from '../generation/farmland-patches.js';
-import { addMesh, geometryFrom } from './geometry.js';
+import { addMesh } from './geometry.js';
+import { groundGeometry, appendPlant, plantGeometry } from './pixel-dressing-geometry.js';
 import { roadHeight } from '../generation/road-geometry.js';
 
-export function createGrainBuilder({ propMaterial }) {
+export function createGrainBuilder({ pixelPropMaterial }) {
   return function makeGrain(parent, prop, cell) {
     const group = new THREE.Group();
     group.position.set(prop.x, prop.y, prop.z);
@@ -14,8 +15,10 @@ export function createGrainBuilder({ propMaterial }) {
     const xs = prop.patch.map((p) => p[0]),
       zs = prop.patch.map((p) => p[1]);
     const soil = [],
-      stalks = [],
-      heads = [];
+      points = [],
+      uvs = [],
+      indices = [];
+    let plant = 0;
     // Subdivide the clipped ground so the stalk roots follow the rolling patch.
     for (let x = Math.min(...xs); x < Math.max(...xs); x += 0.07)
       for (let z = Math.min(...zs); z < Math.max(...zs); z += 0.07) {
@@ -34,33 +37,32 @@ export function createGrainBuilder({ propMaterial }) {
       }
     for (const { x, y: baseY, z, height, lean } of grainPlants(prop)) {
       const y = baseY + groundOffset(x, z);
-      for (const [dx, dz] of [
-        [0.009, 0],
-        [0, 0.009],
-      ]) {
-        stalks.push(x - dx, y, z - dz, x + dx, y, z + dz, x + lean, y + height, z);
-        heads.push(
-          x + lean - dx,
-          y + height * 0.68,
-          z - dz,
-          x + lean + dx,
-          y + height * 0.68,
-          z + dz,
-          x + lean,
-          y + height + 0.028,
-          z,
-        );
-      }
+      appendPlant(points, uvs, indices, {
+        x,
+        y,
+        z,
+        height: height + 0.028,
+        width: 0.02,
+        lean,
+        style: prop.detailSeed + plant++,
+      });
     }
     group.userData.wind = { height: 0.2 * prop.scale, strength: 0.18 };
-    for (const [points, role] of [
-      [soil, 'grainGround'],
-      [stalks, 'grainStem'],
-      [heads, 'grain'],
-    ]) {
-      if (!points.length) continue;
-      const mesh = addMesh(group, geometryFrom(points), propMaterial(role, prop.temperature));
-      mesh.castShadow = false;
+    if (soil.length) {
+      const ground = addMesh(
+        group,
+        groundGeometry(soil),
+        pixelPropMaterial('grainGround', prop.temperature),
+      );
+      ground.castShadow = false;
+    }
+    if (points.length) {
+      const plants = addMesh(
+        group,
+        plantGeometry(points, uvs, indices),
+        pixelPropMaterial('grain', prop.temperature),
+      );
+      plants.castShadow = false;
     }
     parent.add(group);
   };

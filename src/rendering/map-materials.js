@@ -5,6 +5,7 @@ import { installTreeSway, installWaveDrift } from './ambient-motion.js';
 import { applyNightColor } from './daylight.js';
 import { timeOfDay, windForTimeOfDay } from '../application/time-of-day.js';
 import { createPixelFoliageMaterials } from './pixel-foliage-materials.js';
+import { createPixelDressingMaterials } from './pixel-dressing-materials.js';
 
 export function createMapMaterials() {
   let color = createMapPalette(palettes[DEFAULT_PALETTE]);
@@ -45,13 +46,15 @@ export function createMapMaterials() {
   const tintedMaterials = new Map();
   const ambientTime = { value: 0 };
   const wind = { strength: { value: 1.2 }, gustPeriod: { value: 18 } };
-  const pixelFoliage = createPixelFoliageMaterials({
+  const pixelOptions = {
     getColor: (...args) => new THREE.Color(color.role(...args)),
     shadeColor: (color) => applyNightColor(color, mode),
     getHiddenColor: () => applyNightColor(new THREE.Color(theme.bg), mode),
     time: ambientTime,
     wind,
-  });
+  };
+  const pixelFoliage = createPixelFoliageMaterials(pixelOptions);
+  const pixelDressing = createPixelDressingMaterials(pixelOptions);
   const waveDirection = { value: new THREE.Vector2(1, 0) };
   for (const role of [
     'leaf',
@@ -109,6 +112,10 @@ export function createMapMaterials() {
       const { species, temperature, tone } = base.userData.pixelBark;
       return pixelFoliage.barkMaterial(species, temperature, tone, state);
     }
+    if (base.userData.pixelDressing) {
+      const { kind, temperature } = base.userData.pixelDressing;
+      return pixelDressing.material(kind, temperature, state);
+    }
     if (!fogMaterials.has(base)) fogMaterials.set(base, new Map());
     const variants = fogMaterials.get(base);
     if (!variants.has(state)) {
@@ -128,6 +135,7 @@ export function createMapMaterials() {
     pixelDeciduousMaterial: (temperature, tone) =>
       pixelFoliage.material(temperature, tone, 'visited', 'deciduous'),
     pixelBarkMaterial: pixelFoliage.barkMaterial,
+    pixelPropMaterial: pixelDressing.material,
     treeDepth,
     ambientTime,
     waveDirection,
@@ -151,6 +159,7 @@ export function createMapMaterials() {
         for (const material of variants.values()) material.dispose();
       treeDepth.dispose();
       pixelFoliage.dispose();
+      pixelDressing.dispose();
     },
   };
   function repaint() {
@@ -169,5 +178,6 @@ export function createMapMaterials() {
     for (const [base, variants] of fogMaterials)
       for (const [state, material] of variants) updateFogMaterial(base, material, state);
     pixelFoliage.repaint();
+    pixelDressing.repaint();
   }
 }

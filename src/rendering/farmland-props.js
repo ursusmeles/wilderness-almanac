@@ -1,11 +1,17 @@
 import * as THREE from 'three';
 import { cropHeight } from '../generation/farmland-patches.js';
 import { randomStream } from '../generation/math.js';
-import { addMesh, geometryFrom } from './geometry.js';
+import { addMesh } from './geometry.js';
 import { createGrainBuilder } from './grain-props.js';
+import {
+  dressingGeometry,
+  groundGeometry,
+  appendPlant,
+  plantGeometry,
+} from './pixel-dressing-geometry.js';
 
-export function createFarmlandBuilder({ propMaterial }) {
-  const makeGrain = createGrainBuilder({ propMaterial });
+export function createFarmlandBuilder({ pixelPropMaterial }) {
+  const makeGrain = createGrainBuilder({ pixelPropMaterial });
   return function makeField(parent, prop, cell) {
     if (prop.patch) return makeGrain(parent, prop, cell);
     const group = new THREE.Group();
@@ -28,8 +34,8 @@ export function createFarmlandBuilder({ propMaterial }) {
       }
     const ground = addMesh(
       group,
-      geometryFrom(soil),
-      propMaterial(prop.cropStyle === 'grain' ? 'crop' : 'soil', prop.temperature),
+      groundGeometry(soil),
+      pixelPropMaterial(prop.cropStyle === 'grain' ? 'grainGround' : 'soil', prop.temperature),
     );
     ground.castShadow = false;
     if (prop.cropStyle === 'vineyard') {
@@ -39,7 +45,7 @@ export function createFarmlandBuilder({ propMaterial }) {
           addMesh(
             group,
             new THREE.BoxGeometry(0.012, 0.18, 0.012),
-            propMaterial('trunk', prop.temperature),
+            pixelPropMaterial('timber', prop.temperature),
             x,
             height(x, z) + 0.09,
             z,
@@ -47,38 +53,39 @@ export function createFarmlandBuilder({ propMaterial }) {
         addMesh(
           group,
           new THREE.BoxGeometry(0.32, 0.007, 0.007),
-          propMaterial('rope', prop.temperature),
+          pixelPropMaterial('timber', prop.temperature),
           0,
-          0.16,
+          height(0, z) + 0.15,
           z,
         );
-        for (let plant = 0; plant < 5; plant++) {
-          const x = (plant - 2) * 0.066,
+        // Broad overlapping clumps read as a row without a mesh for every leaf.
+        for (let plant = 0; plant < 3; plant++) {
+          const x = (plant - 1) * 0.11,
             y = height(x, z);
-          const foliage = addMesh(
+          addMesh(
             group,
-            new THREE.DodecahedronGeometry(0.047, 0),
-            propMaterial('leaf', prop.temperature),
+            dressingGeometry('vine', prop.detailSeed + row * 3 + plant),
+            pixelPropMaterial('vine', prop.temperature),
             x,
-            y + 0.13,
+            y + 0.1,
             z,
           );
-          foliage.scale.set(1, 0.6, 0.75);
-          for (let grape = 0; grape < 4; grape++)
+          for (let grape = 0; grape < 2; grape++)
             addMesh(
               group,
-              new THREE.IcosahedronGeometry(0.011, 0),
-              propMaterial('grape'),
-              x + ((grape % 2) - 0.5) * 0.014,
-              y + 0.105 - Math.floor(grape / 2) * 0.014,
-              z + 0.033,
+              new THREE.BoxGeometry(0.021 - grape * 0.006, 0.022, 0.021 - grape * 0.006),
+              pixelPropMaterial('grape'),
+              x + grape * 0.005,
+              y + 0.1 - grape * 0.018,
+              z + 0.034,
             );
         }
       }
     } else {
-      // Crossed stalks keep dense, golden grain inexpensive after batching.
-      const stalks = [],
-        heads = [];
+      // The same dense legacy footprint, with colour/outline detail in a texture.
+      const points = [],
+        uvs = [],
+        indices = [];
       for (let row = 0; row < 8; row++)
         for (let col = 0; col < 8; col++) {
           const x = (col - 3.5) * 0.043 + (random() - 0.5) * 0.01;
@@ -86,33 +93,23 @@ export function createFarmlandBuilder({ propMaterial }) {
           const y = height(x, z) + 0.004,
             h = 0.07 + random() * 0.045;
           const lean = (random() - 0.5) * 0.025;
-          for (const [dx, dz] of [
-            [0.007, 0],
-            [0, 0.007],
-          ]) {
-            stalks.push(x - dx, y, z - dz, x + dx, y, z + dz, x + lean, y + h, z);
-            heads.push(
-              x + lean - dx,
-              y + h * 0.8,
-              z - dz,
-              x + lean + dx,
-              y + h * 0.8,
-              z + dz,
-              x + lean,
-              y + h + 0.025,
-              z,
-            );
-          }
+          appendPlant(points, uvs, indices, {
+            x,
+            y,
+            z,
+            height: h + 0.025,
+            width: 0.018,
+            lean,
+            style: row + col,
+          });
         }
       group.userData.wind = { height: 0.18 * prop.scale, strength: 0.18 };
-      const stems = addMesh(
+      const plants = addMesh(
         group,
-        geometryFrom(stalks),
-        propMaterial('grainStem', prop.temperature),
+        plantGeometry(points, uvs, indices),
+        pixelPropMaterial('grain', prop.temperature),
       );
-      const ears = addMesh(group, geometryFrom(heads), propMaterial('grain', prop.temperature));
-      stems.castShadow = false;
-      ears.castShadow = false;
+      plants.castShadow = false;
     }
     parent.add(group);
   };
