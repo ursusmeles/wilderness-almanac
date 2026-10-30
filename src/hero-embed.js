@@ -98,6 +98,7 @@ async function initialize() {
     renderer.setTimeOfDay('dawn');
     renderer.setMap(scene.layout, { resetView: true, fitContent: true, artStyle: 'pixelart' });
     renderer.setFrameInsets(frameInsets);
+    renderer.select('1,0');
     requestAnimationFrame(() =>
       requestAnimationFrame(() => {
         if (listeners.signal.aborted) return;

@@ -241,7 +241,9 @@ render data at build time; campaign UI, storage and the generator are not import
 by the embed browser entry. Its showcase-only overrides name the town Far-Nahar,
 use spruce in the dense forest, and connect town through the meadow to the SW
 boundary. An off-map neighbour supplies the road port during dressing only;
-the generated campaign fixture and seven visible cells stay unchanged.
+the generated campaign fixture and seven visible cells stay unchanged. The abbey
+hex (`1,0`) is selected before the first ready frame, so the selection ring and
+the parent caption start in sync.
 No party callbacks are supplied. Ambient wind/water motion is enabled, respecting
 reduced motion and hidden documents. The embed uses an explicit opaque background
 matching its parent section. Initial `background`, `left` and `right` URL parameters
