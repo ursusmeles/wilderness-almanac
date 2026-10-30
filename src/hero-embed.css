@@ -1,0 +1,47 @@
+/* Standalone website map; no campaign UI or page-wide gesture overrides. */
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: #020406;
+  font:
+    14px/1.25 system-ui,
+    sans-serif;
+}
+#hero-scene {
+  position: absolute;
+  inset: 0;
+  touch-action: pan-y pinch-zoom;
+}
+canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+.visually-hidden,
+.keyboard-hexes:not(:focus-within) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.keyboard-hexes:focus-within {
+  position: absolute;
+  inset: 12px 12px auto;
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  color: #f1e8db;
+  background: #0f2024;
+  border: 1px solid #e5b96e;
+}
+select {
+  min-height: 44px;
+  font: inherit;
+}

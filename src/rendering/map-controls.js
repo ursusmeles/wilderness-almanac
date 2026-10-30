@@ -15,6 +15,7 @@ export function createMapControls({
   onHover,
   party,
   touchMultiSelect = false,
+  navigation = true,
 }) {
   const listeners = new AbortController();
   const listen = (target, event, handler, options = {}) =>
@@ -134,12 +135,14 @@ export function createMapControls({
     draw();
   }
   function changeZoom(factor) {
+    if (!navigation) return false;
     zoom = Math.min(12, Math.max(0.7, zoom * factor));
     camera.zoom = zoom;
     camera.updateProjectionMatrix();
     draw();
   }
   function pan(horizontal, vertical) {
+    if (!navigation) return false;
     cancelHover();
     if (pointers.size || partyPointer !== null) return false;
     camera.updateMatrixWorld();
@@ -159,6 +162,7 @@ export function createMapControls({
     return true;
   }
   function focus(key, { hexesWide } = {}) {
+    if (!navigation) return false;
     cancelHover();
     const cell = cells.find((cell) => cell.key === key);
     if (!cell) return false;
@@ -257,6 +261,7 @@ export function createMapControls({
     action?.();
   }
   listen(host, 'pointerdown', (e) => {
+    if (!navigation) return;
     if (e.button !== 0) return;
     cancelHover();
     cancelLongPress();
@@ -317,6 +322,7 @@ export function createMapControls({
     onHover(null);
   });
   listen(host, 'pointermove', (e) => {
+    if (!navigation) return;
     if (partyPointer === e.pointerId) {
       if (start && Math.hypot(e.clientX - start.x, e.clientY - start.y) >= 3) gestureMoved = true;
       party.move(e, camera);
@@ -361,6 +367,7 @@ export function createMapControls({
     }
   });
   function release(e) {
+    if (!navigation) return;
     cancelLongPress();
     if (partyPointer === e.pointerId) {
       partyPointer = null;
@@ -439,18 +446,44 @@ export function createMapControls({
     hoverRing.visible = false;
     draw();
   });
-  listen(
-    host,
-    'wheel',
-    (e) => {
-      e.preventDefault();
-      // Firefox and some mouse drivers report lines/pages rather than pixels.
-      const mode = e.deltaMode;
-      const unit = mode === 1 ? 16 : mode === 2 ? host.clientHeight : 1;
-      changeZoom(Math.exp(-e.deltaY * unit * 0.001));
-    },
-    { passive: false },
-  );
+  if (navigation)
+    listen(
+      host,
+      'wheel',
+      (e) => {
+        e.preventDefault();
+        // Firefox and some mouse drivers report lines/pages rather than pixels.
+        const mode = e.deltaMode;
+        const unit = mode === 1 ? 16 : mode === 2 ? host.clientHeight : 1;
+        changeZoom(Math.exp(-e.deltaY * unit * 0.001));
+      },
+      { passive: false },
+    );
+  if (!navigation) {
+    let press = null;
+    listen(host, 'pointerdown', (event) => {
+      if (event.button !== 0) return;
+      if (press && press.id !== event.pointerId) {
+        press.moved = true;
+        return;
+      }
+      press = { id: event.pointerId, x: event.clientX, y: event.clientY, moved: false };
+    });
+    listen(host, 'pointermove', (event) => {
+      if (press && Math.hypot(event.clientX - press.x, event.clientY - press.y) > 8)
+        press.moved = true;
+    });
+    listen(host, 'pointercancel', () => {
+      press = null;
+    });
+    listen(host, 'click', (event) => {
+      const moved = press?.moved;
+      press = null;
+      if (event.button !== 0 || moved) return;
+      const key = hit(event.clientX, event.clientY);
+      if (key) choose(key, { fromMap: true });
+    });
+  }
   const observer = new ResizeObserver(resize);
   observer.observe(host);
   return {

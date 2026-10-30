@@ -21,6 +21,7 @@ export function createMapRenderer(
     onPartySelect,
     motion = true,
     touchMultiSelect = false,
+    navigation = true,
     artStyle = 'low-poly',
   } = {},
 ) {
@@ -87,6 +88,7 @@ export function createMapRenderer(
     draw,
     onSelect,
     touchMultiSelect,
+    navigation,
     onHover,
     party,
   });

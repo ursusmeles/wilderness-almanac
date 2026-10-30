@@ -231,3 +231,22 @@ Keyboard +, = and − zoom shortcuts retain the current input-focus mode instead
 Low poly is the default. `application/map-art-style.js` defines the optional per-campaign appearance enum, validated by the shared frontend/backend campaign validator. Settings saves `defaultMapArtStyle` for future campaigns; New campaign can override it without regenerating geography/dressing. Legacy records retain their original shape and default to Low poly. Deploy the matching account backend to preserve the new optional field in account copies; no database migration is needed.
 
 The lazy `map-view.js` boundary remains unchanged. Shared mesh builders select original or pixel nature/farmland/grain models, while terrain/structure/lighting adapters receive explicit appearance options. Pixelart material registries create textures on demand and release them when returning to Low poly. Keep original Low poly renderer fixtures valid. Include both styles in preview, fog, party, thumbnail, export/import and responsive-control verification. See [PIXELART_EXPERIMENT.md](PIXELART_EXPERIMENT.md).
+
+## Website hero embed
+
+`/embed/hero/` is a separate Vite HTML entry using the shared lazy `ui/map-view.js`
+renderer boundary. Its scene is the version-10 `heliotest` fixture, dressing 0,
+Pixelart, Thronefall, and Dawn. `tools/hero-scene-plugin.mjs` prepares its plain
+render data at build time; campaign UI, storage and the generator are not imported
+by the embed browser entry. No party callbacks are supplied. Motion is disabled
+so it renders only on resize, selection or lighting changes.
+
+`navigation: false` disables pan, focus and all zoom paths in map controls while
+retaining click/tap selection. It registers no wheel handler and uses native
+vertical scrolling and browser pinch zoom. A keyboard-only native selector is
+revealed on focus. Normal app controls retain their existing defaults.
+
+The parent and embed exchange `twa-hero:*` messages, validating the source window
+and exact origin. The embed reports readiness/selection and accepts Dawn, Day,
+Dusk or Night. Its parent origin comes from the referrer, with a `parent` URL
+parameter fallback for referrer-blocking environments. Nothing is persisted.
