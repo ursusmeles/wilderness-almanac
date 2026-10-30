@@ -5,7 +5,7 @@ body {
   height: 100%;
   margin: 0;
   overflow: hidden;
-  background: transparent;
+  background: var(--hero-background, #f1e8db);
   font:
     14px/1.25 system-ui,
     sans-serif;

@@ -104,12 +104,26 @@ export function createMapControls({
     draw();
   }
   activeRing.visible = false;
+  let frameInsets = { left: 0, right: 0 };
+  function setFrameInsets({ left = 0, right = 0 } = {}) {
+    frameInsets = {
+      left: Number.isFinite(left) ? Math.max(0, left) : 0,
+      right: Number.isFinite(right) ? Math.max(0, right) : 0,
+    };
+    resize();
+  }
   function resize() {
     const w = host.clientWidth,
       h = host.clientHeight;
     if (!w || !h) return;
     renderer.setSize(w, h, false);
-    if (fitContent && fitPreviewCamera(camera, map, w / h)) {
+    const contentWidth = Math.max(1, w - frameInsets.left - frameInsets.right);
+    if (fitContent && fitPreviewCamera(camera, map, contentWidth / h)) {
+      // Extend the frustum for shadows without changing the fitted map scale.
+      const unitsPerPixel = (camera.right - camera.left) / contentWidth;
+      camera.left -= frameInsets.left * unitsPerPixel;
+      camera.right += frameInsets.right * unitsPerPixel;
+      camera.updateProjectionMatrix();
       zoom = 1;
       draw();
       return;
@@ -488,6 +502,7 @@ export function createMapControls({
   observer.observe(host);
   return {
     camera,
+    setFrameInsets,
     isInteracting: () => pointers.size > 0 || partyPointer !== null,
     refresh({ resetView = false, fitContent: fit = false, preserveFraming = false } = {}) {
       cancelHover();

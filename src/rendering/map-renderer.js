@@ -22,7 +22,7 @@ export function createMapRenderer(
     motion = true,
     touchMultiSelect = false,
     navigation = true,
-    transparent = false,
+    background = null,
     artStyle = 'low-poly',
   } = {},
 ) {
@@ -32,7 +32,7 @@ export function createMapRenderer(
   try {
     renderer = new THREE.WebGLRenderer({
       antialias: true,
-      alpha: transparent,
+      alpha: false,
       powerPreference: 'default',
     });
   } catch (error) {
@@ -40,7 +40,6 @@ export function createMapRenderer(
     return;
   }
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-  if (transparent) renderer.setClearColor(0x000000, 0);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.NoToneMapping;
   renderer.shadowMap.enabled = true;
@@ -71,6 +70,10 @@ export function createMapRenderer(
   shadowFloor.receiveShadow = true;
   scene.add(shadowFloor);
   const palette = createMapMaterials();
+  let backgroundColor = background;
+  function updateBackground() {
+    scene.background = new THREE.Color(backgroundColor ?? palette.background());
+  }
   const meshes = createMapMeshes(palette, { artStyle });
   scene.add(meshes.group);
   const party = onPartyMove
@@ -122,13 +125,19 @@ export function createMapRenderer(
   if (loading) loading.hidden = true;
   return {
     setMotion: ambientLoop.setMotion,
+    setBackground(value) {
+      backgroundColor = value;
+      updateBackground();
+      draw();
+    },
+    setFrameInsets: controls.setFrameInsets,
     setTimeOfDay(value) {
       dayMode = daylight.setMode(value);
       palette.setTimeOfDay(dayMode);
       featureLighting.setMode(dayMode);
       party?.setTimeOfDay(dayMode);
       shadowFloor.material.opacity = DAYLIGHT[dayMode].shadowOpacity;
-      scene.background = transparent ? null : new THREE.Color(palette.background());
+      updateBackground();
       renderer.domElement.dataset.timeOfDay = dayMode;
       draw();
       return dayMode;
@@ -188,7 +197,7 @@ export function createMapRenderer(
     },
     setPalette(seeds) {
       palette.setPalette(seeds);
-      scene.background = transparent ? null : new THREE.Color(palette.background());
+      updateBackground();
       draw();
     },
     dispose() {

@@ -243,9 +243,16 @@ use spruce in the dense forest, and connect town through the meadow to the SW
 boundary. An off-map neighbour supplies the road port during dressing only;
 the generated campaign fixture and seven visible cells stay unchanged.
 No party callbacks are supplied. Ambient wind/water motion is enabled, respecting
-reduced motion and hidden documents. `transparent: true` gives the WebGL canvas
-an alpha channel and leaves its background clear in every palette and TOD, so
-the embedding section shows through. Normal app renders remain opaque.
+reduced motion and hidden documents. The embed uses an explicit opaque background
+matching its parent section. Initial `background`, `left` and `right` URL parameters
+avoid a mismatched first frame; `twa-hero:appearance` messages update the background
+and side insets on theme/layout changes. `setBackground` retains that color across
+palette and TOD changes. Normal app renders keep their palette background.
+
+The website widens the canvas for long dawn/dusk shadows. `setFrameInsets` fits
+the hexes to the original content width, then extends the orthographic frustum
+by the extra left/right pixels. The map scale and placement stay fixed while
+shadows render into the additional canvas. Insets default to zero elsewhere.
 
 `navigation: false` disables pan, focus and all zoom paths in map controls while
 retaining click/tap selection. It registers no wheel handler and uses native

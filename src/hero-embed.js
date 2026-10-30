@@ -11,6 +11,15 @@ let ready = false;
 let lighting = 'dawn';
 let selectedKey = null;
 let parentOrigin = null;
+const parameters = new URL(location.href).searchParams;
+let background = /^#[a-f\d]{6}$/i.test(parameters.get('background') ?? '')
+  ? parameters.get('background')
+  : '#f1e8db';
+const frameInsets = {
+  left: Math.max(0, Number(parameters.get('left')) || 0),
+  right: Math.max(0, Number(parameters.get('right')) || 0),
+};
+document.documentElement.style.setProperty('--hero-background', background);
 
 try {
   if (window.parent !== window)
@@ -52,6 +61,14 @@ window.addEventListener(
     if (message.type === 'twa-hero:time' && TIMES_OF_DAY.includes(message.value)) {
       lighting = renderer.setTimeOfDay(message.value);
       notify('time', { value: lighting });
+    } else if (message.type === 'twa-hero:appearance') {
+      if (/^#[a-f\d]{6}$/i.test(message.background ?? '')) {
+        background = message.background;
+        document.documentElement.style.setProperty('--hero-background', background);
+        renderer.setBackground(background);
+      }
+      if (Number.isFinite(message.left) && Number.isFinite(message.right))
+        renderer.setFrameInsets({ left: message.left, right: message.right });
     } else if (message.type === 'twa-hero:hello') {
       notify('ready', { timeOfDay: lighting, selectedKey, hexes: scene.hexes });
     }
@@ -65,7 +82,7 @@ async function initialize() {
     if (listeners.signal.aborted) return;
     renderer = createMapRenderer(host, {
       motion: true,
-      transparent: true,
+      background,
       navigation: false,
       artStyle: 'pixelart',
       onSelect: announceSelection,
@@ -80,6 +97,7 @@ async function initialize() {
     renderer.setPalette(scene.palette);
     renderer.setTimeOfDay('dawn');
     renderer.setMap(scene.layout, { resetView: true, fitContent: true, artStyle: 'pixelart' });
+    renderer.setFrameInsets(frameInsets);
     requestAnimationFrame(() =>
       requestAnimationFrame(() => {
         if (listeners.signal.aborted) return;
