@@ -22,6 +22,7 @@ export function createMapRenderer(
     motion = true,
     touchMultiSelect = false,
     navigation = true,
+    transparent = false,
     artStyle = 'low-poly',
   } = {},
 ) {
@@ -31,7 +32,7 @@ export function createMapRenderer(
   try {
     renderer = new THREE.WebGLRenderer({
       antialias: true,
-      alpha: false,
+      alpha: transparent,
       powerPreference: 'default',
     });
   } catch (error) {
@@ -39,6 +40,7 @@ export function createMapRenderer(
     return;
   }
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  if (transparent) renderer.setClearColor(0x000000, 0);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.NoToneMapping;
   renderer.shadowMap.enabled = true;
@@ -126,7 +128,7 @@ export function createMapRenderer(
       featureLighting.setMode(dayMode);
       party?.setTimeOfDay(dayMode);
       shadowFloor.material.opacity = DAYLIGHT[dayMode].shadowOpacity;
-      scene.background = new THREE.Color(palette.background());
+      scene.background = transparent ? null : new THREE.Color(palette.background());
       renderer.domElement.dataset.timeOfDay = dayMode;
       draw();
       return dayMode;
@@ -186,7 +188,7 @@ export function createMapRenderer(
     },
     setPalette(seeds) {
       palette.setPalette(seeds);
-      scene.background = new THREE.Color(palette.background());
+      scene.background = transparent ? null : new THREE.Color(palette.background());
       draw();
     },
     dispose() {

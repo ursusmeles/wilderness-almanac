@@ -64,7 +64,8 @@ async function initialize() {
     const { createMapRenderer } = await import('./ui/map-view.js');
     if (listeners.signal.aborted) return;
     renderer = createMapRenderer(host, {
-      motion: false,
+      motion: true,
+      transparent: true,
       navigation: false,
       artStyle: 'pixelart',
       onSelect: announceSelection,

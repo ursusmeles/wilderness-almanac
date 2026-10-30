@@ -238,8 +238,14 @@ The lazy `map-view.js` boundary remains unchanged. Shared mesh builders select o
 renderer boundary. Its scene is the version-10 `heliotest` fixture, dressing 0,
 Pixelart, Thronefall, and Dawn. `tools/hero-scene-plugin.mjs` prepares its plain
 render data at build time; campaign UI, storage and the generator are not imported
-by the embed browser entry. No party callbacks are supplied. Motion is disabled
-so it renders only on resize, selection or lighting changes.
+by the embed browser entry. Its showcase-only overrides name the town Far-Nahar,
+use spruce in the dense forest, and connect town through the meadow to the SW
+boundary. An off-map neighbour supplies the road port during dressing only;
+the generated campaign fixture and seven visible cells stay unchanged.
+No party callbacks are supplied. Ambient wind/water motion is enabled, respecting
+reduced motion and hidden documents. `transparent: true` gives the WebGL canvas
+an alpha channel and leaves its background clear in every palette and TOD, so
+the embedding section shows through. Normal app renders remain opaque.
 
 `navigation: false` disables pan, focus and all zoom paths in map controls while
 retaining click/tap selection. It registers no wheel handler and uses native
