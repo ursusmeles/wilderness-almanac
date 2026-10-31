@@ -195,11 +195,7 @@
               </button>
             </header>
             <div class="settings-content stack">
-              <fieldset
-                id="settings-theme"
-                class="settings-group stack"
-                aria-describedby="settings-theme-help"
-              >
+              <fieldset id="settings-theme" class="settings-group stack">
                 <legend>App theme</legend>
                 <div class="settings-toggle">
                   <label
@@ -213,20 +209,30 @@
                     ></label
                   >
                 </div>
-                <p id="settings-theme-help" class="settings-theme-help">
-                  Applies to the main menu and all campaigns in this browser.
-                </p>
               </fieldset>
               <hr class="settings-divider" />
-              <div id="settings-regeneration" class="settings-regeneration" hidden>
-                <button type="button" id="settings-regenerate">
-                  <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
-                    <use href="/icons/pixelarticons.svg#refresh"></use>
-                  </svg>
-                  Regenerate map
-                </button>
-                <hr class="settings-divider" />
-              </div>
+              <fieldset id="settings-art-style" class="settings-group stack map-art-style">
+                <legend>Default map art style</legend>
+                <div class="settings-toggle">
+                  <label
+                    ><input type="radio" name="settings-art-style" value="low-poly" checked /><span
+                      >Low poly</span
+                    ></label
+                  >
+                  <label data-tooltip="Warning: uses more resources."
+                    ><input
+                      type="radio"
+                      name="settings-art-style"
+                      value="pixelart"
+                      aria-labelledby="settings-pixelart-label"
+                      aria-describedby="settings-pixelart-warning"
+                    /><span id="settings-pixelart-label">Pixelart</span
+                    ><small id="settings-pixelart-warning" class="sr-only"
+                      >Warning: uses more resources.</small
+                    ></label
+                  >
+                </div>
+              </fieldset>
               <fieldset id="settings-motion" class="settings-group stack">
                 <legend>Default animation preference</legend>
                 <div class="settings-toggle">
@@ -299,28 +305,6 @@
                   </button>
                 </div>
               </div>
-              <fieldset id="settings-art-style" class="settings-group stack map-art-style">
-                <legend>Default map art style</legend>
-                <div class="settings-toggle">
-                  <label
-                    ><input type="radio" name="settings-art-style" value="low-poly" checked /><span
-                      >Low poly</span
-                    ></label
-                  >
-                  <label data-tooltip="Warning: uses more resources."
-                    ><input
-                      type="radio"
-                      name="settings-art-style"
-                      value="pixelart"
-                      aria-labelledby="settings-pixelart-label"
-                      aria-describedby="settings-pixelart-warning"
-                    /><span id="settings-pixelart-label">Pixelart</span
-                    ><small id="settings-pixelart-warning" class="sr-only"
-                      >Warning: uses more resources.</small
-                    ></label
-                  >
-                </div>
-              </fieldset>
               <fieldset id="settings-panel-order" class="settings-group stack">
                 <legend>Top panel</legend>
                 <div class="settings-toggle">
@@ -339,6 +323,15 @@
                   >
                 </div>
               </fieldset>
+              <hr class="settings-divider" />
+              <div id="settings-regeneration" class="settings-regeneration" hidden>
+                <button type="button" id="settings-regenerate">
+                  <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <use href="/icons/pixelarticons.svg#refresh"></use>
+                  </svg>
+                  Regenerate map
+                </button>
+              </div>
               <div class="settings-group stack" id="settings-import-group">
                 <div class="settings-import cluster">
                   <button type="button" id="import-campaign">

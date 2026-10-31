@@ -1453,17 +1453,11 @@
     & button {
       width: 100%;
     }
-    & hr {
-      margin: var(--space-s) 0 0;
-    }
   }
   .settings-divider {
     margin: 0;
     border: 0;
     border-top: var(--b-thin) var(--c-border);
-  }
-  .settings-theme-help {
-    margin: 0;
   }
   .campaign-icon img,
   .campaign-icon-placeholder,
