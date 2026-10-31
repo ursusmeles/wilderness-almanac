@@ -7,7 +7,7 @@ const campaign = {
   id: 'one',
   name: 'Campaign',
   seed: '7',
-  generatorVersion: 8,
+  generatorVersion: 10,
   variant: 0,
   createdAt: '2026-10-24T00:00:00.000Z',
   paletteName: 'Dusk',

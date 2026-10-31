@@ -52,10 +52,8 @@ test('farmland variants replay, retain terrain and use vineyards only above leve
   let trees = 0,
     fruit = 0,
     area = 0,
-    oldArea = 0,
     eligible = 0,
     vineyards = 0;
-  const old = generateDressing({ ...world, generatorVersion: 8 });
   for (const [i, data] of dressing.cells.entries()) {
     validateHexEdits({ version: 1, cells: { [data.key]: { lock: data } } });
     const cell = world.cells[i];
@@ -77,12 +75,9 @@ test('farmland variants replay, retain terrain and use vineyards only above leve
         }
       }
     }
-    oldArea += old.cells[i].props
-      .filter((prop) => prop.kind === 'crops')
-      .reduce((sum, prop) => sum + 0.144 * prop.scale ** 2, 0);
   }
   assert.deepEqual([...styles].sort(), ['grain', 'vineyard']);
-  assert.ok(area > oldArea * 1.05, 'Wheat fields cover more of the tile');
+  assert.ok(area > world.cells.length * 0.2, 'Fields retain substantial tile coverage');
   assert.ok(
     vineyards / eligible > 0.13 && vineyards / eligible < 0.27,
     'Vineyards have about a 20% opportunity, leaving other styles more common',

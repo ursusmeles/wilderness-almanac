@@ -1,6 +1,7 @@
 import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
+  outputDir: 'test-results/account',
   testDir: './e2e',
   testMatch: 'account.spec.js',
   workers: 1,

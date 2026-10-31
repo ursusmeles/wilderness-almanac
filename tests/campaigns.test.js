@@ -1,8 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { generateWorld, generateDressing, GENERATOR_VERSION } from '../src/generation/world.js';
-import { createCampaignStore } from '../src/ui/campaign-store.js';
-import { readPreferences, savePreferences } from '../src/ui/storage.js';
 import { prepareMap } from '../src/generation/presentation.js';
 import {
   createCampaign,
@@ -112,36 +110,6 @@ test('campaign time of day survives exports and older records remain valid', () 
     assert.throws(() => validateCampaign({ ...campaign, timeOfDay }), /invalid campaign data/);
 });
 
-test('local campaign saves retain multiple independent maps and tolerate unavailable storage', () => {
-  const values = new Map();
-  const storage = {
-    getItem: (key) => values.get(key),
-    setItem: (key, value) => values.set(key, value),
-  };
-  const store = createCampaignStore(storage);
-  assert.equal(store.missing, true);
-  const second = createCampaign(generateWorld('7'), colors, 'Dusk & gold');
-  const entries = [campaign, second];
-  assert.equal(store.save(entries), true);
-  assert.deepEqual(createCampaignStore(storage).campaigns, entries);
-  entries[0] = {
-    ...campaign,
-    name: 'Renamed',
-    variant: 8,
-    colors: ['#112233', '#445566', '#778899'],
-  };
-  assert.equal(store.save(entries), true);
-  assert.deepEqual(createCampaignStore(storage).campaigns, entries);
-  savePreferences(storage, { campaignId: second.id });
-  assert.equal(readPreferences(storage).campaignId, second.id);
-  assert.equal(store.save([...entries, { ...campaign, seed: '' }]), false);
-  assert.deepEqual(createCampaignStore(storage).campaigns, entries);
-  assert.equal(createCampaignStore(undefined).save(entries), false);
-  assert.deepEqual(createCampaignStore(undefined).campaigns, []);
-  assert.equal(store.save([]), true);
-  assert.deepEqual(createCampaignStore(storage).campaigns, []);
-});
-
 test('export names include a safe campaign slug and the local export date', () => {
   const date = new Date(2026, 9, 19, 12);
   assert.equal(campaignFilename(campaign, date), 'wilderness-almanac-my-campaign-2026-10-19.json');
@@ -247,30 +215,6 @@ test('individual icon preparation retains the complete map river and mountain ge
   for (const sample of samples)
     assert.deepEqual(prepareMap(model, dressing, { cellKeys: [sample.key] }), [sample]);
   assert.equal(JSON.stringify({ model, dressing }), original);
-});
-
-test('deletion stays removed after reload and retains one recoverable campaign with its list position', () => {
-  const values = new Map();
-  const storage = {
-    getItem: (key) => values.get(key),
-    setItem: (key, value) => values.set(key, value),
-  };
-  const store = createCampaignStore(storage);
-  const second = createCampaign(generateWorld('7'), colors, 'Custom');
-  const deleted = { campaign, index: 0 };
-  assert.equal(store.save([second], deleted), true);
-  const reload = createCampaignStore(storage);
-  assert.deepEqual(reload.campaigns, [second]);
-  assert.deepEqual(reload.deletedCampaign, deleted);
-  reload.campaigns.splice(reload.deletedCampaign.index, 0, reload.deletedCampaign.campaign);
-  assert.equal(reload.save(reload.campaigns), true);
-  assert.deepEqual(createCampaignStore(storage).campaigns, [campaign, second]);
-  assert.equal(createCampaignStore(storage).deletedCampaign, null);
-  assert.equal(reload.save([], { campaign, index: 0 }), true);
-  const empty = createCampaignStore(storage);
-  assert.deepEqual(empty.campaigns, []);
-  assert.deepEqual(empty.deletedCampaign.campaign, campaign);
-  assert.equal(createCampaignStore(undefined).deletedCampaign, null);
 });
 
 test('reload keeps the active campaign identity when imported copies replay the same map', () => {

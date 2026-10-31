@@ -18,7 +18,6 @@ import {
 } from '../src/application/campaigns.js';
 import { neighbours, distance } from '../src/generation/hex.js';
 import { minimumSpacing } from '../src/generation/prop-placement.js';
-import { readPreferences, savePreferences } from '../src/ui/storage.js';
 
 const base = generateWorld('7');
 const campaign = createCampaign(base, ['#cdab8f', '#0b365e', '#11b329'], 'Forbidden Lands');
@@ -294,30 +293,6 @@ test('edit imports reject invalid keys, variants, revisions and unbounded frozen
     ['0,0', { lock: { props: [{ kind: 'house', x: 0, y: 0, z: 0, footprint: 0.2, scale: 999 }] } }],
   ])
     assert.throws(() => validateHexEdits({ version: 1, cells: { [key]: edit } }), /invalid hex/);
-});
-
-test('panel order and disclosure preferences are validated and saved globally', () => {
-  const values = new Map(),
-    storage = {
-      getItem: (key) => values.get(key),
-      setItem: (key, value) => values.set(key, value),
-    };
-  savePreferences(storage, {
-    panelOrder: ['inspector', 'tracker'],
-    panelsCollapsed: { tracker: false, inspector: true },
-    panelsHorizontal: { tracker: true, inspector: false },
-  });
-  assert.deepEqual(readPreferences(storage).panelOrder, ['inspector', 'tracker']);
-  assert.deepEqual(readPreferences(storage).panelsCollapsed, { tracker: false, inspector: true });
-  assert.deepEqual(readPreferences(storage).panelsHorizontal, { tracker: true, inspector: false });
-  savePreferences(storage, {
-    panelOrder: ['inspector', 'inspector'],
-    panelsCollapsed: { tracker: 'yes', inspector: true },
-    panelsHorizontal: { tracker: true, inspector: 'no' },
-  });
-  assert.equal(readPreferences(storage).panelOrder, undefined);
-  assert.equal(readPreferences(storage).panelsCollapsed, undefined);
-  assert.equal(readPreferences(storage).panelsHorizontal, undefined);
 });
 
 test('editing part of a city removes only that hex and repairs its centre and footprint size', () => {

@@ -26,8 +26,7 @@ export function deepForestWeight(cell, byKey) {
 }
 
 export function poiSuitability(kind, cell, context) {
-  const updated = context.generatorVersion >= 8;
-  const shared = ['watchtower', 'mystic', ...(updated ? ['dungeon'] : [])];
+  const shared = ['watchtower', 'mystic', 'dungeon'];
   if (cell.water || (cell.pointOfLight && !shared.includes(kind))) return 0;
   const { pl, smallPL, mountain, lake, canyon } = context;
   const nearPL = pl(cell) <= 3;
@@ -43,18 +42,12 @@ export function poiSuitability(kind, cell, context) {
         (preferred(['mountains', 'dense forest', 'wetlands']) || cell.islandId ? 4 : 1) *
         (nearPL ? 0.25 : 1) *
         (cell.terrain === 'farmlands' ? 0.2 : 1) *
-        (updated ? context.deepForest(cell) : 1)
+        context.deepForest(cell)
       );
     case 'encampment':
       return (
         (preferred(['meadow', 'light forest']) ? 4 : 0.5) *
-        (updated
-          ? context.freshwater(cell) <= 1
-            ? 1.5
-            : context.freshwater(cell) <= 2
-              ? 1.2
-              : 1
-          : 1)
+        (context.freshwater(cell) <= 1 ? 1.5 : context.freshwater(cell) <= 2 ? 1.2 : 1)
       );
     case 'watchtower':
       return (
@@ -77,12 +70,12 @@ export function poiSuitability(kind, cell, context) {
         (nearPL ? 0.04 : 1)
       );
     case 'mystic':
-      return (remote || lake(cell) <= 1 ? 5 : 1) * (updated ? context.deepForest(cell) : 1);
+      return (remote || lake(cell) <= 1 ? 5 : 1) * context.deepForest(cell);
     case 'abbey':
       return (
         (cell.terrain === 'farmlands' ? 4 : 1) *
         (smallPL(cell) <= 1 ? 4 : smallPL(cell) <= 3 ? 2 : 0.5) *
-        (updated && cell.islandId && context.islandSizes.get(cell.islandId) <= 3 ? 3 : 1)
+        (cell.islandId && context.islandSizes.get(cell.islandId) <= 3 ? 3 : 1)
       );
     case 'battlefield':
       return cell.terrain === 'meadow' ? 5 : 0.3;
@@ -174,7 +167,6 @@ export function generatePointsOfInterest(world) {
   }
   const byKey = new Map(world.cells.map((cell) => [cell.key, cell]));
   const context = {
-    generatorVersion: world.generatorVersion,
     byKey,
     pl: distanceField(world.cells, byKey, (cell) => !!cell.pointOfLight),
     smallPL: distanceField(world.cells, byKey, (cell) =>
@@ -189,7 +181,7 @@ export function generatePointsOfInterest(world) {
         .flatMap((feature) => feature.hexKeys),
     ),
   };
-  if (world.generatorVersion >= 8) {
+  {
     context.freshwater = distanceField(
       world.cells,
       byKey,
@@ -206,7 +198,7 @@ export function generatePointsOfInterest(world) {
   const add = (cell, rule, random, bonus = false) => {
     const variant =
       rule.kind === 'watchtower'
-        ? context.coast(cell) === 1 && random() < (world.generatorVersion >= 8 ? 0.5 : 0.25)
+        ? context.coast(cell) === 1 && random() < 0.5
           ? 'lighthouse'
           : 'watchtower'
         : rule.kind === 'dungeon'
@@ -214,7 +206,7 @@ export function generatePointsOfInterest(world) {
             ? 'mine'
             : 'dungeon'
           : rule.kind === 'lair'
-            ? random() < (world.generatorVersion >= 8 ? 0.4 : 0.5)
+            ? random() < 0.4
               ? 'cave'
               : 'nest'
             : rule.kind === 'mystic'

@@ -1,3 +1,5 @@
+import { DEFAULT_PALETTE } from '../palette.js';
+
 export const DATABASE_NAME = 'wilderness-almanac:campaigns';
 export const STORES = ['campaigns', 'palettes', 'settings', 'recovery', 'journal'];
 
@@ -20,6 +22,15 @@ export async function openDatabase(factory) {
         });
         if (name === 'journal') store.createIndex('campaign', 'campaignId');
       }
+      // Seed metadata only when creating the database. Existing stores are
+      // validated on read, never reset because a row is missing or unreadable.
+      const settings = request.transaction.objectStore('settings');
+      settings.add({ id: 'library', revision: 1, value: [] });
+      settings.add({
+        id: 'palettes',
+        revision: 1,
+        value: { ids: [], defaultPalette: DEFAULT_PALETTE },
+      });
     };
     request.onblocked = () => {
       settled = true;

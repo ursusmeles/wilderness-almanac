@@ -12,7 +12,7 @@ export const campaign = {
   id: 'campaign-1',
   name: 'Office campaign',
   seed: '7',
-  generatorVersion: 8,
+  generatorVersion: 10,
   variant: 0,
   createdAt: '2026-10-24T00:00:00.000Z',
   paletteName: 'Dusk',
@@ -280,16 +280,18 @@ test('HTTPS, trusted origins, content type, required revisions and input bounds 
     ).status,
     415,
   );
-  assert.equal(
-    (
-      await f.request('/api/campaigns/campaign-1', {
-        ...base,
-        headers: { 'if-match': '"0"' },
-        body: { campaign: { ...campaign, generatorVersion: 999 } },
-      })
-    ).status,
-    400,
-  );
+  for (const generatorVersion of [6, 7, 8, 9, 999]) {
+    assert.equal(
+      (
+        await f.request('/api/campaigns/campaign-1', {
+          ...base,
+          headers: { 'if-match': '"0"' },
+          body: { campaign: { ...campaign, generatorVersion } },
+        })
+      ).status,
+      400,
+    );
+  }
   assert.equal(
     (
       await f.request('/api/campaigns/campaign-1', {

@@ -1,5 +1,7 @@
 import { test, expect, campaign, library, openCampaign } from './fixtures.js';
 
+test.use({ reducedMotion: 'no-preference' });
+
 test.beforeEach(({}, testInfo) =>
   test.skip(testInfo.project.name !== 'desktop', 'additional routing and settings checks'),
 );

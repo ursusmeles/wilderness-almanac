@@ -1,10 +1,17 @@
 import { defineConfig } from '@playwright/test';
 import config from './playwright.config.js';
 
-// Focused source-served checks for Sandbox tools on desktop and mobile.
+// Focused source-served journal, panel and workspace checks.
 export default defineConfig({
   ...config,
-  testMatch: ['party-journal.spec.js', 'panels.spec.js', 'workspace-controls.spec.js'],
+  outputDir: 'test-results/workspace',
+  testIgnore: [],
+  testMatch: [
+    'party-journal.spec.js',
+    'journal-pagination.spec.js',
+    'panels.spec.js',
+    'workspace-controls.spec.js',
+  ],
   reporter: 'list',
   use: { ...config.use, baseURL: 'http://127.0.0.1:4180' },
   webServer: {

@@ -4,7 +4,7 @@ import { timeIncrementLabels } from './campaign-time.js';
 export { hexName } from './hex-description.js';
 
 export const JOURNAL_LIMIT = 300;
-export const MAX_JOURNAL_ENTRIES = 20000;
+const MAX_JOURNAL_ENTRIES = 20000;
 export const JOURNAL_COMMANDS = [
   { label: '/help', description: 'Show commands and mentions' },
   { label: '/clear', description: 'Clear rolls without notes and dismiss help' },
@@ -17,7 +17,7 @@ export const JOURNAL_COMMANDS = [
   })),
 ];
 export const ORACLE_ANSWERS = ['No, and…', 'No', 'No, but…', 'Yes, but…', 'Yes', 'Yes, and…'];
-export const MAJOR_ARCANA = [
+const MAJOR_ARCANA = [
   'The Fool',
   'The Magician',
   'The High Priestess',
@@ -41,7 +41,7 @@ export const MAJOR_ARCANA = [
   'Judgement',
   'The World',
 ];
-export const JOURNAL_HELP = [
+const JOURNAL_HELP = [
   'Write a note (300 characters). Mention @party, #week or $hex; search hexes by name or coordinates. Use ↑/↓ and Tab to accept a suggestion.',
   '/help shows these commands until the next journal entry. /clear removes dice, abstract and oracle rolls without a note or question throughout this party’s journal, and dismisses help.',
   '/abstract draws a Major Arcana card. /explore is coming later.',
@@ -78,7 +78,7 @@ const invalid = () => {
   throw new Error('The campaign contains an invalid party journal.');
 };
 
-export function validateMentions(mentions, text) {
+function validateMentions(mentions, text) {
   if (!Array.isArray(mentions) || mentions.length > 100) return invalid();
   let end = 0;
   return mentions.map((mention) => {

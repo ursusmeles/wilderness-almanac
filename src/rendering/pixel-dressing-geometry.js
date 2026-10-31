@@ -2,7 +2,7 @@ import { BufferGeometry, Float32BufferAttribute } from 'three';
 import { voxelFaces, packFoliageAtlas, crownGeometry } from './pixel-foliage-geometry.js';
 
 let atlas;
-export function dressingAtlas() {
+function dressingAtlas() {
   if (atlas) return atlas;
   const forms = new Map();
   for (const kind of ['rock', 'vine', 'puddle'])

@@ -1,5 +1,5 @@
 import { validateCampaign } from '../application/campaigns.js';
-import { paletteNames } from '../palette.js';
+import { paletteNames, DEFAULT_PALETTE } from '../palette.js';
 import {
   openDatabase,
   requested,
@@ -8,7 +8,6 @@ import {
   requestPersistence,
   STORES,
 } from './database.js';
-import { readLegacy, migrateLegacy } from './legacy-migration.js';
 
 const equal = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const revision = (row) => row?.revision ?? 0;
@@ -54,16 +53,13 @@ function validateDeleted(value) {
 // data; each campaign's edits, dressing, party and visits commit together.
 export async function createBrowserStore({
   indexedDB = globalThis.indexedDB,
-  legacyStorage,
   storageManager,
 } = {}) {
-  const legacy = readLegacy(legacyStorage);
   let db;
   let data;
   let reason = null;
   let readOnly = false;
-  let preservedCount = legacy.reader.status().preservedCount;
-  let preservedPreferences = legacy.preservedPreferences;
+  let preservedCount = 0;
   let durability = 'unknown';
   let libraryRow;
   let paletteRow;
@@ -74,9 +70,9 @@ export async function createBrowserStore({
   let baseline = new Map();
   let paletteBaseline;
   let deletedBaseline = null;
-  let currentCampaigns = legacy.campaigns;
-  let currentDeleted = legacy.reader.deletedCampaign;
-  let currentPalettes = legacy.library;
+  let currentCampaigns = [];
+  let currentDeleted = null;
+  let currentPalettes = { palettes: [], defaultPalette: DEFAULT_PALETTE };
   let pending;
   let running = false;
   let pendingCount = 0;
@@ -95,12 +91,7 @@ export async function createBrowserStore({
       reason = 'versionchange';
       notify();
     };
-    data = await migrateLegacy(db, legacyStorage, legacy);
-    const marker = data.settings.find(({ id }) => id === 'migration');
-    readOnly = marker.value.readOnly;
-    reason = readOnly ? 'unreadable' : null;
-    preservedCount = marker.value.preservedCount;
-    preservedPreferences = Boolean(marker.value.preservedPreferences);
+    data = await readDatabase(db);
     libraryRow = data.settings.find(({ id }) => id === 'library');
     paletteRow = data.settings.find(({ id }) => id === 'palettes');
     deletedRow = data.recovery.find(({ id }) => id === 'deleted');
@@ -165,8 +156,7 @@ export async function createBrowserStore({
       : error.message === 'unreadable'
         ? 'unreadable'
         : 'unavailable';
-    // On a failed migration, the untouched legacy library remains usable in
-    // memory. On a damaged primary store its raw rows remain downloadable.
+    // A damaged primary store remains available as raw recovery data.
     if (db && !data) data = await readDatabase(db).catch(() => undefined);
   }
   // Permission refusal never disables saves. Do not delay boot on a prompt.
@@ -377,7 +367,6 @@ export async function createBrowserStore({
     campaigns: currentCampaigns,
     deletedCampaign: currentDeleted,
     preferences: {
-      ...legacy.preferences,
       ...currentPalettes,
       ...(typeof activeRow?.value === 'string' ? { campaignId: activeRow.value } : {}),
     },
@@ -385,11 +374,10 @@ export async function createBrowserStore({
       reason,
       readOnly,
       preservedCount,
-      preservedPreferences,
       pending: pendingCount > 0,
       unsaved: unsaved.campaigns || unsaved.palettes,
       durability,
-      hasRecovery: Boolean(data || Object.values(legacy.sources).some((value) => value != null)),
+      hasRecovery: Boolean(data),
     }),
     subscribe(callback) {
       subscribers.add(callback);
@@ -466,7 +454,6 @@ export async function createBrowserStore({
           format: 'wilderness-almanac-recovery',
           version: 1,
           database: snapshot ?? null,
-          legacy: legacy.sources,
         },
         null,
         2,

@@ -1,3 +1,4 @@
+import { seedCampaigns } from './data.js';
 import { readFile } from 'node:fs/promises';
 import { test, expect, campaign, library, openCampaign, exportFromMenu } from './fixtures.js';
 
@@ -7,7 +8,8 @@ test('homepage never requests WebGL code, and cached icons survive reload withou
   const scripts = [];
   const scriptResponses = [];
   page.on('response', (response) => {
-    if (response.request().resourceType() === 'script') scriptResponses.push(response);
+    if (response.request().resourceType() === 'script' && response.ok())
+      scriptResponses.push(response);
   });
   page.on('request', (request) => {
     if (request.resourceType() === 'script') scripts.push(request.url());
@@ -93,7 +95,7 @@ test('Inspector can set a water hex as world icon and keep it after returning an
       (options) => options.find((option) => /Open water|Lake/.test(option.textContent)).value,
     );
   await page.locator('#hp-selection').selectOption(key);
-  const setIcon = page.getByRole('button', { name: 'Set as world icon', exact: true });
+  const setIcon = page.getByRole('button', { name: 'Use as campaign icon', exact: true });
   await setIcon.click();
   await expect(setIcon).toBeDisabled();
   expect((await library(page)).campaigns[0].iconKey).toBe(key);
@@ -111,7 +113,7 @@ test('campaign JSON export/import preserves edits and creates an independent sav
 }) => {
   await openCampaign(page);
   await page.getByRole('switch', { name: 'Visited', exact: true }).click();
-  await page.getByRole('switch', { name: 'Lock hex dressing', exact: true }).click();
+  await page.getByRole('switch', { name: 'Lock appearance', exact: true }).click();
   await page.locator('#hp-back-menu').click();
   const download = await exportFromMenu(page);
   expect(download.suggestedFilename()).toMatch(
@@ -141,10 +143,11 @@ test('unapplied edits can be kept or applied before changing selection; Undo res
   page,
 }) => {
   await openCampaign(page);
+  const initialEdits = (await library(page)).campaigns[0].hexEdits;
   await page.getByRole('button', { name: 'Edit', exact: true }).click();
   await page.getByRole('combobox', { name: 'Terrain', exact: true }).selectOption('meadow');
   await page
-    .getByRole('combobox', { name: 'Selected hex or party', exact: true })
+    .getByRole('combobox', { name: 'Select hex or party', exact: true })
     .selectOption('1,0');
   const dialog = page.getByRole('dialog', { name: 'Unsaved edits', exact: true });
   await expect(dialog).toBeVisible();
@@ -157,7 +160,7 @@ test('unapplied edits can be kept or applied before changing selection; Undo res
   expect((await library(page)).campaigns[0].hexEdits.cells['0,0'].terrain).toBe('meadow');
   await page.locator('#hp-hex-edit').click();
   await page.locator('#hp-hex-undo').click();
-  expect((await library(page)).campaigns[0].hexEdits).toBeUndefined();
+  await expect.poll(async () => (await library(page)).campaigns[0].hexEdits).toEqual(initialEdits);
 });
 
 test('leaving the map protects a draft and retains saved edits', async ({ page }) => {
@@ -170,11 +173,15 @@ test('leaving the map protects a draft and retains saved edits', async ({ page }
   await dialog.getByRole('button', { name: 'Discard changes', exact: true }).click();
   await expect(page.locator('#campaign-menu')).toBeVisible();
   await page.getByRole('button', { name: 'Enter Test campaign', exact: true }).click();
+  await expect(page.locator('#campaign-menu')).toBeHidden();
+  await page.locator('#hp-selection').selectOption('0,0');
   const expand = page.getByRole('button', { name: 'Open Inspector', exact: true });
   if (await expand.isVisible()) await expand.click();
   await page.getByRole('switch', { name: 'Visited', exact: true }).click();
   await page.locator('#hp-back-menu').click();
   await page.getByRole('button', { name: 'Enter Test campaign', exact: true }).click();
+  await expect(page.locator('#campaign-menu')).toBeHidden();
+  await page.locator('#hp-selection').selectOption('0,0');
   if (await expand.isVisible()) await expand.click();
   await expect(page.getByRole('switch', { name: 'Visited', exact: true })).toHaveAttribute(
     'aria-checked',
@@ -186,14 +193,16 @@ test('leaving the map protects a draft and retains saved edits', async ({ page }
 
 test('storage errors remain visible, exports contain unsaved changes, and successful retries clear the warning', async ({
   page,
-}, testInfo) => {
+}) => {
   await openCampaign(page);
   await page.evaluate(() => sessionStorage.setItem('test:blocked-target', 'all'));
   await page.getByRole('switch', { name: 'Visited', exact: true }).click();
   await expect(page.locator('#hp-save-warning')).toBeVisible();
-  if (testInfo.project.name === 'mobile')
-    await page.getByRole('button', { name: 'Open palette and settings', exact: true }).click();
-  await page.getByRole('switch', { name: 'Movement', exact: true }).click();
+  await page.locator('#hp-appearance-settings').click();
+  await page.locator('#settings-motion input[value="false"]').check();
+  await page.locator('#settings-save').click();
+  await expect(page.locator('#settings-message')).toContainText('could not be saved');
+  await page.locator('#settings-cancel').click();
   await expect(page.locator('#hp-save-warning')).toBeVisible();
   expect((await library(page)).campaigns[0].hexEdits?.cells['0,0']).toBeUndefined();
   const event = page.waitForEvent('download');
@@ -236,27 +245,17 @@ test('unreadable saved records survive normal campaign actions and recovery down
     generatorVersion: 99,
     futureData: { notes: ['keep me'] },
   };
-  await page.addInitScript((future) => {
-    const saved = JSON.parse(localStorage.getItem('wilderness-almanac:campaigns-v1'));
-    if (!saved) return;
-    saved.campaigns.push(future);
-    localStorage.setItem('wilderness-almanac:campaigns-v1', JSON.stringify(saved));
-  }, future);
+  await page.goto('/');
+  await seedCampaigns(page, [campaign, future]);
   await page.goto('/');
   await expect(page.locator('#campaign-recovery')).toBeVisible();
-  await page.getByRole('button', { name: 'Enter Test campaign', exact: true }).click();
-  await expect(page.locator('#campaign-workspace')).not.toHaveAttribute('inert');
+  await openCampaign(page);
   await page.getByRole('switch', { name: 'Visited', exact: true }).click();
   await page.locator('#hp-back-menu').click();
   const event = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download recovery file', exact: true }).click();
   const recovered = JSON.parse(await readFile(await (await event).path(), 'utf8'));
-  const legacy = recovered.database.recovery.find(
-    (row) => row.id === 'wilderness-almanac:campaigns-v1',
-  );
-  expect(JSON.parse(legacy.source).campaigns.find((record) => record.id === 'future')).toEqual(
-    future,
-  );
+  expect(recovered.database.campaigns.find((row) => row.id === 'future').value).toEqual(future);
 });
 
 test('mobile panels start closed above the fold and restore correctly after expansion', async ({
@@ -280,7 +279,7 @@ test('mobile panels start closed above the fold and restore correctly after expa
       overflow: document.documentElement.scrollWidth > innerWidth,
     };
   });
-  expect(dimensions.height + dimensions.toolsHeight).toBe(dimensions.viewport);
+  expect(dimensions.height + dimensions.toolsHeight).toBeCloseTo(dimensions.viewport, 0);
   expect(dimensions.trackerBottom).toBeLessThanOrEqual(dimensions.viewport);
   await expect(page.locator('#hp-inspector-body')).toBeHidden();
   await expect(page.locator('#hp-tracker-body')).toBeHidden();

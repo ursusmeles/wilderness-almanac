@@ -1,6 +1,5 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
 import { generateWorld } from '../src/generation/world.js';
 import { worldPreferences, preferenceWeights } from '../src/generation/world-preferences.js';
 import { nameModifiers } from '../src/generation/map-names.js';
@@ -45,26 +44,6 @@ test('preferences validate bounded discrete inputs and stack past saturated name
   assert.equal(boosted.LW, weights.LW * 2.1);
   assert.equal(boosted.PL, weights.PL * 2.1);
   assert.throws(() => generateWorld('7', { generatorVersion: 6, preferences: { water: 1 } }));
-});
-
-test('version 6 replay stays exact and explicit version 7 retains the same generated landscape', () => {
-  const snapshots = {
-    // Pre-preferences version-6 fixtures, with only the approved display words renamed.
-    0: '0c56683ca860a7fabd8858bf97373fd6a23cf797176eccfa1c12926556fd580c',
-    7: 'cf3e7bac8a110c56b255b5dcb4e8f96adbee87987dc8a253fe2651c9135f1d93',
-    10: '9851ad96a03dbe4e3f1d1255582a8b1c0bc420533d6ab3c421ec4b45f902bb41',
-  };
-  for (const [seed, hash] of Object.entries(snapshots)) {
-    const legacy = generateWorld(seed, { generatorVersion: 6 });
-    assert.equal(createHash('sha256').update(JSON.stringify(legacy)).digest('hex'), hash);
-    const current = generateWorld(seed, { generatorVersion: 7 });
-    const { preferences, generatorVersion, ...landscape } = current;
-    const { generatorVersion: oldVersion, ...oldLandscape } = legacy;
-    assert.deepEqual(landscape, oldLandscape);
-    assert.equal(generatorVersion, 7);
-    assert.equal(oldVersion, 6);
-    assert.deepEqual(preferences, worldPreferences());
-  }
 });
 
 test('water preferences retain seeds, adjust coastal edges and reach global water targets', () => {
@@ -194,12 +173,7 @@ test('custom settings replay through creation, export, URL sharing and campaign 
     assert.throws(() => validateCampaign({ ...campaign, preferences: invalid }));
   assert.equal(readMapLink('https://example.com/?seed=7&generator=99').seed, undefined);
   assert.equal(
-    readMapLink('https://example.com/?seed=7&generator=7&world=3,0,0,0').seed,
+    readMapLink('https://example.com/?seed=7&generator=10&world=3,0,0,0').seed,
     undefined,
-  );
-  const old = createCampaign(generateWorld('7', { generatorVersion: 6 }), colors, 'Custom');
-  assert.deepEqual(
-    campaignWorld(importCampaign(exportCampaign(old))),
-    generateWorld('7', { generatorVersion: 6 }),
   );
 });

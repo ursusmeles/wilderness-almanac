@@ -1,5 +1,7 @@
 import { test, expect, library, openCampaign } from './fixtures.js';
 
+test.use({ reducedMotion: 'no-preference' });
+
 test('new campaign previews before saving, paints loading feedback, and slides both ways', async ({
   page,
 }, testInfo) => {
@@ -110,3 +112,15 @@ for (const mode of ['reduced motion', 'unsupported transitions'])
     await expect(page.locator('#new-campaign')).toBeEnabled();
     await expect(page.locator('html')).not.toHaveAttribute('data-view-direction');
   });
+
+test('unsupported and unversioned map links show an error without creating a campaign', async ({
+  page,
+}) => {
+  for (const query of ['seed=7', 'seed=7&generator=6', 'seed=7&generator=9']) {
+    await page.goto(`/?${query}`);
+    await expect(page.locator('#campaign-message')).toContainText('unsupported generator version');
+    await expect(page.locator('.campaign-card')).toHaveCount(1);
+    expect((await library(page)).campaigns[0].generatorVersion).toBe(10);
+    await expect(page.locator('#hp-scene canvas')).toHaveCount(0);
+  }
+});

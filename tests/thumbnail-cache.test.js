@@ -4,7 +4,7 @@ import { loadThumbnails, saveThumbnails } from '../src/ui/thumbnail-cache.js';
 
 const campaign = {
   id: 'gallery',
-  generatorVersion: 6,
+  generatorVersion: 10,
   seed: 'gallery',
   variant: 0,
   colors: ['#cdab8f', '#0b365e', '#11b329'],
@@ -66,7 +66,7 @@ test('different world preferences cannot reuse a same-seed preview, even while a
   const configured = {
     ...campaign,
     id: 'configured-gallery',
-    generatorVersion: 7,
+    generatorVersion: 10,
     preferences: { water: 1, elevation: 0, forests: 0, settlements: 0 },
   };
   await saveThumbnails(configured, images);

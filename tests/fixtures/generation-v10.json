@@ -1,0 +1,32 @@
+[
+  {
+    "seed": "7",
+    "preferences": {},
+    "world": "e1ec2b3f27b8e4d2c5d7f42b8bdb525630401394ef3b3ff130255595cd747fad",
+    "dressing": "fa95a552ce3226b8f5f8ac7f48e0fd551779fca582c6b8d4d47e755094ae57c2"
+  },
+  {
+    "seed": "77",
+    "preferences": {
+      "water": 2,
+      "forests": 2
+    },
+    "world": "0ac94ef4dfe237837b787f44573f7ef272c6ecbb52a60ee94d1b8bb51ab5a797",
+    "dressing": "927ac4e84519bcec7f9fe62c51c248f843d72027a7fc03f1ec7eea99887a13a7"
+  },
+  {
+    "seed": "19",
+    "preferences": {
+      "elevation": 2,
+      "settlements": 2
+    },
+    "world": "43a5a7cecbdfa3c5a0a9387e681b27d6796954bcec77093ce48c0fb107cb00a4",
+    "dressing": "d0d129ec5af8047f447ec47fb1072dae65984ede437d2961d4828711cd2de01c"
+  },
+  {
+    "seed": "heliotest",
+    "preferences": {},
+    "world": "b9bbafeb1a2c084d50325e1da06645cc95043e035001c8934d9c6d558b350e96",
+    "dressing": "da7c54f05e0d38a3c6248183cc87d2627766b2a9e4ffecd9302081ba76d2f609"
+  }
+]

@@ -15,6 +15,7 @@ import { fitsHex } from '../src/generation/prop-placement.js';
 import { isBarrier, barrierDistance } from '../src/generation/settlement-props.js';
 import { prepareMountainRanges } from '../src/generation/mountain-surfaces.js';
 import { surfaceHeight } from '../src/generation/math.js';
+import { fieldDistance } from '../src/generation/farmland-patches.js';
 
 test('POI footings sample the surrounding mountain surface instead of a uniform column', () => {
   const world = generateWorld('5');
@@ -72,13 +73,18 @@ test('POIs replay without changing earlier generation or moving on Regenerate', 
       assert.equal(poi.z, anchor.z);
       assert.ok(fitsHex(poi.x, poi.z, poi.footprint));
       assert.ok(Number.isFinite(poi.y) && poi.pedestalDepth >= 0.035 - 1e-9);
-      for (const prop of cell.props.filter((p) => p !== poi))
+      for (const prop of cell.props.filter((p) => p !== poi)) {
+        if (prop.patch) {
+          assert.ok(fieldDistance(prop, poi.x, poi.z) >= poi.footprint + 0.025 - 1e-9);
+          continue;
+        }
         assert.ok(
           (isBarrier(prop)
             ? barrierDistance(prop, poi.x, poi.z)
             : Math.hypot(prop.x - poi.x, prop.z - poi.z)) >=
             prop.footprint + poi.footprint + 0.025 - 1e-9,
         );
+      }
     }
   }
 });
@@ -210,6 +216,9 @@ test('POI suitability encodes preferences, cliff bias and settlement exclusions'
     mountain: () => 99,
     lake: () => 99,
     canyon: new Set(),
+    deepForest: () => 1,
+    freshwater: () => 99,
+    islandSizes: new Map(),
   };
   const score = (kind, cell = meadow, overrides = {}) =>
     poiSuitability(kind, cell, { ...context, ...overrides });
@@ -226,6 +235,6 @@ test('POI suitability encodes preferences, cliff bias and settlement exclusions'
   for (const rule of POI_RULES.filter((r) => !['bridge', 'ferry'].includes(r.kind)))
     assert.equal(
       score(rule.kind, { ...meadow, pointOfLight: { type: 'village' } }) > 0,
-      ['watchtower', 'mystic'].includes(rule.kind),
+      ['watchtower', 'mystic', 'dungeon'].includes(rule.kind),
     );
 });

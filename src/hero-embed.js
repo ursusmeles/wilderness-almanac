@@ -25,7 +25,9 @@ try {
   if (window.parent !== window)
     parentOrigin = new URL(document.referrer || new URL(location.href).searchParams.get('parent'))
       .origin;
-} catch {}
+} catch {
+  // No valid parent origin: keep the embed usable without cross-window messages.
+}
 
 function notify(type, values = {}) {
   if (parentOrigin)

@@ -68,9 +68,6 @@ test('heliotest has the clockwise seven-hex layout, fixed dressing and a portabl
   assert.deepEqual(generateWorld(saved.seed, { generatorVersion: saved.generatorVersion }), world);
   const linked = readMapLink(mapLink('https://example.com', saved));
   assert.deepEqual(generateWorld(linked.seed, linked), world);
-  assert.equal(generateWorld('heliotest', { generatorVersion: 9 }).cells.length, 469);
-  const v9 = generateWorld('7', { generatorVersion: 9 });
-  assert.deepEqual({ ...generateWorld('7'), generatorVersion: 9 }, v9);
 });
 
 test('journal regeneration retains identity, week, question and references; deletion never reuses IDs', () => {

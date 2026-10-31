@@ -40,8 +40,6 @@ export function validateCampaign(value) {
   )
     throw new Error('The campaign file has missing or invalid campaign data.');
   const preferences = worldPreferences(value.preferences);
-  if (value.generatorVersion === 6 && Object.values(preferences).some(Boolean))
-    throw new Error('Version 6 maps do not support world preferences.');
   const journal = value.journal !== undefined ? validateJournal(value.journal) : undefined;
   if (value.journalSequence !== undefined && value.journalSequence < (journal?.at(-1)?.id ?? 0))
     throw new Error('The party journal has an invalid sequence.');
@@ -67,7 +65,7 @@ export function validateCampaign(value) {
     ...(journal?.length ? { journal } : {}),
     ...(value.journalSequence !== undefined ? { journalSequence: value.journalSequence } : {}),
   };
-  if (campaign.generatorVersion >= 10 && campaign.seed === 'heliotest') {
+  if (campaign.seed === 'heliotest') {
     const keys = [
       campaign.partyToken?.key,
       campaign.iconKey,

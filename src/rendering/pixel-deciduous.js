@@ -8,7 +8,7 @@ const SIZE = 9;
 const WIDTH = 0.48;
 const forms = new Map();
 
-export function deciduousSpecies(prop, forest, { terrain, deciduousCount } = {}) {
+function deciduousSpecies(prop, forest, { terrain, deciduousCount } = {}) {
   if (prop.fruit) return 'orchard';
   const seed = (prop.detailSeed ?? 0) >>> 0;
   const type = forest?.family === 'evergreen' ? forest.neighbourType : forest?.type;

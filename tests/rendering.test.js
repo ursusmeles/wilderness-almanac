@@ -60,7 +60,7 @@ function meshDigest(group) {
 const fixtures = JSON.parse(readFileSync(new URL('./fixtures/rendering.json', import.meta.url)));
 for (const { seed, variant, colors, expected } of fixtures)
   test(`rendered geometry, colours and picking metadata match the approved fixtures: seed ${seed}`, () => {
-    const world = generateWorld(seed, { generatorVersion: 7 });
+    const world = generateWorld(seed, { generatorVersion: 10 });
     const registry = createMapMaterials();
     const meshes = createMapMeshes(registry);
     try {

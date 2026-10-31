@@ -1,3 +1,4 @@
+import { seedCampaigns } from './data.js';
 import { test, expect } from '@playwright/test';
 
 const visiblePanels = (page) => page.locator('.hp-side-panels > section:visible');
@@ -280,25 +281,6 @@ test('legacy combined folds migrate and new column sizes remain campaign-local',
   test.skip(info.project.name !== 'desktop', 'desktop saved column layouts');
   await page.addInitScript(() => {
     if (sessionStorage.getItem('test:panel-migration')) return;
-    const base = {
-      seed: 'heliotest',
-      generatorVersion: 10,
-      variant: 0,
-      createdAt: '2026-10-28T12:00:00.000Z',
-      colors: ['#cdab8f', '#0b365e', '#11b329'],
-      paletteName: 'Forbidden Lands',
-      iconKey: '0,0',
-    };
-    localStorage.setItem(
-      'wilderness-almanac:campaigns-v1',
-      JSON.stringify({
-        version: 1,
-        campaigns: [
-          { ...base, id: 'one', name: 'One' },
-          { ...base, id: 'two', name: 'Two' },
-        ],
-      }),
-    );
     localStorage.setItem(
       'wilderness-almanac:ui-v1',
       JSON.stringify({
@@ -316,6 +298,20 @@ test('legacy combined folds migrate and new column sizes remain campaign-local',
     );
     sessionStorage.setItem('test:panel-migration', '1');
   });
+  await page.goto('/');
+  const base = {
+    seed: 'heliotest',
+    generatorVersion: 10,
+    variant: 0,
+    createdAt: '2026-10-28T12:00:00.000Z',
+    colors: ['#cdab8f', '#0b365e', '#11b329'],
+    paletteName: 'Forbidden Lands',
+    iconKey: '0,0',
+  };
+  await seedCampaigns(page, [
+    { ...base, id: 'one', name: 'One' },
+    { ...base, id: 'two', name: 'Two' },
+  ]);
   await page.goto('/');
   await page.getByRole('button', { name: 'Enter One', exact: true }).click();
   await expect(page.locator('#campaign-workspace')).toHaveAttribute('data-panel-rails', '2');

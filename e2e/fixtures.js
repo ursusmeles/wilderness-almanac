@@ -1,3 +1,4 @@
+import { seedCampaigns } from './data.js';
 import { test as base, expect } from '@playwright/test';
 
 export const campaign = {
@@ -5,7 +6,7 @@ export const campaign = {
   name: 'Test campaign',
   nameEdited: true,
   seed: '7',
-  generatorVersion: 6,
+  generatorVersion: 10,
   variant: 0,
   createdAt: '2026-10-20T12:00:00.000Z',
   colors: ['#cdab8f', '#0b365e', '#11b329'],
@@ -16,40 +17,23 @@ export const test = base.extend({
   page: async ({ page }, use) => {
     const errors = [];
     page.on('pageerror', (error) => errors.push(error.message));
-    await page.addInitScript(
-      ({ campaign }) => {
-        if (!sessionStorage.getItem('test:initialized')) {
-          localStorage.setItem(
-            'wilderness-almanac:campaigns-v1',
-            JSON.stringify({ version: 1, campaigns: [campaign] }),
-          );
-          localStorage.setItem(
-            'hex-sandbox:map-v1',
-            JSON.stringify({
-              version: 1,
-              colors: campaign.colors,
-              campaignId: campaign.id,
-              seed: campaign.seed,
-              variant: 0,
-            }),
-          );
-          sessionStorage.setItem('test:initialized', '1');
-        }
-        const write = IDBObjectStore.prototype.put;
-        IDBObjectStore.prototype.put = function (value, ...args) {
-          const target = sessionStorage.getItem('test:blocked-target');
-          if (
-            this.transaction.db.name === 'wilderness-almanac:campaigns' &&
-            (target === 'all' ||
-              (target === 'campaigns' && this.name === 'campaigns') ||
-              (target === 'preferences' && ['palettes', 'settings'].includes(this.name)))
-          )
-            throw new DOMException('Simulated full browser storage', 'QuotaExceededError');
-          return write.call(this, value, ...args);
-        };
-      },
-      { campaign },
-    );
+    await page.addInitScript(() => {
+      const write = IDBObjectStore.prototype.put;
+      IDBObjectStore.prototype.put = function (value, ...args) {
+        const target = sessionStorage.getItem('test:blocked-target');
+        if (
+          this.transaction.db.name === 'wilderness-almanac:campaigns' &&
+          (target === 'all' ||
+            (target === 'campaigns' && this.name === 'campaigns') ||
+            (target === 'preferences' && ['palettes', 'settings'].includes(this.name)))
+        )
+          throw new DOMException('Simulated full browser storage', 'QuotaExceededError');
+        return write.call(this, value, ...args);
+      };
+    });
+    await page.goto('/');
+    await seedCampaigns(page, [campaign]);
+    await page.goto('about:blank');
     await use(page);
     expect(errors, 'no unhandled browser exceptions').toEqual([]);
   },
@@ -91,7 +75,11 @@ export async function openCampaign(page, { expandInspector = true } = {}) {
   // Editing flows below use the origin explicitly; entry itself now selects
   // and frames the party's saved hex.
   await page.locator('#hp-selection').selectOption('0,0');
-  if (expandInspector && (await page.locator('#hp-inspector-body').isHidden())) {
+  if (expandInspector) await revealInspector(page);
+}
+
+export async function revealInspector(page) {
+  if (await page.locator('#hp-inspector-body').isHidden()) {
     const mapHandle = page.getByRole('separator', {
       name: 'Resize map and side panels',
       exact: true,

@@ -7,7 +7,7 @@ import { generateTerrainTypes, generateFarmlands } from './terrain-types.js';
 import { generateMapName } from './map-names.js';
 import { generatePropDressing } from './props.js';
 import { prepareMountainRanges } from './mountain-surfaces.js';
-import { generatePointsOfLight } from './points-of-light.js';
+import { generateSettlements } from './settlement-placement.js';
 import { generatePointsOfInterest } from './points-of-interest.js';
 import { worldPreferences } from './world-preferences.js';
 import { generateRoads } from './roads.js';
@@ -15,18 +15,16 @@ import { generateRoadDressing, roadHeight } from './road-geometry.js';
 import { sandboxWorld } from './sandbox-world.js';
 
 export const GENERATOR_VERSION = 10;
-export const SUPPORTED_GENERATOR_VERSIONS = [6, 7, 8, 9, GENERATOR_VERSION];
+export const SUPPORTED_GENERATOR_VERSIONS = [GENERATOR_VERSION];
 
 export function generateWorld(seed, { preferences, generatorVersion = GENERATOR_VERSION } = {}) {
   if (!SUPPORTED_GENERATOR_VERSIONS.includes(generatorVersion))
     throw new Error('This campaign uses an unsupported map generator version.');
   const settings = worldPreferences(preferences);
-  if (generatorVersion === 6 && Object.values(settings).some(Boolean))
-    throw new Error('Version 6 maps do not support world preferences.');
   const world = {
     schemaVersion: 1,
     generatorVersion,
-    ...(generatorVersion >= 7 ? { preferences: settings } : {}),
+    preferences: settings,
     seed: normalizeSeed(seed),
     ...createTopology(),
     scale: { hexSpacingKm: 18 },
@@ -42,15 +40,15 @@ export function generateWorld(seed, { preferences, generatorVersion = GENERATOR_
     },
   };
   Object.assign(world, generateMapName(world.seed));
-  if (generatorVersion >= 10 && world.seed === 'heliotest') return sandboxWorld(world);
+  if (world.seed === 'heliotest') return sandboxWorld(world);
   generateGeography(world);
   generateHydrology(world);
   generateElevation(world);
   generateTerrainTypes(world);
-  generatePointsOfLight(world);
+  generateSettlements(world);
   generateFarmlands(world);
   generatePointsOfInterest(world);
-  if (generatorVersion >= 9) generateRoads(world);
+  generateRoads(world);
   return world;
 }
 
@@ -87,9 +85,7 @@ export function generateDressing(
               phase: ridgeRandom() * Math.PI * 2,
               angle: ridgeRandom() * Math.PI,
               heightScale: 0.6,
-              ...(world.generatorVersion >= 9
-                ? { profile: mountainLocks[range.id]?.profile ?? (mountainLocks[range.id] ? 0 : 1) }
-                : {}),
+              profile: mountainLocks[range.id]?.profile ?? (mountainLocks[range.id] ? 0 : 1),
               ...mountainLocks[range.id],
             };
           })

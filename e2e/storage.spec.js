@@ -1,3 +1,4 @@
+import { seedCampaigns } from './data.js';
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { campaign } from './fixtures.js';
@@ -63,19 +64,12 @@ async function prepare(page) {
         db.close();
       }
     };
-    window.boot = () => window.createStore({ legacyStorage: localStorage });
+    window.boot = () => window.createStore();
   });
 }
 
-async function seed(page, campaigns = [campaign], preferences = {}) {
-  await page.evaluate(
-    ({ key, preferencesKey, campaigns, preferences }) => {
-      localStorage.setItem(key, JSON.stringify({ version: 1, campaigns }));
-      localStorage.setItem(preferencesKey, JSON.stringify({ version: 1, ...preferences }));
-    },
-    { key, preferencesKey, campaigns, preferences },
-  );
-}
+const seed = (page, campaigns = [campaign], preferences = {}) =>
+  seedCampaigns(page, campaigns, preferences);
 
 test('journal rows commit with party state, survive reload and deletion Undo, and reject stale tabs atomically', async ({
   page,
@@ -185,46 +179,6 @@ test('inline journal records become separate rows without losing unchanged entri
   expect(result.raw.campaigns[0].value.journal).toBeUndefined();
 });
 
-test('earlier product namespaces retain committed campaigns and original migration sources', async ({
-  page,
-}) => {
-  await prepare(page);
-  const result = await page.evaluate(async (campaign) => {
-    const sourceKey = 'previous-product:campaigns-v1';
-    const original = JSON.stringify({ version: 1, campaigns: [campaign] });
-    localStorage.setItem(sourceKey, original);
-    const { openDatabase, DATABASE_NAME } = await import('/src/persistence/database.js');
-    const previous = await openDatabase({
-      databases: async () => [],
-      open: (_name, version) => indexedDB.open('previous-product:campaigns', version),
-    });
-    previous.close();
-    const store = await window.boot();
-    const imported = store.campaigns[0];
-    const saved = await store.save({ campaigns: [{ ...imported, name: 'After rename' }] });
-    store.close();
-    const reloaded = await window.boot();
-    const recovery = JSON.parse(await reloaded.recovery());
-    const result = {
-      imported,
-      saved,
-      name: reloaded.campaigns[0]?.name,
-      source: recovery.database.recovery.find((row) => row.id === sourceKey)?.source,
-      retired: localStorage.getItem(sourceKey),
-      createdEmpty: (await indexedDB.databases()).some(({ name }) => name === DATABASE_NAME),
-      original,
-    };
-    reloaded.close();
-    return result;
-  }, campaign);
-  expect(result.imported).toEqual(campaign);
-  expect(result.saved).toBe(true);
-  expect(result.name).toBe('After rename');
-  expect(result.source).toBe(result.original);
-  expect(result.retired).toBeNull();
-  expect(result.createdEmpty).toBe(false);
-});
-
 test('ambiguous earlier database namespaces block writes without creating an empty library', async ({
   page,
 }) => {
@@ -249,244 +203,6 @@ test('ambiguous earlier database namespaces block writes without creating an emp
     return result;
   });
   expect(result).toEqual({ saved: false, readOnly: true, createdEmpty: false });
-});
-
-test('migration preserves replay versions, party, visits, locks, palettes and unknown records', async ({
-  page,
-}) => {
-  await prepare(page);
-  const future = { ...campaign, id: 'future', generatorVersion: 999, future: ['keep'] };
-  await seed(page, [campaign, future, { broken: true }, campaign], {
-    palettes: [palette],
-    defaultPalette: palette.id,
-  });
-  const result = await page.evaluate(
-    async ({ key, preferencesKey, campaign }) => {
-      const { generateWorld } = await import('/src/generation/world.js');
-      const { lockHex, campaignDressing, campaignWorld } =
-        await import('/src/generation/campaign-world.js');
-      const base = generateWorld(campaign.seed, { generatorVersion: 6 });
-      const locked = lockHex(
-        {
-          ...campaign,
-          partyToken: {
-            key: '0,0',
-            style: 'warden',
-            name: 'Party',
-            daysTravelled: 3,
-            sessionsPlayed: 2,
-          },
-        },
-        '0,0',
-        base,
-        campaignDressing(campaign, base),
-      );
-      locked.hexEdits.cells['0,0'].visited = true;
-      const raw = JSON.parse(localStorage.getItem(key));
-      raw.campaigns[0] = { ...locked, futureField: { retain: true } };
-      raw.extraLibraryField = 'retain';
-      localStorage.setItem(key, JSON.stringify(raw));
-      const original = localStorage.getItem(key);
-      const store = await window.boot();
-      const loaded = store.campaigns[0];
-      const replay = JSON.stringify(campaignDressing(loaded, campaignWorld(loaded)));
-      const expected = JSON.stringify(campaignDressing(locked, campaignWorld(locked)));
-      await store.save({ campaigns: [{ ...loaded, name: 'Updated' }] });
-      const recovery = JSON.parse(await store.recovery());
-      store.close();
-      const reloaded = await window.boot();
-      const state = {
-        campaigns: reloaded.campaigns,
-        preferences: reloaded.preferences,
-        status: reloaded.status(),
-        retained: localStorage.getItem(key) === original,
-        oldPrefs: localStorage.getItem(preferencesKey),
-        recovery,
-        replay: replay === expected,
-      };
-      reloaded.close();
-      return state;
-    },
-    { key, preferencesKey, campaign },
-  );
-  expect(result.replay).toBe(true);
-  expect(result.campaigns).toHaveLength(1);
-  expect(result.campaigns[0]).toMatchObject({
-    name: 'Updated',
-    generatorVersion: 6,
-    partyToken: { name: 'Party', daysTravelled: 3, sessionsPlayed: 2 },
-    hexEdits: { cells: { '0,0': { visited: true, lock: {} } } },
-  });
-  expect(result.preferences).toMatchObject({ palettes: [palette], defaultPalette: palette.id });
-  expect(result.retained).toBe(true);
-  expect(result.oldPrefs).toBeNull();
-  expect(result.status.preservedCount).toBe(3);
-  expect(result.recovery.database.campaigns[0].value.futureField).toEqual({ retain: true });
-  expect(
-    JSON.parse(result.recovery.database.recovery.find((row) => row.id === key).source).campaigns[1],
-  ).toEqual(future);
-});
-
-test('single-map migration and simultaneous startup are idempotent', async ({ page }) => {
-  await prepare(page);
-  await page.evaluate(
-    ({ preferencesKey, palette }) =>
-      localStorage.setItem(
-        preferencesKey,
-        JSON.stringify({
-          version: 1,
-          seed: 'old-map',
-          variant: 4,
-          colors: palette.colors,
-          palettes: [{ name: palette.name, colors: palette.colors }],
-        }),
-      ),
-    { preferencesKey, palette },
-  );
-  const result = await page.evaluate(async () => {
-    const stores = await Promise.all([window.boot(), window.boot()]);
-    const result = {
-      records: await window.readDB(),
-      campaigns: stores.map((store) => store.campaigns),
-      reasons: stores.map((store) => store.status().reason),
-    };
-    stores.forEach((store) => store.close());
-    return result;
-  });
-  expect(result.reasons).toEqual([null, null]);
-  expect(result.records.campaigns).toHaveLength(1);
-  expect(result.campaigns[0]).toEqual(result.campaigns[1]);
-  expect(result.campaigns[0][0]).toMatchObject({
-    id: 'legacy-single-map',
-    seed: 'old-map',
-    variant: 4,
-    generatorVersion: 6,
-    colors: palette.colors,
-  });
-});
-
-test('malformed envelopes and deletion data remain recoverable and read-only', async ({ page }) => {
-  await prepare(page);
-  for (const source of [
-    '{broken',
-    '{"version":99,"campaigns":[]}',
-    JSON.stringify({ version: 1, campaigns: [campaign], deletedCampaign: { index: 0, campaign } }),
-  ]) {
-    const result = await page.evaluate(
-      async ({ key, source, campaign }) => {
-        await new Promise((resolve, reject) => {
-          const request = indexedDB.deleteDatabase('wilderness-almanac:campaigns');
-          request.onsuccess = resolve;
-          request.onerror = reject;
-        });
-        localStorage.setItem(key, source);
-        const store = await window.boot();
-        const saved = await store.save({ campaigns: [campaign] });
-        const result = {
-          saved,
-          status: store.status(),
-          retained: localStorage.getItem(key),
-          recovery: await store.recovery(),
-        };
-        store.close();
-        return result;
-      },
-      { key, source, campaign },
-    );
-    expect(result.saved).toBe(false);
-    expect(result.status.readOnly).toBe(true);
-    expect(result.retained).toBe(source);
-    expect(JSON.parse(result.recovery).legacy[key]).toBe(source);
-  }
-});
-
-test('failed migration commits nothing and retries safely from the untouched source', async ({
-  page,
-}) => {
-  await prepare(page);
-  await seed(page);
-  const result = await page.evaluate(
-    async ({ key }) => {
-      const original = localStorage.getItem(key);
-      const put = IDBObjectStore.prototype.put;
-      IDBObjectStore.prototype.put = function (value) {
-        if (this.name === 'recovery') throw new DOMException('Full', 'QuotaExceededError');
-        return put.call(this, value);
-      };
-      const failed = await window.boot();
-      const before = await window.readDB();
-      const retained = localStorage.getItem(key);
-      failed.close();
-      IDBObjectStore.prototype.put = put;
-      const retry = await window.boot();
-      const result = {
-        reason: failed.status().reason,
-        before,
-        retained: retained === original,
-        after: await window.readDB(),
-        status: retry.status(),
-        retired: localStorage.getItem(key),
-      };
-      retry.close();
-      return result;
-    },
-    { key },
-  );
-  expect(result.retained).toBe(true);
-  expect(result.before.campaigns).toEqual([]);
-  expect(result.before.settings).toEqual([]);
-  expect(result.after.campaigns).toHaveLength(1);
-  expect(result.status.reason).toBeNull();
-  expect(result.retired).toBeNull();
-});
-
-test('read-back validation failure preserves sources; interrupted cleanup never overwrites newer saves', async ({
-  page,
-}) => {
-  await prepare(page);
-  await seed(page, [campaign], { palettes: [palette], defaultPalette: palette.id });
-  const result = await page.evaluate(
-    async ({ key, palette }) => {
-      const getAll = IDBObjectStore.prototype.getAll;
-      IDBObjectStore.prototype.getAll = function (...args) {
-        const request = getAll.apply(this, args);
-        if (this.name === 'campaigns')
-          request.addEventListener('success', () => {
-            if (request.result[0]) request.result[0].value.seed = 'damaged readback';
-          });
-        return request;
-      };
-      const failed = await window.boot();
-      const retained = localStorage.getItem(key) !== null;
-      failed.close();
-      IDBObjectStore.prototype.getAll = getAll;
-      const remove = Storage.prototype.removeItem;
-      Storage.prototype.removeItem = function () {
-        throw new Error('Interrupted cleanup');
-      };
-      const retry = await window.boot();
-      await retry.save({
-        campaigns: [{ ...retry.campaigns[0], name: 'Newer save' }],
-        palettes: { palettes: [palette], defaultPalette: palette.id },
-      });
-      retry.close();
-      Storage.prototype.removeItem = remove;
-      const reload = await window.boot();
-      const result = {
-        retained,
-        campaigns: reload.campaigns,
-        retired: localStorage.getItem(key),
-        rows: (await window.readDB()).campaigns.length,
-      };
-      reload.close();
-      return result;
-    },
-    { key, palette },
-  );
-  expect(result.retained).toBe(true);
-  expect(result.retired).toBeNull();
-  expect(result.rows).toBe(1);
-  expect(result.campaigns[0].name).toBe('Newer save');
 });
 
 test('campaign and palette updates roll back together on an aborted write and can retry', async ({
@@ -700,50 +416,12 @@ test('active campaign identity survives reload when campaigns replay the same wo
   });
 });
 
-test('unreadable legacy palette preferences remain visible in recovery and unchanged at their key', async ({
-  page,
-}) => {
-  await prepare(page);
-  await seed(page);
-  const result = await page.evaluate(
-    async ({ preferencesKey }) => {
-      const source = JSON.stringify({
-        version: 1,
-        palettes: [{ name: 'Damaged palette', colors: ['invalid'] }],
-        defaultPalette: 'custom:future',
-      });
-      localStorage.setItem(preferencesKey, source);
-      const store = await window.boot();
-      const success = await store.save({
-        campaigns: [{ ...store.campaigns[0], name: 'Still editable' }],
-      });
-      const result = {
-        status: store.status(),
-        source,
-        retained: localStorage.getItem(preferencesKey),
-        recovery: JSON.parse(await store.recovery()),
-        success,
-      };
-      store.close();
-      return result;
-    },
-    { preferencesKey },
-  );
-  expect(result.success).toBe(true);
-  expect(result.status.preservedPreferences).toBe(true);
-  expect(result.retained).toBe(result.source);
-  expect(result.recovery.database.recovery.find((row) => row.id === preferencesKey).source).toBe(
-    result.source,
-  );
-});
-
 test('persistent storage refusal and API failures do not disable saving', async ({ page }) => {
   await prepare(page);
   await seed(page);
   const result = await page.evaluate(async () => {
     const module = await import('/src/persistence/database.js');
     const store = await window.createStore({
-      legacyStorage: localStorage,
       storageManager: { persisted: async () => false, persist: async () => false },
     });
     const saved = await store.save({ campaigns: [{ ...store.campaigns[0], name: 'Still saved' }] });
@@ -770,55 +448,6 @@ test('persistent storage refusal and API failures do not disable saving', async 
   expect(result.states).toEqual(['unsupported', 'unavailable', 'granted']);
 });
 
-test('unavailable IndexedDB preserves legacy downloads, and changed legacy sources block overwrites', async ({
-  page,
-}) => {
-  await prepare(page);
-  await seed(page);
-  const result = await page.evaluate(
-    async ({ key }) => {
-      const original = localStorage.getItem(key);
-      const unavailable = await window.createStore({
-        legacyStorage: localStorage,
-        indexedDB: {
-          open() {
-            throw new DOMException('Blocked', 'SecurityError');
-          },
-        },
-      });
-      const failed = await unavailable.save({ campaigns: unavailable.campaigns });
-      const recovery = JSON.parse(await unavailable.recovery());
-      unavailable.close();
-      const migrated = await window.boot();
-      await migrated.save({ campaigns: [{ ...migrated.campaigns[0], name: 'Primary save' }] });
-      migrated.close();
-      const changed = JSON.parse(original);
-      changed.campaigns[0].name = 'Older app changed this';
-      localStorage.setItem(key, JSON.stringify(changed));
-      const conflict = await window.boot();
-      const blocked = await conflict.save({ campaigns: conflict.campaigns });
-      const result = {
-        failed,
-        recovery,
-        original,
-        blocked,
-        status: conflict.status(),
-        data: await window.readDB(),
-        legacy: localStorage.getItem(key),
-      };
-      conflict.close();
-      return result;
-    },
-    { key },
-  );
-  expect(result.failed).toBe(false);
-  expect(result.recovery.legacy[key]).toBe(result.original);
-  expect(result.blocked).toBe(false);
-  expect(result.status.reason).toBe('conflict');
-  expect(result.data.campaigns[0].value.name).toBe('Primary save');
-  expect(JSON.parse(result.legacy).campaigns[0].name).toBe('Older app changed this');
-});
-
 test('verified primary data works without localStorage; async abort and version changes are reported', async ({
   page,
 }) => {
@@ -827,13 +456,7 @@ test('verified primary data works without localStorage; async abort and version 
   const result = await page.evaluate(async () => {
     const initial = await window.boot();
     initial.close();
-    const store = await window.createStore({
-      legacyStorage: {
-        getItem() {
-          throw new Error('Blocked');
-        },
-      },
-    });
+    const store = await window.createStore();
     const before = await window.readDB();
     const put = IDBObjectStore.prototype.put;
     IDBObjectStore.prototype.put = function (value) {
@@ -874,24 +497,17 @@ test('retry saving after deleting the last-opened campaign commits deletion and 
 }) => {
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
-  await page.addInitScript(
-    ({ campaign, key }) => {
-      if (!sessionStorage.getItem('seeded')) {
-        localStorage.setItem(key, JSON.stringify({ version: 1, campaigns: [campaign] }));
-        sessionStorage.setItem('seeded', '1');
-      }
-      const put = IDBObjectStore.prototype.put;
-      IDBObjectStore.prototype.put = function (value) {
-        if (
-          this.transaction.db.name === 'wilderness-almanac:campaigns' &&
-          sessionStorage.getItem('fail-save')
-        )
-          throw new DOMException('Full', 'QuotaExceededError');
-        return put.call(this, value);
-      };
-    },
-    { campaign, key },
-  );
+  await page.addInitScript(() => {
+    const put = IDBObjectStore.prototype.put;
+    IDBObjectStore.prototype.put = function (value) {
+      if (
+        this.transaction.db.name === 'wilderness-almanac:campaigns' &&
+        sessionStorage.getItem('fail-save')
+      )
+        throw new DOMException('Full', 'QuotaExceededError');
+      return put.call(this, value);
+    };
+  });
   const stored = () =>
     page.evaluate(async () => {
       const { openDatabase, readDatabase } = await import('/src/persistence/database.js');
@@ -902,8 +518,14 @@ test('retry saving after deleting the last-opened campaign commits deletion and 
         db.close();
       }
     });
+  await prepare(page);
+  await seed(page);
+  await page.unroute('**/src/main.js');
   await page.goto('/');
   await page.getByRole('button', { name: 'Enter Test campaign', exact: true }).click();
+  await expect(page.locator('#hp-scene canvas')).toBeVisible();
+  await expect(page.locator('#campaign-menu')).toBeHidden();
+  await page.locator('#hp-selection').selectOption('0,0');
   await expect(page.locator('#campaign-workspace')).not.toHaveAttribute('inert');
   await expect
     .poll(async () => (await stored()).settings.find(({ id }) => id === 'activeCampaign')?.value)
@@ -949,38 +571,34 @@ test('retry saving after deleting the last-opened campaign commits deletion and 
   expect(errors).toEqual([]);
 });
 
-test('the app migrates, reloads, reports failed saves and downloads unsaved changes', async ({
-  page,
-}) => {
+test('the app reloads, reports failed saves and downloads unsaved changes', async ({ page }) => {
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
-  await page.addInitScript(
-    ({ campaign, palette, key, preferencesKey }) => {
-      if (!sessionStorage.getItem('seeded')) {
-        localStorage.setItem(key, JSON.stringify({ version: 1, campaigns: [campaign] }));
-        localStorage.setItem(
-          preferencesKey,
-          JSON.stringify({ version: 1, palettes: [palette], defaultPalette: palette.id }),
-        );
-        sessionStorage.setItem('seeded', '1');
-      }
-      const put = IDBObjectStore.prototype.put;
-      IDBObjectStore.prototype.put = function (value) {
-        if (this.name === 'campaigns' && sessionStorage.getItem('fail-save'))
-          throw new DOMException('Full', 'QuotaExceededError');
-        return put.call(this, value);
-      };
-    },
-    { campaign, palette, key, preferencesKey },
-  );
+  await page.addInitScript(() => {
+    const put = IDBObjectStore.prototype.put;
+    IDBObjectStore.prototype.put = function (value) {
+      if (this.name === 'campaigns' && sessionStorage.getItem('fail-save'))
+        throw new DOMException('Full', 'QuotaExceededError');
+      return put.call(this, value);
+    };
+  });
+  await prepare(page);
+  await seed(page, [campaign], { palettes: [palette], defaultPalette: palette.id });
+  await page.unroute('**/src/main.js');
   await page.goto('/');
   await page.getByRole('button', { name: 'Enter Test campaign', exact: true }).click();
+  await expect(page.locator('#hp-scene canvas')).toBeVisible();
+  await expect(page.locator('#campaign-menu')).toBeHidden();
+  await page.locator('#hp-selection').selectOption('0,0');
   await expect(page.locator('#hp-scene canvas')).toBeVisible();
   await expect(page.locator('#campaign-workspace')).not.toHaveAttribute('inert');
   await page.getByRole('switch', { name: 'Visited', exact: true }).click();
   await page.locator('#hp-back-menu').click();
   await page.reload();
   await page.getByRole('button', { name: 'Enter Test campaign', exact: true }).click();
+  await expect(page.locator('#hp-scene canvas')).toBeVisible();
+  await expect(page.locator('#campaign-menu')).toBeHidden();
+  await page.locator('#hp-selection').selectOption('0,0');
   await expect(page.locator('#campaign-workspace')).not.toHaveAttribute('inert');
   await expect(page.getByRole('switch', { name: 'Visited', exact: true })).toHaveAttribute(
     'aria-checked',
@@ -1004,6 +622,9 @@ test('the app migrates, reloads, reports failed saves and downloads unsaved chan
   await page.locator('#hp-back-menu').click();
   await page.reload();
   await page.getByRole('button', { name: 'Enter Test campaign', exact: true }).click();
+  await expect(page.locator('#hp-scene canvas')).toBeVisible();
+  await expect(page.locator('#campaign-menu')).toBeHidden();
+  await page.locator('#hp-selection').selectOption('0,0');
   await expect(page.locator('#campaign-workspace')).not.toHaveAttribute('inert');
   await expect(page.getByRole('switch', { name: 'Visited', exact: true })).toHaveAttribute(
     'aria-checked',
@@ -1014,4 +635,104 @@ test('the app migrates, reloads, reports failed saves and downloads unsaved chan
   expect(local[preferencesKey]).toBeUndefined();
   expect(Object.keys(JSON.parse(local['wilderness-almanac:ui-v1']))).not.toContain('palettes');
   expect(errors).toEqual([]);
+});
+
+test('fresh and simultaneous startup initialize once and ignore historical localStorage data', async ({
+  page,
+}) => {
+  await prepare(page);
+  const result = await page.evaluate(async () => {
+    localStorage.setItem('wilderness-almanac:campaigns-v1', '{untouched');
+    const stores = await Promise.all([window.boot(), window.boot()]);
+    const initial = await window.readDB();
+    const status = stores.map((store) => store.status());
+    stores.forEach((store) => store.close());
+    const reopened = await window.boot();
+    const after = await window.readDB();
+    reopened.close();
+    return {
+      initial,
+      after,
+      status,
+      source: localStorage.getItem('wilderness-almanac:campaigns-v1'),
+    };
+  });
+  expect(result.initial).toEqual(result.after);
+  expect(result.initial.campaigns).toEqual([]);
+  expect(result.initial.settings.filter(({ id }) => id === 'library')).toHaveLength(1);
+  expect(result.initial.settings.find(({ id }) => id === 'migration')).toBeUndefined();
+  expect(result.status.every(({ readOnly }) => !readOnly)).toBe(true);
+  expect(result.source).toBe('{untouched');
+});
+
+test('unsupported generators stay recoverable while current campaigns remain writable', async ({
+  page,
+}) => {
+  await prepare(page);
+  const unsupported = [6, 7, 8, 9, 11].map((generatorVersion) => ({
+    ...campaign,
+    id: `old-${generatorVersion}`,
+    generatorVersion,
+  }));
+  await seed(page, [campaign, ...unsupported]);
+  const result = await page.evaluate(async () => {
+    const store = await window.boot();
+    const before = store.status();
+    const saved = await store.save({ campaigns: [{ ...store.campaigns[0], name: 'Current map' }] });
+    const recovery = JSON.parse(await store.recovery());
+    store.close();
+    return { before, saved, recovery };
+  });
+  expect(result.before).toMatchObject({ preservedCount: 5, readOnly: false });
+  expect(result.saved).toBe(true);
+  for (const record of unsupported)
+    expect(result.recovery.database.campaigns.find(({ id }) => id === record.id).value).toEqual(
+      record,
+    );
+});
+
+test('missing primary metadata blocks writes without initializing over existing records', async ({
+  page,
+}) => {
+  await prepare(page);
+  await seed(page);
+  const result = await page.evaluate(async () => {
+    const { openDatabase, transact } = await import('/src/persistence/database.js');
+    const db = await openDatabase(indexedDB);
+    await transact(db, ['settings'], 'readwrite', ({ settings }) => settings.delete('library'));
+    db.close();
+    const store = await window.boot();
+    const status = store.status();
+    const saved = await store.save({ campaigns: [] });
+    const recovery = JSON.parse(await store.recovery());
+    store.close();
+    return { status, saved, recovery };
+  });
+  expect(result.status).toMatchObject({ readOnly: true, reason: 'unreadable' });
+  expect(result.saved).toBe(false);
+  expect(result.recovery.database.campaigns[0].value).toEqual(campaign);
+  expect(result.recovery.database.settings.find(({ id }) => id === 'library')).toBeUndefined();
+});
+
+test('unavailable IndexedDB reports failure and leaves old localStorage untouched', async ({
+  page,
+}) => {
+  await prepare(page);
+  const result = await page.evaluate(async () => {
+    localStorage.setItem('hex-sandbox:map-v1', 'original');
+    const store = await window.createStore({
+      indexedDB: {
+        databases: async () => {
+          throw new Error('Blocked');
+        },
+      },
+    });
+    const status = store.status();
+    const saved = await store.save({ campaigns: [] });
+    store.close();
+    return { status, saved, original: localStorage.getItem('hex-sandbox:map-v1') };
+  });
+  expect(result.status).toMatchObject({ readOnly: true, reason: 'unavailable' });
+  expect(result.saved).toBe(false);
+  expect(result.original).toBe('original');
 });

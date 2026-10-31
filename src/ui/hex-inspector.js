@@ -110,7 +110,7 @@ export function createHexInspector(
         explainDisabled(
           input,
           !graph
-            ? 'Roads are available in new campaigns'
+            ? 'Road editing is unavailable on this map'
             : !allowed
               ? 'Needs neighbouring land or a crossing, with at most one level of elevation change'
               : '',

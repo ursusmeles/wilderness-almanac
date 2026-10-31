@@ -1,6 +1,6 @@
 import { DIRECTIONS, distance, keyOf } from '../generation/hex.js';
 
-export const isOpenWater = (cell) =>
+const isOpenWater = (cell) =>
   cell.terrain === 'open water' || cell.water === 'ocean' || cell.water === 'lake';
 export const visibleUnvisitedPoi = (poi) =>
   ['watchtower', 'abbey', 'ruins', 'stronghold'].includes(poi.kind);

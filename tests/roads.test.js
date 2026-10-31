@@ -51,19 +51,6 @@ test('roads replay deterministically, obey the unique tile budget and avoid moun
   }
 });
 
-test('version 9 adds roads without changing version 8 geography, settlements or POIs', () => {
-  const legacy = generateWorld('1234', { generatorVersion: 8 });
-  const { roads: _roads, ...current } = structuredClone(base);
-  current.generatorVersion = 8;
-  current.cells.forEach((cell) => delete cell.road);
-  assert.deepEqual(current, legacy);
-  for (const generatorVersion of [6, 7, 8]) {
-    const world = generateWorld('7', { generatorVersion });
-    assert.equal(world.roads, undefined);
-    assert.ok(generateDressing(world).cells.every((cell) => !cell.roads && !cell.roadShape));
-  }
-});
-
 function corridor() {
   const world = {
     ...createTopology(),
@@ -195,12 +182,10 @@ test('manual exits connect both neighbours, survive import, and reset from eithe
   assert.deepEqual(campaignWorld(importCampaign(exportCampaign(edited))).roads, world.roads);
   const reset = updateHexes(edited, { [b.key]: null }, base);
   assert.deepEqual(campaignWorld(reset, base).roads.edges, base.roads.edges);
-  const legacy = createCampaign(
-    generateWorld('7', { generatorVersion: 8 }),
-    campaign.colors,
-    campaign.paletteName,
+  assert.throws(
+    () => updateHexes(campaign, { '0,0': { roadExits: 1 } }, { ...base, roads: undefined }),
+    /unavailable on this map/,
   );
-  assert.throws(() => updateHex(legacy, '0,0', { roadExits: 1 }), /version 9/);
   const mountain = base.cells.find((cell) => cell.terrain === 'mountains');
   assert.throws(() => updateHex(campaign, mountain.key, { roadExits: 1 }), /Roads need/);
 });

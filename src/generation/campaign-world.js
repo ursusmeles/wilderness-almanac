@@ -214,7 +214,7 @@ export function campaignWorld(
   return applyRoadEdits(world, base, edits);
 }
 
-export function crossingFor(cell, fields) {
+function crossingFor(cell, fields) {
   if (cell.water !== 'river' || !fields.curves.get(cell.key)) return null;
   return crossingSite({
     ...cell,
@@ -490,7 +490,7 @@ export function updateHexes(campaign, patches, baseWorld) {
         generatorVersion: campaign.generatorVersion,
       });
     if (roadRequests.length && !base.roads)
-      throw new Error('Road editing requires a version 9 campaign.');
+      throw new Error('Road editing is unavailable on this map.');
     if (base.roads) {
       const before = campaignWorld(campaign, base);
       // Reset an incident manual edge from either of its two hexes.

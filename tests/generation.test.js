@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import fixtures from './fixtures/generation-v7.json' with { type: 'json' };
+import fixtures from './fixtures/generation-v10.json' with { type: 'json' };
 import { createTopology } from '../src/map-data.js';
 import { generateWorld, generateDressing, GENERATOR_VERSION } from '../src/generation/world.js';
 import { planSettlements, settlementSuitability } from '../src/generation/settlement-placement.js';
@@ -16,15 +16,6 @@ import { terrainFootingGeometry } from '../src/rendering/geometry.js';
 
 const digest = (value) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const colors = ['#cdab8f', '#0b365e', '#11b329'];
-
-test('versions 6/7 replay their captured worlds and dressing exactly', () => {
-  for (const fixture of fixtures) {
-    const world = generateWorld(fixture.seed, fixture.options);
-    assert.equal(digest(world), fixture.world);
-    assert.equal(digest(generateDressing(world, 2)), fixture.dressing);
-  }
-  assert.equal(GENERATOR_VERSION, 9);
-});
 
 test('mountain villages and high/steep sites use one 0.3 suitability penalty', () => {
   const cell = { q: 0, r: 0, terrain: 'meadow', elevation: 1 };
@@ -67,7 +58,7 @@ test('regional plans choose towns without cities and scale after positive modifi
   }
 });
 
-test('v8 worlds respect regional/footprint caps and spacing across slider combinations', () => {
+test('current worlds respect regional/footprint caps and spacing across slider combinations', () => {
   const settings = [
     {},
     { water: 2, settlements: 2 },
@@ -81,7 +72,7 @@ test('v8 worlds respect regional/footprint caps and spacing across slider combin
     emptyWetRegions = 0;
   for (const preferences of settings)
     for (let seed = 0; seed < 12; seed++) {
-      const world = generateWorld(String(seed), { preferences, generatorVersion: 8 });
+      const world = generateWorld(String(seed), { preferences, generatorVersion: 10 });
       const byKey = new Map(world.cells.map((cell) => [cell.key, cell]));
       for (const plan of world.settlementPlans) {
         const settlements = world.settlements.filter((s) => s.regionId === plan.regionId);
@@ -107,7 +98,7 @@ test('v8 worlds respect regional/footprint caps and spacing across slider combin
             assert.ok(other.hexKeys.every((otherKey) => distance(cell, byKey.get(otherKey)) > 2));
         }
       }
-      assert.deepEqual(world, generateWorld(String(seed), { preferences, generatorVersion: 8 }));
+      assert.deepEqual(world, generateWorld(String(seed), { preferences, generatorVersion: 10 }));
     }
   assert.ok(townsOnly > 0 && mountainVillages > 0 && emptyWetRegions > 0);
 });
@@ -123,10 +114,10 @@ test('deep forest bonus is local, bounded at 2, and does not extend to forest-ed
   assert.equal(deepForestWeight(centre, byKey), 1);
 });
 
-test('v8 POI preferences add fresh water, deep forest, small islands and shared mines only', () => {
+test('current POI preferences add fresh water, deep forest, small islands and shared mines only', () => {
   const cell = { key: '0,0', q: 0, r: 0, terrain: 'meadow', elevation: 2 };
   const context = {
-    generatorVersion: 8,
+    generatorVersion: 10,
     byKey: new Map(),
     pl: () => 99,
     smallPL: () => 99,
@@ -147,24 +138,12 @@ test('v8 POI preferences add fresh water, deep forest, small islands and shared 
   assert.equal(score('abbey', { ...cell, islandId: 'island' }), score('abbey') * 3);
   const settlement = { ...cell, pointOfLight: { type: 'village' } };
   assert.ok(score('dungeon', settlement) > 0);
-  assert.equal(score('dungeon', settlement, { generatorVersion: 7 }), 0);
   for (const kind of ['ruins', 'lair', 'stronghold', 'encampment', 'abbey', 'battlefield'])
     assert.equal(score(kind, settlement), 0);
-  // The declined stronghold/lair adjustments stay exactly as in version 7.
-  for (const kind of ['stronghold', 'lair'])
-    for (const value of [
-      cell,
-      { ...cell, terrain: 'wetlands' },
-      { ...cell, terrain: 'mountains', elevation: 4 },
-    ])
-      assert.equal(
-        score(kind, value, { pl: () => 1 }),
-        score(kind, value, { pl: () => 1, generatorVersion: 7 }),
-      );
 });
 
 test('mountain village footings fit their sampled slope and survive locking/export/import', () => {
-  const world = generateWorld('1', { generatorVersion: 8 });
+  const world = generateWorld('1', { generatorVersion: 10 });
   const village = world.cells.find(
     (cell) => cell.elevation === 4 && cell.pointOfLight?.type === 'village',
   );
@@ -195,6 +174,17 @@ test('mountain village footings fit their sampled slope and survive locking/expo
   assert.deepEqual(replay, world);
   assert.deepEqual(campaignDressing(imported, replay), campaignDressing(campaign, world));
   const link = readMapLink(mapLink('https://example.com/', campaign));
-  assert.equal(link.generatorVersion, 8);
+  assert.equal(link.generatorVersion, 10);
   assert.deepEqual(generateWorld(link.seed, link), world);
+});
+
+test('version 10 preserves captured world and dressing output', () => {
+  assert.equal(GENERATOR_VERSION, 10);
+  for (const fixture of fixtures) {
+    const world = generateWorld(fixture.seed, { preferences: fixture.preferences });
+    assert.equal(digest(world), fixture.world);
+    assert.equal(digest(generateDressing(world, 2)), fixture.dressing);
+  }
+  for (const generatorVersion of [6, 7, 8, 9, 11])
+    assert.throws(() => generateWorld('7', { generatorVersion }), /unsupported/);
 });

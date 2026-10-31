@@ -7,9 +7,8 @@ import {
   generateFarmlands,
   TERRAIN_TYPES,
 } from '../src/generation/terrain-types.js';
-import { chooseCitySize, generatePointsOfLight } from '../src/generation/points-of-light.js';
+import { generateSettlements } from '../src/generation/settlement-placement.js';
 import { settlementSuitability } from '../src/generation/settlement-placement.js';
-import { randomFor } from '../src/generation/seed.js';
 import { components, distance, DIRECTIONS } from '../src/generation/hex.js';
 import { fitsHex, fitsTree, lowProp, minimumSpacing } from '../src/generation/prop-placement.js';
 import { TOKEN_ANCHOR } from '../src/generation/props.js';
@@ -77,7 +76,7 @@ test('name modifiers produce conspicuous differences on identical geography', ()
     for (const cell of world.cells) cell.pointOfLight = null;
     world.naming.weights = nameModifiers(modifiers);
     generateTerrainTypes(world);
-    generatePointsOfLight(world);
+    generateSettlements(world);
     generateFarmlands(world);
     assert.deepEqual(
       world.cells.map((c) => [c.water, c.elevation, c.downstream]),
@@ -171,14 +170,6 @@ test('100 worlds preserve terrain suitability, clusters, open ground and settlem
   assert.ok(isolatedForest / forestCount < 0.04, 'Coherent forests, not independent random tiles');
   assert.ok(bigCities > 20);
   assert.ok(canyonWetlands > 20);
-});
-
-test('city footprint rolls follow 50% one, 40% two and 10% three hexes', () => {
-  const counts = [0, 0, 0];
-  for (let seed = 0; seed < 10000; seed++)
-    counts[chooseCitySize(randomFor(String(seed), 'city-size-test')) - 1]++;
-  for (const [i, share] of [0.5, 0.4, 0.1].entries())
-    assert.ok(Math.abs(counts[i] / 10000 - share) < 0.02);
 });
 
 test('dressing retains crown clusters, links, spacing, token clearance and terrain-specific props', () => {

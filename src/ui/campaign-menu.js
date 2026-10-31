@@ -58,7 +58,7 @@ export function createCampaignMenu({
   }
 
   function recoveryNotice() {
-    const { reason, readOnly, preservedCount, preservedPreferences, hasRecovery } = store.status();
+    const { reason, readOnly, preservedCount, hasRecovery } = store.status();
     const message = document.getElementById('campaign-recovery-message');
     let text = '';
     if (reason === 'conflict')
@@ -77,8 +77,6 @@ export function createCampaignMenu({
         'Browser storage cannot be read. Download any campaigns you create before closing this page. Reload to retry opening your saves.';
     else if (preservedCount)
       text = `${preservedCount} saved ${preservedCount === 1 ? 'campaign cannot' : 'campaigns cannot'} be opened by this version. ${preservedCount === 1 ? 'Its' : 'Their'} data is preserved in your library.`;
-    if (preservedPreferences)
-      text += `${text ? ' ' : ''}Some older palette or settings data cannot be read. Its original data is kept in recovery.`;
     if (message.textContent !== text) message.textContent = text;
     document.getElementById('campaign-recovery').hidden = !message.textContent;
     document.getElementById('download-campaign-recovery').hidden = !hasRecovery;

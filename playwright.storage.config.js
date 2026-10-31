@@ -2,6 +2,7 @@ import { defineConfig } from '@playwright/test';
 
 // Storage checks use real IndexedDB without building or running renderer suites.
 export default defineConfig({
+  outputDir: 'test-results/storage',
   testDir: './e2e',
   testMatch: 'storage.spec.js',
   workers: 1,

@@ -98,7 +98,7 @@ export function generateTerrainTypes(world) {
   return world;
 }
 
-export function preserveOpenLand(world) {
+function preserveOpenLand(world) {
   const land = world.cells.filter((cell) => !cell.water);
   const open = land.filter(
     (cell) => !cell.pointOfLight && ['meadow', 'farmlands'].includes(cell.terrain),

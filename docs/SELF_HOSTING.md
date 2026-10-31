@@ -6,7 +6,7 @@ IndexedDB remains the local working store. Account transfers are explicit throug
 **Account & sync** in the campaign library; editing, Undo, offline work and JSON
 export/import keep their existing behavior. Signing out keeps local campaigns.
 Custom palette libraries are device-local; a campaign's own palette travels with
-its replay record. Sandbox Tools and billing are outside this implementation.
+its replay record. Billing is not implemented.
 
 ## Deployment layout
 
@@ -29,7 +29,11 @@ The proxy key is an origin protection layer, not a replacement for user sessions
 
 ## Office-server setup
 
-When upgrading an existing deployment, preserve the existing `DATABASE_VOLUME` and set `DATABASE_PATH` in `.env` to its current SQLite filename before starting the renamed stack. The new defaults use `wilderness_almanac_data` and `/data/wilderness-almanac.sqlite`; accepting them on an existing installation would open an empty database. Stop the previous stack first, retain its volume, and deploy the API and Cloudflare proxy together because their private header names change together. Keep the previous `BACKUP_PREFIX` explicitly configured if backups should continue under the same object prefix. Repository and hosting project/domain renames are separate from these source changes; changing the frontend origin also requires moving browser campaigns through JSON exports/imports.
+For an existing deployment, keep `DATABASE_VOLUME`, `DATABASE_PATH` and backup
+prefix pointed at their current data. Changing a frontend origin requires moving
+browser campaigns through JSON exports/imports. Deploy frontend and API together:
+both use the same campaign validator and now accept generator **10** only. Older
+account documents are not automatically converted or deleted.
 
 Keep the source and root `compose.yaml` together, for example in
 `/opt/stacks/wilderness-almanac`, where Dockge can discover it. Copy `.env.example` to `.env`
@@ -152,7 +156,7 @@ pre-upgrade database into a new volume.
 | `GET /api/campaigns/:id`                               | Read the owner's campaign and revision                |
 | `PUT /api/campaigns/:id`                               | Validate `{campaign}` and conditionally create/update |
 | `DELETE /api/campaigns/:id`                            | Conditionally delete the account document             |
-| `GET /api/campaigns/:id/export`                        | Download the existing version-2 replay format         |
+| `GET /api/campaigns/:id/export`                        | Download a validated campaign replay export           |
 
 Campaign mutation requests require JSON, the trusted app Origin and `If-Match: "N"`.
 New documents require revision `"0"`. Missing revisions return 428; mismatches

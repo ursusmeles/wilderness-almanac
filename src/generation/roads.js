@@ -6,7 +6,7 @@ import { riverBankValue } from './river-surfaces.js';
 
 export const roadKey = (a, b) => [a, b].sort().join('|');
 export const roadCellKey = (id) => id.split(':')[0];
-export const roadLand = (cell) => !!cell && !cell.water && cell.terrain !== 'mountains';
+const roadLand = (cell) => !!cell && !cell.water && cell.terrain !== 'mountains';
 const counted = (cell) => roadLand(cell) && !cell.pointOfLight && !cell.pointsOfInterest.length;
 const rank = {
   city: 0,
@@ -222,7 +222,7 @@ export function generateRoads(world) {
   return world;
 }
 
-export function validRoadLink(link, graph) {
+function validRoadLink(link, graph) {
   const destinationExists = (place, entry) => {
     const node = graph.nodes.get(entry);
     if (!node) return false;

@@ -5,7 +5,7 @@ export const FOREST_TYPES = {
   deciduous: ['oak', 'beech', 'birch', 'ash'],
   evergreen: ['pine', 'spruce', 'fir', 'taiga'],
 };
-export const TAIGA_MIN_CLUSTER_SIZE = 7;
+const TAIGA_MIN_CLUSTER_SIZE = 7;
 export const isForest = (cell) =>
   !cell.water && !cell.pointOfLight && ['light forest', 'dense forest'].includes(cell.terrain);
 const familyOf = (cell) => (cell.treeVariant === 1 ? 'deciduous' : 'evergreen');

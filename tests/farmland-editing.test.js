@@ -10,7 +10,7 @@ import { TERRAIN_OPTIONS, terrainValue, terrainPatch } from '../src/ui/terrain-o
 
 const colors = ['#cdab8f', '#0b365e', '#11b329'];
 const find = (cells, key) => cells.find((cell) => cell.key === key);
-function fixture(generatorVersion = 9) {
+function fixture(generatorVersion = 10) {
   const world = generateWorld('vineyard-editor', { generatorVersion });
   const session = createCampaignSession({
     persist: () => ({ campaignSaved: true, preferencesSaved: true }),
@@ -56,7 +56,7 @@ test('crop appearance imports are bounded and require version-4 farmland edits',
     assert.throws(() => validateHexEdits(value), /invalid hex edits/);
 });
 
-for (const generatorVersion of [6, 9]) {
+for (const generatorVersion of [10]) {
   test(`manual farmland appearances save, replay and reroll on generator ${generatorVersion}`, () => {
     const { session } = fixture(generatorVersion);
     const initial = session.snapshot();

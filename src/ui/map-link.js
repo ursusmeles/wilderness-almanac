@@ -16,15 +16,19 @@ export function readMapLink(href) {
     .get('colors')
     ?.split('-')
     .map((color) => `#${color}`);
-  const version = params.has('generator') ? Number(params.get('generator')) : 6;
+  const version = params.has('generator') ? Number(params.get('generator')) : undefined;
   const artStyle = params.get('art');
   if (artStyle !== null && !MAP_ART_STYLES.includes(artStyle)) return {};
-  if (!SUPPORTED_GENERATOR_VERSIONS.includes(version)) return {};
+  if (!SUPPORTED_GENERATOR_VERSIONS.includes(version))
+    return params.has('seed')
+      ? {
+          error: `This map link uses an unsupported generator version. Only version ${GENERATOR_VERSION} is supported.`,
+        }
+      : {};
   let preferences;
   if (params.has('world')) {
     const values = params.get('world').split(',');
     if (
-      version < 7 ||
       values.length !== PREFERENCE_NAMES.length ||
       values.some((value) => !/^-?[0-2]$/.test(value))
     )
@@ -49,9 +53,8 @@ export function mapLink(href, { seed, variant, colors, generatorVersion, prefere
   url.searchParams.delete('world');
   url.searchParams.delete('art');
   if (artStyle === 'pixelart') url.searchParams.set('art', artStyle);
-  if (generatorVersion !== undefined || preferences !== undefined)
-    url.searchParams.set('generator', String(generatorVersion ?? GENERATOR_VERSION));
-  if (preferences !== undefined && (generatorVersion ?? GENERATOR_VERSION) >= 7) {
+  url.searchParams.set('generator', String(generatorVersion ?? GENERATOR_VERSION));
+  if (preferences !== undefined) {
     const values = worldPreferences(preferences);
     url.searchParams.set('world', PREFERENCE_NAMES.map((name) => values[name]).join(','));
   }

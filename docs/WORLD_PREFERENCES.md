@@ -75,6 +75,12 @@ Very wet or very rugged maps can support fewer settlements even at Densely settl
 
 ## Replay and compatibility
 
-New campaigns use generator version 9 and save normalized preferences alongside the original seed. Version 8 adds the settlement planning and POI refinements described here and in PROJECT_STATE.md; version 9 retains those locations and adds roads. The initial road budget is 10% of dry land times effective PL weight, capped at 20%, so negative name weights and settlement sliders reduce roads too. Exports, imports, local campaigns, edited-world reconstruction, map replacement and thumbnail signatures include these settings. Changing a campaign name or palette does not change preferences or generation.
+Only generator **10** is supported. Campaigns save normalized preferences alongside
+the original seed. Exports, imports, edited-world reconstruction, replacement and
+thumbnail signatures include them. Renaming a campaign or changing its palette
+does not change generation.
 
-Versions 6, 7 and 8 remain supported with their original placement and dressing behaviour. Version 6 rejects nonzero preferences; version 7 supports the original sliders. Existing unversioned seed links replay version 6. New links carry `generator=9` and `world=water,elevation,forests,settlements`, such as `world=1,0,-1,2`. Explicit version-7 links continue to replay version 7. Unknown versions or malformed preference links do not silently create a default map. Older clients reject version-9 campaigns through the existing version validation.
+Links carry `generator=10` and `world=water,elevation,forests,settlements`, such as
+`world=1,0,-1,2`. Older versions and links without an explicit version are rejected;
+malformed preferences do not silently produce a default map. The reserved
+`heliotest` seed uses its fixed seven-hex layout rather than the ordinary sliders.

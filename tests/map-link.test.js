@@ -78,6 +78,7 @@ test('clipboard writes receive the exact seed or share URL and report write fail
 
 test('map URLs round-trip arbitrary seeds, palette and dressing without dropping other URL state', () => {
   const state = {
+    generatorVersion: 10,
     seed: 'Żmij & ash/?# + mist',
     variant: 48,
     colors: ['#282039', '#237d89', '#e5b96e'],
@@ -86,11 +87,12 @@ test('map URLs round-trip arbitrary seeds, palette and dressing without dropping
   assert.deepEqual(readMapLink(link), state);
   assert.equal(new URL(link).searchParams.get('view'), 'campaign');
   assert.equal(new URL(link).hash, '#map');
-  assert.deepEqual(readMapLink('https://example.com/?seed=other'), {
-    seed: 'other',
-    variant: undefined,
-    colors: undefined,
-  });
+  assert.match(readMapLink('https://example.com/?seed=other').error, /unsupported/);
+  for (const version of [6, 7, 8, 9, 11])
+    assert.match(
+      readMapLink(`https://example.com/?seed=7&generator=${version}`).error,
+      /unsupported/,
+    );
   for (const query of [
     'seed=%20',
     `seed=${'a'.repeat(129)}`,
@@ -99,7 +101,7 @@ test('map URLs round-trip arbitrary seeds, palette and dressing without dropping
     'variant=9007199254740992',
     'colors=red-blue-green',
   ]) {
-    const parsed = readMapLink(`https://example.com/?${query}`);
+    const parsed = readMapLink(`https://example.com/?generator=10&${query}`);
     assert.equal(parsed.seed, undefined);
     assert.equal(parsed.variant, undefined);
     assert.equal(parsed.colors, undefined);

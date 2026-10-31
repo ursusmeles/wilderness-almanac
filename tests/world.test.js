@@ -7,7 +7,6 @@ import { chooseCoastEdges, narrowPeninsulaChains } from '../src/generation/geogr
 import { components, distance, neighbours, DIRECTIONS } from '../src/generation/hex.js';
 import { riverLandValue } from '../src/generation/river-surfaces.js';
 import { surfaceHeight } from '../src/generation/math.js';
-import { readPreferences, savePreferences } from '../src/ui/storage.js';
 import { bendLongRiverRuns } from '../src/generation/river-routing.js';
 import { randomFor } from '../src/generation/seed.js';
 import { TERRAIN_TYPES } from '../src/generation/terrain-types.js';
@@ -325,39 +324,4 @@ test('river meshes share bank height/shore samples and never cut through dry bou
       }
     }
   }
-});
-
-test('palette preferences round-trip; malformed/blocked browser storage is harmless', () => {
-  let stored;
-  const storage = {
-    getItem: () => stored,
-    setItem: (_, value) => {
-      stored = value;
-    },
-  };
-  const saved = {
-    seed: 'bay',
-    variant: 4,
-    colors: ['#282039', '#237d89', '#e5b96e'],
-    palettes: [{ name: 'Test', colors: ['#282039', '#237d89', '#e5b96e'] }],
-  };
-  assert.equal(savePreferences(storage, saved), true);
-  assert.deepEqual(readPreferences(storage), saved);
-  assert.equal(savePreferences(storage, { ...saved, motion: false }), true);
-  assert.equal(readPreferences(storage).motion, false);
-  assert.equal(savePreferences(storage, { ...saved, settingsOpen: false }), true);
-  assert.equal(readPreferences(storage).settingsOpen, false);
-  assert.equal(savePreferences(storage, { ...saved, settingsOpen: true }), true);
-  assert.equal(readPreferences(storage).settingsOpen, true);
-  stored = JSON.stringify({ version: 1, motion: 'false' });
-  assert.equal(readPreferences(storage).motion, undefined);
-  stored = JSON.stringify({ version: 1, settingsOpen: 'false' });
-  assert.equal(readPreferences(storage).settingsOpen, undefined);
-  stored = '{broken';
-  assert.deepEqual(readPreferences(storage), {});
-  stored = JSON.stringify({ version: 1, colors: ['red'], palettes: [{ name: 'bad', colors: [] }] });
-  assert.equal(readPreferences(storage).colors, undefined);
-  assert.deepEqual(readPreferences(storage).palettes, []);
-  assert.deepEqual(readPreferences(undefined), {});
-  assert.equal(savePreferences(undefined, saved), false);
 });

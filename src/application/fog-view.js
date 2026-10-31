@@ -2,7 +2,7 @@ import { DIRECTIONS } from '../generation/hex.js';
 import { ELEVATION_STEP } from '../generation/presentation.js';
 import { visibleUnvisitedPoi } from './fog-of-war.js';
 
-export function fogCell(cell, states) {
+function fogCell(cell, states) {
   if (!states) return cell;
   const fogState = states.get(cell.key);
   if (fogState === 'undiscovered') {

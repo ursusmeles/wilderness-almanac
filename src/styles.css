@@ -163,9 +163,6 @@
     flex-shrink: 0;
     fill: currentColor;
   }
-  .cursor-interaction {
-    cursor: pointer;
-  }
 }
 
 @layer blocks {
@@ -1945,16 +1942,6 @@
     min-width: 0;
     font: var(--f-regular) var(--text-heading)/var(--lh-medium) var(--f-display);
   }
-  .hp-party-location-value {
-    line-height: var(--lh-medium);
-    display: flex;
-    align-items: center;
-    gap: var(--space-3xs);
-    & > span {
-      min-width: 0;
-      overflow-wrap: anywhere;
-    }
-  }
   .hp-party-overview .hp-hex-distances {
     gap: 0;
     margin: 0;
@@ -2029,10 +2016,6 @@
   }
   .hp-inspector-heading {
     min-width: 0;
-  }
-  .hp-eyebrow {
-    font-size: var(--text-control);
-    color: var(--c-text-muted);
   }
   #hp-hex-name {
     margin: 0;

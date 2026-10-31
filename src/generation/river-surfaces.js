@@ -70,13 +70,6 @@ function riverBankHeight(river, x, z) {
   }
   return weight ? height / weight : 0.14;
 }
-function riverGroundHeight(river, x, z) {
-  const bank = riverBankValue(river, x, z),
-    island = riverIslandValue(river, x, z);
-  if (Math.max(bank, island) < 0) return 0;
-  return island > bank ? 0.045 : riverBankHeight(river, x, z);
-}
-
 function riverTopHeight(cell, x, z) {
   const height = riverBankHeight(cell.river, cell.wx + x, cell.wz + z);
   if (!cell.bankBevel) return height;
@@ -207,12 +200,10 @@ function riverSurface(cell) {
 }
 
 export {
-  tubeValue,
   riverBankValue,
   riverIslandValue,
   riverLandValue,
   riverBankHeight,
-  riverGroundHeight,
   riverTopHeight,
   insideRiverTile,
   riverSurface,

@@ -1,5 +1,7 @@
 import { test, expect, campaign, library, openCampaign } from './fixtures.js';
 
+test.use({ reducedMotion: 'no-preference' });
+
 const importFile = {
   name: 'adventure.json',
   mimeType: 'application/json',

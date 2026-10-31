@@ -60,7 +60,6 @@ test('range profiles mix low rounded terrain with occasional prominent relief', 
 
 test('legacy mountain locks retain their old numeric shape in current campaigns', () => {
   const world = generateWorld('7');
-  const oldWorld = { ...world, generatorVersion: 8 };
   const mountainLocks = Object.fromEntries(
     world.elevation.ranges.map((range) => [
       range.id,
@@ -72,8 +71,8 @@ test('legacy mountain locks retain their old numeric shape in current campaigns'
     ]),
   );
   const current = generateDressing(world, 2, { mountainLocks });
-  const legacy = generateDressing(oldWorld, 2, { mountainLocks });
-  assert.deepEqual(prepareMountainRanges(world, current), prepareMountainRanges(oldWorld, legacy));
+  assert.ok(current.mountains.every((mountain) => mountain.profile === 0));
+  assert.deepEqual(current, generateDressing(world, 2, { mountainLocks }));
 });
 
 test('connected mountain meshes share exact heights and taper to their outside perimeter', () => {

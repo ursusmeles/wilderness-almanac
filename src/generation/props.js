@@ -136,12 +136,7 @@ export function generatePropDressing(
       let y = surface ? surfaceHeight(surface, x, z) : 0;
       if (extra.flank && (y < 0.025 || y > 0.18)) return false;
       let foundation;
-      if (
-        world.generatorVersion >= 8 &&
-        surface &&
-        cell.pointOfLight?.type === 'village' &&
-        ['house', 'tower'].includes(kind)
-      ) {
+      if (surface && cell.pointOfLight?.type === 'village' && ['house', 'tower'].includes(kind)) {
         const heights = Array.from({ length: 12 }, (_, side) =>
           surfaceHeight(
             surface,
@@ -255,7 +250,6 @@ export function generatePropDressing(
         place('reeds', 0.065, { scale: 0.8 + random() * 0.3, variant: integer(0, 2) });
       if (random() < 0.25) place('tree', 0.12, { scale: 0.5, variant: 1 });
     } else if (cell.terrain === 'farmlands') {
-      const modern = world.generatorVersion >= 9 || Boolean(cropStyles[cell.key]);
       const farmRandom = randomFor(
         world.seed,
         `farmland:${cell.key}:${variant}:${revisions[cell.key] ?? 0}`,
@@ -264,7 +258,7 @@ export function generatePropDressing(
       // Retain the retired plot-style roll so existing wheat/vineyard streams replay.
       if (!vineyard) farmRandom();
       const cropStyle = cropStyles[cell.key] ?? (vineyard ? 'vineyard' : 'grain');
-      if (modern && cropStyle === 'grain') {
+      if (cropStyle === 'grain') {
         if (random() < 0.25) {
           const fruit = farmRandom() < 0.5;
           place('tree', 0.12, { scale: 0.5, variant: fruit ? 1 : cell.treeVariant, fruit });
@@ -272,20 +266,20 @@ export function generatePropDressing(
         props.push(...generateGrainFields(cell, Math.floor(farmRandom() * 1000000), props));
       } else {
         for (let n = 0, count = integer(2, 3); n < count; n++) {
-          const scale = modern ? 1.1 + random() * 0.18 : 0.85 + random() * 0.2;
+          const scale = 1.1 + random() * 0.18;
           place('crops', 0.28 * scale, {
             scale,
             angle: (Math.floor(random() * 3) * Math.PI) / 3,
             variant: integer(0, 2),
-            ...(modern ? { cropStyle } : {}),
+            cropStyle,
           });
         }
         if (random() < 0.25) {
-          const fruit = modern && farmRandom() < 0.5;
+          const fruit = farmRandom() < 0.5;
           place('tree', 0.12, {
             scale: 0.5,
             variant: fruit ? 1 : cell.treeVariant,
-            ...(modern ? { fruit } : {}),
+            fruit,
           });
         }
       }

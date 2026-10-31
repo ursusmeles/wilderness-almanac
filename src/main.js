@@ -1,4 +1,4 @@
-import { generateWorld } from './generation/world.js';
+import { generateWorld, GENERATOR_VERSION } from './generation/world.js';
 import { prepareMap } from './generation/presentation.js';
 import { palettes, paletteNames, DEFAULT_PALETTE } from './palette.js';
 import { campaignUITheme } from './ui/campaign-theme.js';
@@ -45,7 +45,6 @@ try {
   /* Restricted browser storage. */
 }
 const browserStore = await createBrowserStore({
-  legacyStorage: storage,
   storageManager: navigator.storage,
 });
 const saved = { ...browserStore.preferences, ...readUIPreferences(storage) };
@@ -851,7 +850,7 @@ const settings = createSettings({
     return {
       id: campaign.id,
       defaultPalette: paletteId(campaign.colors, campaign.paletteName),
-      defaultTimeOfDay: campaign.timeOfDay,
+      defaultTimeOfDay: timeOfDay(campaign.timeOfDay),
       defaultMapArtStyle: campaign.artStyle ?? 'low-poly',
       motion: movement,
       journalFirst: panels.journalFirst(),
@@ -976,7 +975,7 @@ listen(accountButton, 'click', async () => {
 const replayState = {
   artStyle: linked.artStyle,
   seed: linked.seed,
-  generatorVersion: linked.generatorVersion ?? 6,
+  generatorVersion: linked.generatorVersion ?? GENERATOR_VERSION,
   preferences: linked.preferences,
   variant: initialVariant,
   colors: initialColors,
@@ -1010,7 +1009,12 @@ campaignHistory = createCampaignHistory({
 const routedCampaign = campaignMenu
   .snapshotCampaigns()
   .find((campaign) => campaign.id === campaignHistory.initialCampaignId);
-if (routedCampaign && matchesLink(routedCampaign)) {
+if (linked.error) {
+  campaignMenu.show();
+  const message = document.getElementById('campaign-message');
+  message.textContent = linked.error;
+  message.dataset.kind = 'error';
+} else if (routedCampaign && matchesLink(routedCampaign)) {
   campaignMenu.show();
   campaignMenu.enter(routedCampaign);
 } else if (linked.seed) {
@@ -1022,7 +1026,7 @@ if (routedCampaign && matchesLink(routedCampaign)) {
   if (!campaign) {
     campaign = createCampaign(
       generateWorld(linked.seed, {
-        generatorVersion: linked.generatorVersion ?? 6,
+        generatorVersion: linked.generatorVersion ?? GENERATOR_VERSION,
         preferences: linked.preferences,
       }),
       initialColors,

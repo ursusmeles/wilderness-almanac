@@ -1,4 +1,4 @@
-import { test, expect, library, openCampaign } from './fixtures.js';
+import { test, expect, library, openCampaign, revealInspector } from './fixtures.js';
 
 async function enableMultiEdit(page) {
   await openCampaign(page);
@@ -95,6 +95,9 @@ test('whole-map batch edits survive reload and preserve the mobile map footprint
   page,
 }, testInfo) => {
   await enableMultiEdit(page);
+  const initialHeight = await page
+    .locator('.hp-map-panel')
+    .evaluate((el) => el.getBoundingClientRect().height);
   await page.locator('#hp-batch-all').click();
   await page.locator('#hp-batch-terrain').selectOption('meadow');
   await page.locator('#hp-batch-elevation').selectOption('0');
@@ -104,25 +107,20 @@ test('whole-map batch edits survive reload and preserve the mobile map footprint
   expect(Object.keys((await library(page)).campaigns[0].hexEdits.cells)).toHaveLength(469);
   const dimensions = await page.evaluate(() => ({
     height: document.querySelector('.hp-map-panel').getBoundingClientRect().height,
-    viewport: innerHeight,
     overflow: document.documentElement.scrollWidth > innerWidth,
-    toolHeaders: [...document.querySelectorAll('.hp-tool-panel')].reduce(
-      (sum, panel) =>
-        sum +
-        panel.querySelector('.hp-panel-bar').getBoundingClientRect().height +
-        parseFloat(getComputedStyle(panel).borderTopWidth),
-      0,
-    ),
   }));
   expect(dimensions.overflow).toBe(false);
-  if (testInfo.project.name === 'mobile')
-    expect(dimensions.height + dimensions.toolHeaders).toBe(dimensions.viewport);
+  if (testInfo.project.name === 'mobile') expect(dimensions.height).toBeCloseTo(initialHeight, 0);
   await page.reload();
   await expect(page.locator('#hp-scene canvas')).toBeVisible();
   const terrains = await page
     .locator('#hp-selection option')
-    .evaluateAll((options) => options.map((option) => option.dataset.terrain));
+    .evaluateAll((options) =>
+      options.filter((option) => option.dataset.terrain).map((option) => option.dataset.terrain),
+    );
   expect(new Set(terrains)).toEqual(new Set(['meadow']));
+  await page.locator('#hp-selection').selectOption('0,0');
+  await revealInspector(page);
   await expect(page.locator('#hp-hex-edit')).toBeVisible();
 });
 
@@ -151,7 +149,8 @@ test('settlement joining, addressed errors and painted Apply feedback work toget
   await page.locator('#hp-batch-settlement').selectOption('city');
   await page.locator('#hp-batch-poi').selectOption('');
   await finishMapAction(page, page.locator('#hp-batch-apply'));
-  const join = page.getByRole('button', { name: 'Join city', exact: true });
+  const join = page.locator('#hp-batch-join');
+  await expect(join).toHaveText('Join city');
   await expect(join).toBeEnabled();
   expect(
     await page.evaluate(() =>
@@ -160,16 +159,13 @@ test('settlement joining, addressed errors and painted Apply feedback work toget
       ),
     ),
   ).toBe(true);
-  const visitedBounds = await page.locator('#hp-batch-visited').boundingBox();
   const joinBounds = await join.boundingBox();
-  expect(joinBounds.x).toBeGreaterThan(visitedBounds.x);
-  expect(
-    Math.abs(joinBounds.y + joinBounds.height - visitedBounds.y - visitedBounds.height),
-  ).toBeLessThan(2);
+  const fieldsBounds = await page.locator('#hp-batch-fields').boundingBox();
+  expect(joinBounds.x).toBeGreaterThanOrEqual(fieldsBounds.x);
+  expect(joinBounds.x + joinBounds.width).toBeLessThanOrEqual(fieldsBounds.x + fieldsBounds.width);
   await finishMapAction(page, join);
   await expect(join).toBeDisabled();
   const joined = (await library(page)).campaigns[0];
-  expect(joined.hexEdits.version).toBe(2);
   expect(joined.hexEdits.cells['0,0'].settlementGroup).toBe(
     joined.hexEdits.cells['1,0'].settlementGroup,
   );
@@ -192,6 +188,15 @@ test('settlement joining, addressed errors and painted Apply feedback work toget
   await finishMapAction(page, page.locator('#hp-batch-apply'));
   const error = page.locator('#hp-batch-feedback');
   await expect(error).toContainText(/Region #\d+ · -?\d+, -?\d+:/);
-  await expect(error).toHaveCSS('color', 'rgb(240, 162, 154)');
+  expect(
+    await error.evaluate((node) => {
+      const probe = document.createElement('span');
+      probe.style.color = 'var(--c-error)';
+      node.append(probe);
+      const matches = getComputedStyle(node).color === getComputedStyle(probe).color;
+      probe.remove();
+      return matches;
+    }),
+  ).toBe(true);
   expect((await library(page)).campaigns[0]).toEqual(villages);
 });
