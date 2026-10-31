@@ -1,86 +1,43 @@
 # Using Wilderness Almanac
 
-## Your next unexplored world
+## Build your campaign
 
-- **Generate a campaign.** Each seed creates a named map of 469 hexes across six regions, with villages, towns, cities, ruins, dungeons and other places to discover.
-- **Shape the map.** Use the Inspector to change terrain, elevation, settlements, points of interest and road exits. Regenerate a single hex, lock its dressing, mark it visited, or undo an edit.
-- **Set the atmosphere.** Choose from nine palettes or make your own from three colours. Verdant Kingdoms is the initial default and appears first; the other palettes are listed alphabetically. The palette system keeps surfaces, water and props readable while preserving deep shadows and saturated accents.
-- **Keep several adventures.** Name your campaigns, choose their tile icons and return to them from the campaign library.
-- **Explore on desktop or mobile.** Pan and zoom, fold away the tool panels, or expand the map to fill the browser viewport. On mobile, both tool panels start closed below the map, with their headers visible on the first screen. Trees, reeds and water have optional ambient motion.
+Create a world from a seed. Adjust water, elevation, forests and settlements before
+creating the campaign. The same seed and world settings recreate the same map.
 
-Opening a campaign prepares up to eight tile icons: four settlements and four points of interest. Hover over a campaign icon to show its refresh button, or tap the icon on touchscreens. Refresh cycles through these previews in order. You can also choose any hex with **Use as campaign icon** in the Inspector. Before previews are ready, the card shows a light forest with a stone tower in the Verdant Kingdoms palette.
+Edit terrain, settlements, adventure sites and roads in the Inspector.
+Multiselect applies changes to several hexes at once. Undo restores an edit.
+Regenerate changes the scenery while keeping geography and locations;
+lock hexes whose appearance you want to keep.
 
-Wilderness Almanac is actively developing. The Inspector and party marker are functional; the Party panel includes its journal, oracle, dice rolls and abstract draws.
+Appearance offers palettes, lighting and Low poly or Pixelart models.
+Pixelart uses more resources.
 
-The party marker starts at the settlement nearest the map centre and saves its position with the campaign. Its starting hex and each placement become visited in the Inspector. Selecting the piece clears hex selection and opens the **Party panel**. Its editable name defaults to **Adventurers**. Click or tap the portrait to reveal colour and token-shape controls; the person icon cycles Warden, Waystone and Cairn. Metadata shows coordinates, nearby settlements and POIs, visited coverage, and the current Week, Day or Session (initially 1). Coverage excludes ocean/lake hexes and includes river-bank hexes. The compass button selects and focuses the party hex; map-pin buttons locate the nearest settlement/POI; the grid button selects all counted land hexes together. Selecting the piece highlights only its base and shows its name in the selection dropdown, where the party is always the first option. Drag and drop the party marker to move it on desktop or mobile, with fog on or off. On mobile, you can also select the party and tap a destination hex to confirm moving there. Tapping its current hex inspects that hex immediately. Cancel keeps the token in place and selects that hex instead. With the party selected, **Q / W / E** move to the three upper neighbours and **A / S / D** to the three lower neighbours. Key labels appear on adjacent hexes while using the keyboard. Movement marks the destination visited and works with fog on or off. Moving leaves the map view in place. **Find party** selects the party and centres the map on it, showing roughly five hexes across.
+## Run an adventure
 
-## Party Journal
+Move the party token to track travel. Destinations become visited.
+Fog of war hides unexplored areas; turn it off to edit the map.
 
-Select the party token to open its **Party panel**, combining metadata and the journal in one panel. Edit its name in the title bar; the calendar icon opens the current period below. Movement and party renaming are recorded automatically. The journal controls show one period at a time; the final page offers **Start new week**, **Start new day** or **Start new session**, with writing and rolls disabled until it begins. Starting it records that the party lived another period; the Inspector and campaign card show the same number. Selecting a hex restores **Inspector** and **Journal**; the latter is reserved for a later update.
+Use the Party Journal for notes, dice rolls and prompts. For example:
 
-Write notes of up to 300 characters and choose **Add to Journal** (or press Enter; Shift+Enter adds a line). Type `@` to mention the party, `#` for a Week, Day or Session, or `$` to search hexes by coordinates or name; visited hexes appear first. Use the arrow keys and Tab to complete a suggestion, or tap it. Entries keep their original names after renaming. Time mentions open that period’s page; hex mentions use the Inspector’s description. Older entries in a week load as you scroll up. Hover over an entry, focus it with the keyboard, or tap it to reveal Copy, plus Reroll for dice, oracle and abstract entries or Edit for manual notes. Manual notes and rolls also offer Delete; automatic movement, rename and week entries cannot be deleted. Travel messages show the destination’s description without coordinates. You can add and edit notes on earlier week pages.
+- `/2d6+1` rolls dice.
+- `/oracle Is the bridge guarded?` asks a yes/no oracle.
+- `/abstract` draws a Major Arcana prompt.
 
-Type `/help` for temporary command help, which disappears after the next logged event. `/clear` dismisses help and removes dice, abstract and oracle results without attached notes or questions across all weeks; it adds no entry. Oracle questions and manual notes remain. `/oracle [modifier] [question]` rolls a d6 oracle, clamped to 1–6 after modification: No, and… / No / No, but… / Yes, but… / Yes / Yes, and…. `/abstract` draws one of the 22 Major Arcana. Dice commands support d4, d6, d8, d10, d12 and d20 with addition and subtraction; `/2d6+1 4d6 1d20` makes three separate rolls, showing individual results and totals. Typing `/` suggests help, clear, abstract, explore and oracle, followed by the supported dice. The input can be resized vertically from its usual minimum height. The buttons above it offer the same actions; **Explore hex** is reserved for a later update and currently does nothing.
+Organize the journal by week, day or session. Mention hexes with `$`,
+the party with `@`, and periods with `#`. Movement is logged automatically.
+Hex exploration and the separate hex journal are not available yet.
 
-Journals save locally with the campaign and travel with JSON exports and optional account copies. Each period initially displays its 50 most recent entries, then loads older entries in batches. Each campaign supports up to 20,000 entries; import/export and account transfers have a 16 MB limit. Recovery downloads preserve raw stored data separately.
+## Keep and share your work
 
-For a small testing map, create a campaign with seed **`heliotest`**. It has seven hexes: a central town and, clockwise from north, mountains with a nest, dense pine forest, light ash forest with an abbey, open water, meadow, and vineyards with an encampment. Their elevations are 4, 3, 2, 0, 0 and 1; the town is at 1.
+Campaigns save automatically in this browser and work offline after loading.
+Export campaign JSON regularly: clearing browser storage can erase local work.
+Import that file to continue on another device. Share-map links contain the
+generated world, without your edits, journal or visited hexes.
 
-## Getting started
+Optional **Account & sync** saves and loads account copies on
+[configured deployments](SELF_HOSTING.md). Transfers are manual.
+If saving fails, download unsaved data before closing the app.
 
-Open the app and choose **New campaign** to preview a map, adjust open water, elevation, forests and settlements, choose a palette and name your campaign, then select **Create campaign**. Choose **Generate preview** after changing the seed or world preferences, or choose **Keep current map** to restore the preview settings. You can also import a previously exported campaign JSON file. Campaigns open with the party’s hex selected and centred. On desktop, new campaigns start with Inspector above Journal, both open. Settings lets you swap their order on desktop and mobile. The vertical handle at the map’s right edge resizes both columns; drag toward the right edge to fold the tools into rails. Double-click it to toggle folded tools and the default layout. Column widths and panel heights are remembered per campaign in this browser. The handle between tools resizes their heights; double-click toggles the top tool between its default height and title bar, returning an oversized tool to default first. On mobile, title-bar buttons open or close each panel. Panels follow the page scroll without resize handles; long journal logs scroll within the panel and let the page continue scrolling at either end. Click another hex to inspect and edit it. Drag to pan, or press an **arrow key** to jump the view two hexes. Use the zoom controls, mouse wheel or **+ / −** keys to look closer. On mobile, pinch or double-tap and hold the second tap, then slide down to zoom in or up to zoom out.
-
-Choose **Map art style** below Palette in New campaign to preview **Low poly** or **Pixelart**. Settings offers **Default map art style** for future campaigns; each campaign retains its own choice. Existing campaigns use Low poly. Pixelart retains 3D lighting and movement with more detailed textures and models, and shows “Warning: uses more resources.” in a tooltip on its option. The choice is included in campaign exports, account copies and shared map links.
-
-Open **Settings** using the gear in the main menu to choose the default palette and time of day for new campaigns, choose Week, Day or Session as the campaign time increment, set Inspector/Journal order, turn Movement on or off, or choose a campaign JSON file to import. The Movement, time of day, time increment and top panel options use segmented toggles. Changes and imports take effect when you choose **Save**; **Cancel**, the close button, Escape or clicking outside Settings discards them. New installations start with **Verdant Kingdoms** and **Dawn**. Existing campaigns keep their saved palette and lighting. The time increment defaults to **Week** and applies to all campaigns in this browser. Campaign Appearance can override this choice for one campaign. Metadata, journal pages, mentions and automatic period messages use that campaign’s increment without changing numbers: Week 3 becomes Day 3 or Session 3. Campaign cards show each campaign’s selected increment, starting at 1.
-
-Switch the interface between **Light** and **Dark** beside Settings in the campaign library, or use **App theme** at the top of **Appearance**. Dark is the default. This choice applies to the main menu and every campaign, and is remembered in this browser. Light mode also brightens the map backdrop and the surfaces behind tile and party previews, while preserving map colours and lighting.
-
-Choose **Manage palettes** in Settings to add palettes, edit their three colours or rename them. Palette-manager changes save immediately. The library keeps its brand colours independently of the default palette. Built-in palettes keep their original names and colours. Click a built-in swatch to edit it; saving a changed colour creates an editable copy with all three swatches. Cancelling the picker creates no copy. Deleting a custom palette keeps existing campaigns’ colours; deleting the default restores Verdant Kingdoms. **Undo deletion** restores the palette. Palettes save in this browser alongside your settings.
-
-Choose **Multiselect** in the first button row of the Inspector to edit several hexes together. You can also **Ctrl+click** (**Cmd+click on Mac**) a map hex to turn multi-edit on, keeping the inspected hex selected and adding the clicked hex. Once multiselect is on, click or tap hexes to add or remove them; **Ctrl** or **Cmd** clicks work the same way. On mobile, hold an unselected hex to add it to your selection and turn multi-edit on. The coordinate selector toggles hexes while multi-edit is on, and the Inspector offers **Select all** and **Clear selection**. Choose only the fields you want to change, then apply to the selection. One **Undo** restores the entire batch. Open water removes settlements and POIs; incompatible edits leave the whole batch unapplied. Choose **Turn off multiselect** beside Clear selection to return to the single-hex Inspector. Journal stays closed while multiselect is on and restores its previous layout when you turn multiselect off.
-
-Create and name palettes in **Manage palettes**. When opened from campaign Appearance, **Use palette** selects colours for that campaign; editing an existing preset creates a copy and leaves library defaults unchanged.
-
-The **Point of interest** field includes named choices such as **Mystic · Portal**. Cosmetic model variations are chosen by **Regenerate hex**. Other edits preserve the current variation.
-
-Select connected town or city hexes to **Join town** or **Join city**. Villages always occupy one hex each.
-
-In Multiselect, **Reset selected**, next to Undo, restores the selected hexes to their generated defaults after confirmation. It clears their edits, visited status and dressing locks. Undo restores the reset hexes.
-
-On current maps, mountain ranges mix rounded ridges with occasional taller, steeper crests. Farmland shows dense golden wheat fields spreading toward hex edges, with occasional vineyards on raised tiles. Some farmland trees bear colourful fruit. Choose Farmlands or Vineyards in Edit or Multiselect. They remain cosmetic variants: regeneration can switch between them, and locks preserve them.
-
-**Regenerate map**, at the bottom of Appearance, changes the map's cosmetic dressing while keeping its geography and locations. Create a different world through **New campaign** in the main menu. Hexes with locked dressing keep their appearance through map-wide regeneration.
-
-New campaigns include subtle roads connecting settlements, crossings and selected points of interest. Roads favour open terrain, avoid mountains and use existing bridges and ferries. Regenerate changes their shape while keeping their routes. The Inspector lists road exits clockwise as N, NE, SE, S, SW and NW. In **Edit hex**, use the **Road exits** checkboxes to connect neighbouring hexes; unavailable exits explain their terrain restriction. Ordinary terrain with three or more exits is labelled “with crossroads”. Manual roads can extend beyond the generated road budget. Adding a settlement or POI leaves roads unchanged; removing a destination removes its generated links without rerouting other roads. Existing campaigns keep their original maps.
-
-The fixed appearance bar keeps the palette picker and **Time** control visible, with **Appearance** at the right (a swatches icon on mobile). That button opens a dialog with the global **App theme** first, followed by a divider, then this campaign’s map art style, animation, time of day, palette, time increment and top panel settings. A final divider separates **Regenerate map** at the bottom; main-menu Settings puts **Import campaign** there instead. **Save** applies changes; **Cancel** discards them. There is no campaign import in this dialog. Regenerate map runs immediately and keeps the dialog open; fog must be off. Animation, time labels and panel order save locally for this campaign, while palette, time of day and art style travel in campaign exports and account copies. Its **Time** button cycles through **Dawn → Day → Dusk → Night**, using a sun for dawn/day and a moon for dusk/night. Dawn is brighter and rose tinted, dusk has warm orange light and long shadows, and night is dark navy. At dusk and night, buildings glow yellow, mystic sites glow violet-blue, and dungeon/mine entrances glow red. Each building casts its own stronger glow, pulsing independently between 40% and full brightness. Prominent lighthouse beams reach up to two hexes and sweep across a broad arc where visible open water allows, ending in a soft round glow on the water. **Movement ON/OFF** controls wind, water waves, light pulses and lighthouse sweeps. Reduced-motion settings pause them too. Day has 20% stronger wind sway and more frequent gusts; dawn, dusk and night keep their gentler wind. Each campaign remembers its time of day, including in JSON exports; older campaigns start in Day mode.
-
-### Fog of War
-
-Turn **Fog of war ON** in the map header (top-right of the map on mobile) to show a player-facing view of your campaign. Visited hexes stay coloured, visible but unvisited hexes turn grayscale, and undiscovered hexes become blank tiles. Hidden hexes show only their coordinates and “Undiscovered hex”. Visited hexes reveal a one-hex radius, increasing to two at elevation 3 and three on mountains/elevation 4. Towns/cities and watchtowers/lighthouses/strongholds each add one, stacking to five for a mountain town with a watchtower. High terrain blocks sight, while open water reached within normal sight reveals the first far shore. From an inland hex, each elevation level above 1 adds one hex of reach to open water over lower land; equal or higher terrain blocks this extra view. The extra reach reveals water without uncovering intervening land or additional shores.
-
-Move the party or mark hexes visited to uncover the map. You can also mark visited hexes as unvisited, including in multi-edit; this can hide areas again. Fog remembers its setting per campaign. Turn it off to edit terrain, features or dressing. Undo for visits and party moves is available in Multiselect. Single-hex Undo appears after choosing Edit.
-
-Fog is for presenting the current screen. Seed links from the campaign list recreate the full map; campaign exports remain complete GM backups, including edits and visited flags.
-
-### Saving and sharing
-
-Short tooltips clarify ambiguous controls and unavailable actions on hover, keyboard focus or tap. On mobile, brief messages on the map confirm actions and report errors.
-
-Use the back arrow beside the map title or your browser’s Back button to return to your campaigns. Browser Forward reopens the campaign, and unsaved Inspector edits are protected. Seeds, seed copying and map sharing are available in the campaign list.
-
-Campaigns save automatically **in your current browser**. Optional self-hosted account copies are described below. Export campaign JSON to back up your work or move it between computers; clearing browser storage can remove local campaigns.
-
-- **Share map** in the campaign list copies a link with the seed, world preferences, generator version, dressing variant and palette. It recreates the generated map, but does **not** include your hex edits or visited status.
-- **Export campaign** downloads the complete campaign replay record, including edits and dressing locks. Import it on another device to continue working.
-
-If saving fails, a persistent warning offers **Retry saving** and **Download unsaved data**; the map also offers **Download campaign**. Changes from another browser tab can require downloading your work before reloading. Saved data this version cannot read is preserved; **Download recovery file** backs up stored data. Keep recovery files for troubleshooting or a compatible app version; they are separate from individual campaign exports. The app requests persistent browser storage where supported, but regular exports remain your backup.
-
-Exports are named `wilderness-almanac-[campaignname]-[YYYY-MM-DD].json`. Replay files depend on their generator version; unsupported versions are rejected rather than silently producing a different map.
-
-Self-hosted deployments can enable **Account & sync** to sign in with an emailed code and save or load account copies. Work still saves in this browser, including offline. Conflicting edits are kept for you to resolve; **Import as copy** preserves both versions. JSON export/import remains available. See the [self-hosting guide](SELF_HOSTING.md) to enable this option.
-
-## Supported campaigns
-
-Only generator **10** is supported. Older generator campaigns and links without an explicit generator version cannot open. They are not automatically converted. Unsupported records already in IndexedDB remain available in recovery downloads. Historical localStorage campaigns are neither imported nor deleted.
+Only generator 10 campaigns are supported. Unsupported stored records remain
+available through recovery downloads; recovery files cannot be imported as campaigns.

@@ -1,36 +1,29 @@
 # Wilderness Almanac
 
-**A DM toolbox for sandbox RPG campaigns.**
+**A map and campaign notebook for sandbox RPGs.**
 
-Generate editable isometric hex maps with forests, mountains, rivers, settlements,
-roads and points of interest. Keep multiple campaigns, move a party token,
-uncover fog of war, and record notes, dice rolls and oracle answers in the Party
-Journal. Low poly is the default art style; Pixelart is optional.
+For game masters planning a hexcrawl and solo players discovering a world as they go.
+Generate a wilderness with forests, mountains, rivers, settlements and adventure sites.
+Reshape it for your campaign, track the party through fog of war, and keep notes,
+dice rolls and oracle answers in one place. Works on desktop and mobile.
 
-**[Open Wilderness Almanac](https://the.wilderness.al)** · [Releases](https://github.com/ursusmeles/wilderness-almanac/releases) · [Report an issue](https://github.com/ursusmeles/wilderness-almanac/issues)
+**[Open Wilderness Almanac](https://the.wilderness.al)**
 
-![Map with the Inspector open](docs/images/wilderness-almanac.jpg)
+![Wilderness Almanac map](docs/images/wilderness-almanac.jpg)
 
-## Start a campaign
+## Get started
 
-Choose **New campaign**, adjust the seed and world preferences, generate a preview,
-and choose **Create campaign**. Most maps have 469 hexes; the reserved `heliotest`
-seed provides a seven-hex map. See the [user guide](docs/USER_GUIDE.md) for map
-controls, editing, palettes, fog, journals, and sharing.
+Choose **New campaign**, preview a world, then create your campaign.
+Edit the map, move the party and record the adventure in the Party Journal.
+Choose a palette, lighting and Low poly or Pixelart style to suit your game.
 
-Campaigns save in IndexedDB in your current browser. Export campaign JSON regularly
-for backups or transfers between devices. Share-map links recreate generated maps
-without your edits or visited flags. Optional **Account & sync** provides explicit
-account save/load on configured self-hosted deployments; local work remains available
-offline. See [self-hosting](docs/SELF_HOSTING.md).
-
-Only generator **10** is supported. Older campaigns and unversioned seed links
-are rejected rather than regenerated. Old localStorage campaigns are not migrated.
-Unsupported IndexedDB records are retained for recovery downloads.
+Campaigns save in your browser. Export JSON for backups or another device.
+Share-map links recreate the generated world without your edits or exploration.
+See the [short user guide](docs/USER_GUIDE.md) for more.
 
 ## Run locally
 
-Use Node.js 24 or later (`.nvmrc` selects Node 24):
+Requires Node.js 24 or later. No backend or API keys needed.
 
 ```sh
 git clone https://github.com/ursusmeles/wilderness-almanac.git
@@ -39,21 +32,16 @@ npm ci
 npm run dev
 ```
 
-Open the address printed in the terminal. Browser-only use needs no backend or API
-keys. `npm run build` creates `dist/`; `npm run preview` serves that build locally.
+`npm run build` creates `dist/`. Optional accounts: [self-hosting](docs/SELF_HOSTING.md).
 
-## Contributing
+## Contribute
 
-For map issues, include the seed and, where relevant, a screenshot or campaign export.
-See the [development guide](docs/DEVELOPMENT.md) for architecture and checks,
-[project state](docs/PROJECT_STATE.md) for current capabilities and constraints,
-and [AGENTS.md](AGENTS.md) for repository working instructions.
+[Report bugs or suggest features](https://github.com/ursusmeles/wilderness-almanac/issues).
+For map bugs, include the seed and a screenshot or campaign export.
+For code contributions, read the [development guide](docs/DEVELOPMENT.md) and [AGENTS.md](AGENTS.md).
 
-## License and credits
+## License
 
-Licensed under the [GNU AGPLv3](LICENSE). Built with [Three.js](https://threejs.org/)
-and [Vite](https://vite.dev/). [Geist Sans and Geist Pixel Square](public/fonts/README.md)
-use the SIL Open Font License; the [Pixelarticons subset](public/icons/README.md)
-uses the MIT License. Map generation draws inspiration from
-[Red Blob Games](https://www.redblobgames.com/maps/mapgen4/), with a visual direction
-inspired by Thronefall.
+[GNU AGPLv3](LICENSE). Built with Three.js and Vite.
+[Geist fonts](public/fonts/README.md) use the SIL OFL; [Pixelarticons](public/icons/README.md) use MIT.
+Map generation draws inspiration from [Red Blob Games](https://www.redblobgames.com/maps/mapgen4/); visuals from Thronefall.
