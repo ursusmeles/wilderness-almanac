@@ -1,11 +1,14 @@
 # Wilderness Almanac
 
-**A map and campaign notebook for sandbox RPGs.**
+**A sandbox campaign tool for creative GMs. Generate a world and explore it, hex by hex.**
 
-For game masters planning a hexcrawl and solo players discovering a world as they go.
-Generate a wilderness with forests, mountains, rivers, settlements and adventure sites.
-Reshape it for your campaign, track the party through fog of war, and keep notes,
-dice rolls and oracle answers in one place. Works on desktop and mobile.
+Made for game masters planning a hexcrawl and solo players discovering a world as they go.
+
+Create a thoughtfully generated, configurable wilderness with forests, mountains, rivers, settlements and adventure sites.
+
+Reshape it for your campaign, track the party through fog of war, and keep notes, dice rolls and oracle answers in one place.
+
+Works on desktop and mobile.
 
 **[Open Wilderness Almanac](https://the.wilderness.al)**
 
@@ -13,12 +16,14 @@ dice rolls and oracle answers in one place. Works on desktop and mobile.
 
 ## Get started
 
-Choose **New campaign**, preview a world, then create your campaign.
-Edit the map, move the party and record the adventure in the Party Journal.
-Choose a palette, lighting and Low poly or Pixelart style to suit your game.
+Choose **New campaign**, preview and configure a world, then create your campaign.
+
+You can then edit the map, move the party and record the adventure in the Party Journal.
 
 Campaigns save in your browser. Export JSON for backups or another device.
+
 Share-map links recreate the generated world without your edits or exploration.
+
 See the [short user guide](docs/USER_GUIDE.md) for more.
 
 ## Run locally
