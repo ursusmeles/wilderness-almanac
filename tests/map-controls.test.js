@@ -8,7 +8,13 @@ function fixture(t, party, touchMultiSelect = true) {
   const originalFrame = globalThis.requestAnimationFrame;
   const originalCancel = globalThis.cancelAnimationFrame;
   const frames = new Map();
-  let frameId = 0;
+  let frameId = 0,
+    renderFrame = 0;
+  function flushFrame() {
+    const pending = [...frames.values()];
+    frames.clear();
+    for (const callback of pending) callback(0);
+  }
   globalThis.requestAnimationFrame = (callback) => {
     frames.set(++frameId, callback);
     return frameId;
@@ -47,7 +53,12 @@ function fixture(t, party, touchMultiSelect = true) {
     ],
     materials: { line: material, hover: material },
     draw() {
-      scene.updateMatrixWorld(true);
+      if (!renderFrame)
+        renderFrame = globalThis.requestAnimationFrame(() => {
+          renderFrame = 0;
+          controls.updateHover();
+          scene.updateMatrixWorld(true);
+        });
     },
     onSelect: (key, options) => selections.push({ key, ...options }),
     onHover: (key) => hovers.push(key),
@@ -55,8 +66,10 @@ function fixture(t, party, touchMultiSelect = true) {
     touchMultiSelect,
   });
   controls.refresh();
+  flushFrame();
   t.after(() => {
     controls.dispose();
+    globalThis.cancelAnimationFrame(renderFrame);
     mesh.geometry.dispose();
     material.dispose();
     globalThis.ResizeObserver = original;
@@ -67,11 +80,7 @@ function fixture(t, party, touchMultiSelect = true) {
     selections,
     hovers,
     frames,
-    flushFrame() {
-      const pending = [...frames.values()];
-      frames.clear();
-      for (const callback of pending) callback(0);
-    },
+    flushFrame,
     controls,
     mesh,
     pointer(type, options = {}) {
@@ -362,7 +371,7 @@ test('wheel zoom normalizes pixel, line and page units', (t) => {
   }
 });
 
-test('hover raycasts once per frame, keeps the latest position, and cancels stale work', (t) => {
+test('hover picks the latest position in the render frame and cancels stale work', (t) => {
   const { pointer, mesh, hovers, flushFrame, frames, controls } = fixture(t);
   let casts = 0;
   const raycast = mesh.raycast;
@@ -378,17 +387,23 @@ test('hover raycasts once per frame, keeps the latest position, and cancels stal
   flushFrame();
   assert.equal(casts, 1);
   assert.deepEqual(hovers, ['0,0']);
+  assert.equal(frames.size, 0, 'the highlight does not wait for another render frame');
   pointer('pointermove');
   pointer('pointerleave');
-  assert.equal(frames.size, 0);
+  flushFrame();
+  assert.equal(casts, 1, 'leaving the map discards the pending hover pick');
   pointer('pointermove');
   pointer('pointerdown');
-  assert.equal(frames.size, 0);
+  flushFrame();
+  assert.equal(casts, 1, 'starting a gesture discards the pending hover pick');
   pointer('pointerup');
+  const beforeRefresh = casts;
   pointer('pointermove');
   controls.refresh();
-  assert.equal(frames.size, 0);
+  flushFrame();
+  assert.equal(casts, beforeRefresh, 'map refresh discards the pending hover pick');
   pointer('pointermove');
   controls.dispose();
-  assert.equal(frames.size, 0);
+  flushFrame();
+  assert.equal(casts, beforeRefresh, 'disposal discards the pending hover pick');
 });

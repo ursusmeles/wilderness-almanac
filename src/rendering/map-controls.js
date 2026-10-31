@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { geometryFrom } from './geometry.js';
 import { surfaceHeight } from '../generation/math.js';
 import { fitPreviewCamera } from './preview-framing.js';
+import { createMapPicker } from './map-picking.js';
 
 export function createMapControls({
   host,
@@ -11,6 +12,7 @@ export function createMapControls({
   cells,
   materials,
   draw,
+  requestHover = draw,
   onSelect,
   onHover,
   party,
@@ -204,34 +206,31 @@ export function createMapControls({
   }
   const raycaster = new THREE.Raycaster(),
     mouse = new THREE.Vector2();
+  let pick = createMapPicker(map);
   function hit(x, y) {
     const rect = host.getBoundingClientRect();
     mouse.set(((x - rect.left) / rect.width) * 2 - 1, (-(y - rect.top) / rect.height) * 2 + 1);
     camera.updateMatrixWorld();
     raycaster.setFromCamera(mouse, camera);
-    const hits = raycaster.intersectObjects(map.children, true);
-    if (!hits.length) return null;
-    const hit = hits[0],
-      ranges = hit.object.userData.faceRanges;
-    if (!ranges) return hit.object.userData.key;
+    const intersection = pick(raycaster);
+    if (!intersection) return null;
+    const ranges = intersection.object.userData.faceRanges;
+    if (!ranges) return intersection.object.userData.key;
     let low = 0,
       high = ranges.length - 1;
     while (low < high) {
       const mid = (low + high) >> 1;
-      if (hit.faceIndex < ranges[mid].end) high = mid;
+      if (intersection.faceIndex < ranges[mid].end) high = mid;
       else low = mid + 1;
     }
     return ranges[low].key;
   }
-  let hoverFrame = 0,
-    pendingHover;
+  let pendingHover;
   function cancelHover() {
-    if (hoverFrame) cancelAnimationFrame(hoverFrame);
-    hoverFrame = 0;
     pendingHover = undefined;
   }
   function updateHover() {
-    hoverFrame = 0;
+    if (!pendingHover) return;
     const { x, y } = pendingHover;
     pendingHover = undefined;
     const key = hit(x, y);
@@ -244,7 +243,7 @@ export function createMapControls({
         hoverRing,
         cells.find((cell) => cell.key === key),
       );
-    draw();
+    return true;
   }
   const pointers = new Map();
   let partyPointer = null;
@@ -377,7 +376,7 @@ export function createMapControls({
     }
     if (e.pointerType === 'mouse' && !pointers.size && partyPointer === null) {
       pendingHover = { x: e.clientX, y: e.clientY };
-      if (!hoverFrame) hoverFrame = requestAnimationFrame(updateHover);
+      requestHover();
     }
   });
   function release(e) {
@@ -502,11 +501,13 @@ export function createMapControls({
   observer.observe(host);
   return {
     camera,
+    updateHover,
     setFrameInsets,
     isInteracting: () => pointers.size > 0 || partyPointer !== null,
     refresh({ resetView = false, fitContent: fit = false, preserveFraming = false } = {}) {
       cancelHover();
       map.updateWorldMatrix(true, true);
+      pick = createMapPicker(map);
       fitContent = fit;
       hovered = null;
       onHover(null);
@@ -549,6 +550,7 @@ export function createMapControls({
     pan,
     dispose() {
       cancelHover();
+      pick = () => null;
       cancelLongPress();
       cancelTap();
       listeners.abort();

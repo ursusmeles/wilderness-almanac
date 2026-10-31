@@ -62,6 +62,7 @@ export function createMapRenderer(
   daylight.sun.shadow.autoUpdate = false;
   let shadowTime = NaN,
     frame = 0,
+    needsRender = true,
     disposed = false;
   const featureLighting = createFeatureLighting(scene);
   let dayMode = 'day';
@@ -99,6 +100,7 @@ export function createMapRenderer(
     cells: meshes.cells,
     materials: palette.materials,
     draw,
+    requestHover: queueFrame,
     onSelect,
     touchMultiSelect,
     navigation,
@@ -107,12 +109,20 @@ export function createMapRenderer(
   });
   // Input, token animation and ambient motion may all request the same frame.
   function draw() {
+    needsRender = true;
+    queueFrame();
+  }
+  function queueFrame() {
     if (!frame && !disposed) frame = requestAnimationFrame(renderNow);
   }
   function renderNow() {
     cancelAnimationFrame(frame);
     frame = 0;
     if (disposed) return;
+    // Pick the latest pointer position before painting, without a second RAF.
+    const hoverChanged = controls.updateHover();
+    if (!needsRender && !hoverChanged) return;
+    needsRender = false;
     if (shadowTime !== palette.ambientTime.value) {
       daylight.sun.shadow.needsUpdate = true;
       shadowTime = palette.ambientTime.value;
@@ -200,6 +210,7 @@ export function createMapRenderer(
     zoom: controls.zoom,
     pan: controls.pan,
     snapshot() {
+      needsRender = true;
       renderNow();
       return renderer.domElement.toDataURL('image/png');
     },
