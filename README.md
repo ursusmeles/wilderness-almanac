@@ -1,6 +1,6 @@
-# Wilderness Almanac
+# The Wilderness Almanac
 
-**A sandbox campaign tool for creative GMs. Generate a world and explore it, hex by hex.**
+**A sandbox campaign tool for creative GMs.**
 
 Made for game masters planning a hexcrawl and solo players discovering a world as they go.
 
