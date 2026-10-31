@@ -1,6 +1,6 @@
 # Self-hosted accounts and campaign copies
 
-Wilderness Almanac can run entirely in the browser or use an optional office-server API.
+Wilderness Almanac can run entirely in the browser or use an optional self-hosted API.
 
 IndexedDB remains the local working store. Account transfers are explicit through
 **Account & sync** in the campaign library; editing, Undo, offline work and JSON
@@ -10,14 +10,16 @@ its replay record. Billing is not implemented.
 
 ## Deployment layout
 
+The included deployment uses Cloudflare Pages, a Docker host and an S3-compatible
+backup bucket.
+
 - Cloudflare Pages serves Vite's `dist/` and the Pages Function in `functions/api/`.
-- The Function forwards `/api/*` over HTTPS to the office server's Cloudflare Tunnel
-  hostname. Cookies stay on the frontend origin, including with a `pages.dev` URL.
-- The office API listens on host loopback `127.0.0.1:8086`; the existing server
-  tunnel runs with host networking. Route the API hostname to that address.
+- The Function forwards `/api/*` over HTTPS to the API hostname. Cookies stay on
+  the frontend origin, including with a `pages.dev` URL.
+- Compose publishes the API on host loopback `127.0.0.1:8086`. A Cloudflare Tunnel
+  or HTTPS reverse proxy on that host can expose it to the Pages Function.
 - Only the API and backup service mount `wilderness_almanac_data`, a Docker `local` volume.
-  Use local disk, not NFS/SMB or a filesystem mounted from object storage. The old
-  standalone SQLite Web container is separate and must not mount this volume.
+  Use local disk, not NFS/SMB or a filesystem mounted from object storage.
 - Better Auth handles email OTP and cookie sessions. Resend sends the codes.
   No session token is stored in IndexedDB or localStorage.
 
@@ -27,7 +29,7 @@ supplies Cloudflare's client IP for persistent authentication rate limits.
 Every campaign request additionally requires a valid Better Auth session.
 The proxy key is an origin protection layer, not a replacement for user sessions.
 
-## Office-server setup
+## Server setup
 
 For an existing deployment, keep `DATABASE_VOLUME`, `DATABASE_PATH` and backup
 prefix pointed at their current data. Changing a frontend origin requires moving
@@ -35,9 +37,8 @@ browser campaigns through JSON exports/imports. Deploy frontend and API together
 both use the same campaign validator and now accept generator **10** only. Older
 account documents are not automatically converted or deleted.
 
-Keep the source and root `compose.yaml` together, for example in
-`/opt/stacks/wilderness-almanac`, where Dockge can discover it. Copy `.env.example` to `.env`
-with mode 600 and configure:
+Clone the repository on your Docker host and run Compose from its root.
+Copy `.env.example` to `.env`, set its permissions to mode 600, and configure:
 
 | Variable                                     | Purpose                                                                      |
 | -------------------------------------------- | ---------------------------------------------------------------------------- |
@@ -84,13 +85,13 @@ named volumes. `docker compose down` preserves them, while `down -v` deletes dat
 1. Create a Pages project from this repository. Use build command `npm run build`,
    output directory `dist`, and Node 24 or later. Set build variable
    `VITE_API_ENABLED=true`.
-2. Set Pages runtime variables `API_ORIGIN=https://your-office-api-hostname` and
-   `API_PROXY_SECRET` to the exact office-server proxy secret. Keep the latter
+2. Set Pages runtime variables `API_ORIGIN=https://api.example.com` and
+   `API_PROXY_SECRET` to the same value configured on the API server. Keep the latter
    secret in Cloudflare. `API_ORIGIN` must be an HTTPS origin without a path.
-3. Configure the existing Cloudflare Tunnel's published API hostname to
-   `http://127.0.0.1:8086`. The current office tunnel uses host networking, so this
-   address reaches the private published port. Do not publish an external Docker
-   port or add a public SQLite Web route.
+3. Configure a Cloudflare Tunnel or HTTPS reverse proxy for your API hostname.
+   When it runs on the Docker host, use `http://127.0.0.1:8086` as its upstream.
+   In a container, loopback refers to that container; use host networking on Linux
+   or configure a shared network and upstream explicitly. Keep the API port private.
 4. Make `APP_ORIGIN` match the canonical frontend URL exactly and redeploy after
    configuring variables. Other preview/custom domains are not trusted by default.
 5. Require HTTPS at Cloudflare's edge. Keep `/api/*` uncached, including custom

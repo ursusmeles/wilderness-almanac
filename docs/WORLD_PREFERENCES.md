@@ -20,7 +20,7 @@ Percentages count ocean and lake hexes over all 469 hexes; river channels do not
 | −1   | Default ocean coverage minus 10 percentage points, floored at zero | One fewer than default, floored at zero               |
 | 0    | Original generator                                                 | Original coast rolls                                  |
 | +1   | Default ocean coverage plus 10 percentage points, capped at 85%    | Default edges, with one edge added for an inland seed |
-| +2   | Seeded target of 72–86%, within the requested 70–90% envelope      | Default edge count plus two, capped at six            |
+| +2   | Seeded target of 72–86%                                            | Default edge count plus two, capped at six            |
 
 The same coastal noise and field-based flood shape each map. Nonzero water settings use a global target and relax the old 80% regional cap, while protecting noncoastal edges and connected mainland. −1 can become fully inland when its last coastal edge is removed; freshwater lakes remain. −2 is an independent low-water preset, so it can add a small coast to an otherwise inland seed.
 
@@ -56,11 +56,11 @@ Wetlands still require low elevation and proximity to fresh water or a canyon. T
 
 ## Settlements and farmland
 
-Version 8 plans regional counts before site selection: one city roll at 42%, two town rolls at 34% each, and five village rolls at 32% each. Multiply by effective `PL` weight and clamp to 5–95%, then multiply by `clamp((landFraction - 0.1) / 0.55, 0, 1)`, where land fraction excludes ocean/lakes but includes river hexes. Thus regions at or below 10% remaining land receive no settlements, and regions with at least 65% land receive the full roll. Names and positive sliders cannot override this final reduction.
+The generator plans regional counts before site selection: one city roll at 42%, two town rolls at 34% each, and five village rolls at 32% each. Multiply by effective `PL` weight and clamp to 5–95%, then multiply by `clamp((landFraction - 0.1) / 0.55, 0, 1)`, where land fraction excludes ocean/lakes but includes river hexes. Thus regions at or below 10% remaining land receive no settlements, and regions with at least 65% land receive the full roll. Names and positive sliders cannot override this final reduction.
 
 Plans allow at most two cities/towns combined and four villages per region. When a city and both towns roll successfully, one of the three is removed uniformly before placement. There is no city guarantee, including at Settled/Densely settled. Larger footprints are placed first after planning. Total occupied settlement hexes in a region cannot exceed `floor(dryLandHexes * 0.2)`; rivers are excluded from this footprint budget. Rolled sizes that cannot fit are skipped, never shrunk. These are maximums and opportunities, not guaranteed counts.
 
-Separate settlements retain two intervening hex steps; footprints remain connected, at one elevation and inside a region. Meadow/light woodland remain the normal sites. Elevation 3, steep neighbours and village-only level-4 mountains use one combined 0.3 suitability multiplier, rather than compounding penalties. This is relative site weighting, not a guarantee of a particular share of generated villages. Towns/cities remain excluded from mountains, and cities from islands. Villages always occupy one hex. Version 6/7 eligibility and attempts remain unchanged.
+Separate settlements retain two intervening hex steps; footprints remain connected, at one elevation and inside a region. Meadow/light woodland remain the normal sites. Elevation 3, steep neighbours and village-only level-4 mountains use one combined 0.3 suitability multiplier, rather than compounding penalties. This is relative site weighting, not a guarantee of a particular share of generated villages. Towns/cities remain excluded from mountains, and cities from islands. Villages always occupy one hex.
 
 Wilderness removes city attempts, allows at most one town attempt per region, and imposes global caps of three towns, five villages and **six total settlements**. Each settlement has an independent 50% roll to allow farmland. A settlement's two-hex neighbourhood can contain at most one farm; overlapping neighbourhoods must satisfy every affected settlement's roll and limit. Farms are optional and can be absent entirely.
 

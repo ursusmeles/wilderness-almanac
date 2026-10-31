@@ -12,7 +12,7 @@ Works on desktop and mobile.
 
 **[Open Wilderness Almanac](https://the.wilderness.al)**
 
-![Wilderness Almanac map](docs/images/wilderness-almanac.jpg)
+![An autumnal map at dusk with the party journal open](docs/images/wilderness-almanac-campaign-map.png)
 
 ## Get started
 
