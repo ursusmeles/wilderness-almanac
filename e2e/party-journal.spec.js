@@ -32,9 +32,7 @@ test('oracle entries show a single result badge with modifiers, copy and reroll 
     await page.locator('#hp-journal-add').click();
   }
   await expect(entries.locator('kbd')).toHaveText(['6', '5', '1']);
-  await expect(entries.first().locator('.hp-journal-entry-text')).toHaveText(
-    'Oracle: 6 Yes, and…',
-  );
+  await expect(entries.first().locator('.hp-journal-entry-text')).toHaveText('Oracle: 6 Yes, and…');
   await expect(page.locator('#hp-journal-entries')).not.toContainText('d6:');
   await expect(entries.nth(1)).toContainText('Is it safe?');
   await entries.nth(1).focus();
@@ -122,9 +120,9 @@ test('journal selection, week pages, commands, mentions and entry actions work o
       );
     }
     await expect.poll(aligned).toBeLessThan(2);
-    await page.locator('#hp-toggle-settings').click();
+    await page.locator('#hp-appearance-settings').click();
     await expect.poll(aligned).toBeLessThan(2);
-    await page.locator('#hp-toggle-settings').click();
+    await page.locator('#settings-cancel').click();
     await expect.poll(aligned).toBeLessThan(2);
   }
   await page.keyboard.press('+');

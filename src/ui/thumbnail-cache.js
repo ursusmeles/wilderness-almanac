@@ -1,5 +1,5 @@
 const LIMIT = 32;
-const CACHE_VERSION = 17;
+const CACHE_VERSION = 19;
 const memory = new Map();
 let database;
 
@@ -100,6 +100,7 @@ export async function loadThumbnails(campaign, { allowStale = false } = {}) {
       (record.signature !== key &&
         !(
           allowStale &&
+          record.version === CACHE_VERSION &&
           record.seed === campaign.seed &&
           record.generatorVersion === campaign.generatorVersion &&
           record.artStyle === (campaign.artStyle ?? 'low-poly') &&
@@ -118,6 +119,7 @@ export async function saveThumbnails(campaign, entries) {
   try {
     const key = await signature(campaign);
     const record = {
+      version: CACHE_VERSION,
       id: campaign.id,
       signature: key,
       seed: campaign.seed,

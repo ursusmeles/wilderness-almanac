@@ -6,6 +6,37 @@ import {
   UI_PREFERENCES_KEY,
 } from '../src/ui/ui-preferences.js';
 
+test('campaign UI choices remain scoped, validated and separate from campaign data', () => {
+  let source;
+  const storage = { getItem: () => source, setItem: (_, value) => (source = value) };
+  saveUIPreferences(storage, {
+    motion: true,
+    timeIncrement: 'week',
+    journalFirst: false,
+    campaignSettings: {
+      first: {
+        theme: 'light',
+        motion: false,
+        journalFirst: true,
+        timeIncrement: 'day',
+        colors: ['#123456'],
+        seed: 'private',
+      },
+      second: { theme: 'dark', motion: true, timeIncrement: 'session' },
+      invalid: { theme: 'system', motion: 'yes', timeIncrement: 'year' },
+    },
+  });
+  assert.deepEqual(readUIPreferences(storage), {
+    motion: true,
+    timeIncrement: 'week',
+    journalFirst: false,
+    campaignSettings: {
+      first: { motion: false, journalFirst: true, timeIncrement: 'day' },
+      second: { motion: true, timeIncrement: 'session' },
+    },
+  });
+});
+
 test('localStorage only receives validated noncritical UI preferences', () => {
   const values = new Map();
   const storage = {

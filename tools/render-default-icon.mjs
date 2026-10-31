@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { SVGRenderer } from 'three/addons/renderers/SVGRenderer.js';
 import { createMapMeshes } from '../src/rendering/map-meshes.js';
 import { createMapMaterials } from '../src/rendering/map-materials.js';
+import { palettes } from '../src/palette.js';
 
 // SVGRenderer needs only these DOM operations; asset generation needs no WebGL or browser.
 class SvgElement {
@@ -29,8 +30,8 @@ class SvgElement {
 }
 globalThis.document = { createElementNS: (_, tag) => new SvgElement(tag) };
 const palette = createMapMaterials();
-// Dusk ground/water with Ember foliage, fixed independently of campaign palettes.
-palette.setPalette(['#282039', '#237d89', '#ed8965']);
+// Fixed Verdant Kingdoms forest and stone watchtower, independent of campaign choices.
+palette.setPalette(palettes.classic);
 const meshes = createMapMeshes(palette);
 meshes.setMap([
   {
@@ -40,12 +41,37 @@ meshes.setMap([
     wx: 0,
     wz: 0,
     type: 'Land',
-    terrain: 'meadow',
+    terrain: 'light forest',
     top: 0.34,
-    tone: false,
+    tone: true,
     props: [
-      { kind: 'tree', x: -0.27, z: -0.16, scale: 1.18, angle: 0.3, variant: 1, temperature: 0.5 },
-      { kind: 'rock', x: 0.3, z: 0.28, footprint: 0.23, angle: 0.5, variant: 0, detailSeed: 14 },
+      {
+        kind: 'poi',
+        poiKind: 'watchtower',
+        variant: 'watchtower',
+        detailSeed: 7,
+        temperature: 0,
+        x: 0.27,
+        z: 0.18,
+        y: 0,
+        footprint: 0.3,
+        pedestalDepth: 0.035,
+      },
+      ...[
+        [-0.4, -0.3, 1.1],
+        [-0.05, -0.45, 0.95],
+        [0.38, -0.34, 1],
+        [-0.55, 0.12, 0.95],
+        [-0.28, 0.28, 0.9],
+      ].map(([x, z, scale], i) => ({
+        kind: 'tree',
+        x,
+        z,
+        scale,
+        angle: i * 0.7,
+        variant: 1,
+        temperature: i % 2 ? -0.4 : 0.4,
+      })),
       ...[
         [-0.42, 0.28],
         [-0.5, 0.09],
@@ -71,13 +97,13 @@ sun.position.set(-15, 30, -18);
 scene.add(sun);
 // Flat, faceted contact shadows preserve the map's contrast in the baked still.
 for (const [x, z, sx, sz] of [
-  [-0.1, -0.01, 0.29, 0.17],
-  [0.34, 0.31, 0.17, 0.1],
+  [-0.29, -0.05, 0.43, 0.29],
+  [0.29, 0.2, 0.31, 0.25],
 ]) {
   const shadow = new THREE.Mesh(
     new THREE.CircleGeometry(1, 12),
     new THREE.MeshBasicMaterial({
-      color: '#393046',
+      color: '#34452f',
       transparent: false,
       opacity: 1,
       depthWrite: false,
@@ -95,13 +121,10 @@ const renderer = new SVGRenderer();
 renderer.setSize(384, 384);
 renderer.setPrecision(2);
 renderer.render(scene, camera);
-let svg = renderer.domElement
+const svg = renderer.domElement
   .serialize()
   .replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ');
-svg = svg.replace(
-  /(<svg[^>]*>)/,
-  '$1<rect x="-192" y="-192" width="384" height="384" fill="#211c36"/>',
-);
+// Keep the canvas transparent so the same still works on light and dark UI surfaces.
 await writeFile(process.argv[2] ?? '/tmp/wilderness-almanac-default-icon.svg', svg);
 meshes.dispose();
 palette.dispose();

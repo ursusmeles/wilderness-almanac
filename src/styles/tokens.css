@@ -1,0 +1,121 @@
+/* Portable foundations from wilderness-landing/src/styles/tokens.css. */
+
+:root {
+  /* Spacing */
+  /* @link https://utopia.fyi/space/calculator?c=360,14,1.2,1440,16,1.25,5,2,&s=0.75|0.5|0.25,1.5|2|3|4|6,xs-l|m-2xl|l-3xl&g=s,l,xl,12 */
+  --space-3xs: clamp(0.25rem, 0.25rem + 0vw, 0.25rem);
+  --space-2xs: clamp(0.4375rem, 0.4167rem + 0.0926vw, 0.5rem);
+  --space-xs: clamp(0.6875rem, 0.6667rem + 0.0926vw, 0.75rem);
+  --space-s: clamp(0.875rem, 0.8333rem + 0.1852vw, 1rem);
+  --space-m: clamp(1.3125rem, 1.25rem + 0.2778vw, 1.5rem);
+  --space-l: clamp(1.75rem, 1.6667rem + 0.3704vw, 2rem);
+  --space-xl: clamp(2.625rem, 2.5rem + 0.5556vw, 3rem);
+  --space-2xl: clamp(3.5rem, 3.3333rem + 0.7407vw, 4rem);
+  --space-3xl: clamp(5.25rem, 5rem + 1.1111vw, 6rem);
+
+  /* One-up pairs */
+  --space-3xs-2xs: clamp(0.25rem, 0.1667rem + 0.3704vw, 0.5rem);
+  --space-2xs-xs: clamp(0.4375rem, 0.3333rem + 0.463vw, 0.75rem);
+  --space-xs-s: clamp(0.6875rem, 0.5833rem + 0.463vw, 1rem);
+  --space-s-m: clamp(0.875rem, 0.6667rem + 0.9259vw, 1.5rem);
+  --space-m-l: clamp(1.3125rem, 1.0833rem + 1.0185vw, 2rem);
+  --space-l-xl: clamp(1.75rem, 1.3333rem + 1.8519vw, 3rem);
+  --space-xl-2xl: clamp(2.625rem, 2.1667rem + 2.037vw, 4rem);
+  --space-2xl-3xl: clamp(3.5rem, 2.6667rem + 3.7037vw, 6rem);
+
+  /* Custom pairs */
+  --space-xs-l: clamp(0.6875rem, 0.25rem + 1.9444vw, 2rem);
+  --space-m-2xl: clamp(1.3125rem, 0.4167rem + 3.9815vw, 4rem);
+  --space-l-3xl: clamp(1.75rem, 0.3333rem + 6.2963vw, 6rem);
+
+  /* Type scale */
+
+  --step-m1: clamp(0.7292rem, 0.7141rem + 0.0671vw, 0.8rem);
+  --step-0: clamp(0.875rem, 0.8483rem + 0.1185vw, 1rem);
+  --step-1: clamp(1.05rem, 1.0073rem + 0.1896vw, 1.25rem);
+  --step-2: clamp(1.26rem, 1.1955rem + 0.2867vw, 1.5625rem);
+  --step-3: clamp(1.512rem, 1.4179rem + 0.4181vw, 1.9531rem);
+  --step-4: clamp(1.8144rem, 1.6807rem + 0.5943vw, 2.4414rem);
+  --step-5: clamp(2.1773rem, 1.9908rem + 0.8289vw, 3.0518rem);
+
+  /* Fonts */
+
+  --f-display: 'Geist Pixel Square', 'Geist Pixel Fallback', Arial, sans-serif;
+  --f-body: 'Geist Sans', system-ui, sans-serif;
+  --f-mono: var(--f-display);
+  --f-light: 300;
+  --f-regular: 400;
+  --f-medium: 500;
+  --f-bold: 700;
+
+  /* Interface dimensions are independent of the fluid space scale. */
+
+  --icon-size: 1.5rem;
+  --icon-small: 1rem;
+  --control-min-target: 2.75rem;
+  --disabled-opacity: 0.45;
+
+  /* Reading */
+
+  --text-measure: 55ch;
+  --focus-offset: 0.2em;
+  --link-underline-offset: 0.25em;
+
+  --inverse-scheme: light;
+  --inverse-bloom-brightness: 2;
+  --animation-bloom-brightness: 0.5;
+
+  color-scheme: dark;
+
+  /* Radius */
+
+  --r-small: 0;
+  --r-medium: 0.125rem;
+  --r-large: 0.25rem;
+  --r-full: 9999px;
+
+  /* Borders */
+
+  --b-thin: 1px solid;
+  --b-thick: 2px solid;
+  --b-dashed: 1px dashed;
+
+  /* Shadows */
+
+  --sh-color: light-dark(var(--offblack), var(--black));
+  --sh-small: 0 3px 16px rgb(from var(--sh-color) r g b / 0.2);
+  --sh-medium: 0 24px 100px rgb(from var(--sh-color) r g b / 0.4);
+
+  /* Line heights */
+
+  --lh-very-small: 0.98;
+  --lh-small: 1.1;
+  --lh-medium: 1.25;
+  --lh-large: 1.75;
+
+  /* Transitions */
+
+  --d-fast: 120ms;
+  --d-normal: 220ms;
+  --d-slow: 300ms;
+  --t-color: color var(--d-fast) var(--ease-out-3);
+  --t-fade: opacity var(--d-fast) var(--ease-out-3);
+  --t-move: transform var(--d-normal) var(--ease-out-3);
+  --t-shadow: box-shadow var(--d-slow) var(--ease-out-3);
+
+  /* Z-index */
+
+  --z-raised: 1;
+  --z-overlay: 10;
+  --z-modal: 20;
+  --z-top: 30;
+
+  /* Dark is the default; only a manual light choice changes the scheme. */
+
+  &[data-theme='light'] {
+    --inverse-scheme: dark;
+    --inverse-bloom-brightness: 0.5;
+    --animation-bloom-brightness: 2;
+    color-scheme: light;
+  }
+}

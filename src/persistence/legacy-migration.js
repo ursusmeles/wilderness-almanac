@@ -3,7 +3,7 @@ import { readPreferences } from './legacy-preferences.js';
 import { createPaletteLibrary } from '../application/palette-library.js';
 import { createCampaign, validateCampaign } from '../application/campaigns.js';
 import { generateWorld } from '../generation/world.js';
-import { paletteNames, palettes, DEFAULT_PALETTE } from '../palette.js';
+import { paletteNames, palettes } from '../palette.js';
 import { requested, transact, readDatabase, STORES } from './database.js';
 import { storageKey } from './storage-namespace.js';
 
@@ -55,7 +55,8 @@ export function readLegacy(storage) {
   const campaigns = reader.campaigns.slice();
   // The pre-library application saved one version-6 map in preferences.
   if (!unavailable && reader.missing && preferences.seed) {
-    const colors = preferences.colors ?? palettes[DEFAULT_PALETTE];
+    // Single-map saves without colours predate palette selection and used Forbidden Lands.
+    const colors = preferences.colors ?? palettes.forbidden;
     const paletteName = Object.keys(palettes).find((id) => equal(palettes[id], colors));
     const campaign = createCampaign(
       generateWorld(preferences.seed, { generatorVersion: 6 }),

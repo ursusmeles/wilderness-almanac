@@ -1,0 +1,63 @@
+/* Portable foundations from wilderness-landing/src/styles/colors.css. */
+
+:root {
+  --hue-primary: 79.72;
+  --hue-secondary: 214.47;
+  --hue-tertiary: 20.06;
+
+  --brand-ink: oklch(23.06% 0.024 var(--hue-secondary));
+  --brand-bone: oklch(93.45% 0.0199 77.31);
+  --brand-gold: oklch(80.92% 0.1063 var(--hue-primary));
+
+  --surface-dark: oklch(from var(--brand-ink) calc(l + 0.045) c h);
+  --surface-light: oklch(from var(--brand-bone) calc(l + 0.025) calc(c * 0.75) h);
+  --muted-dark: color-mix(in oklab, var(--brand-bone) 70%, var(--surface-dark));
+  --muted-light: color-mix(in oklab, var(--brand-ink) 80%, var(--surface-light));
+  --border-light: color-mix(in oklab, var(--brand-ink) 25%, var(--surface-light));
+  --accent-light: oklch(from var(--brand-gold) calc(l - 0.29) calc(c * 0.9) h);
+  --accent-hover-light: oklch(from var(--accent-light) calc(l - 0.06) c h);
+  --accent-hover-dark: oklch(from var(--brand-gold) calc(l + 0.04) c h);
+  --status-error-base: oklch(48.2% 0.1123 var(--hue-tertiary));
+  --status-error-dark: oklch(from var(--status-error-base) calc(l + 0.3) calc(c * 0.85) h);
+
+  /* Existing palette names remain aliases of the shared foundations. */
+  --primary-lighter: var(--brand-bone);
+  --primary-light: var(--accent-hover-dark);
+  --primary: var(--brand-gold);
+  --primary-dark: var(--accent-light);
+  --primary-darker: var(--accent-hover-light);
+  --secondary-lighter: var(--surface-light);
+  --secondary-light: var(--border-light);
+  --secondary: var(--muted-dark);
+  --secondary-dark: var(--muted-light);
+  --secondary-darker: var(--surface-dark);
+  --tertiary-lighter: var(--brand-bone);
+  --tertiary-light: var(--status-error-dark);
+  --tertiary: var(--status-error-base);
+  --tertiary-dark: oklch(from var(--status-error-base) calc(l - 0.08) c h);
+  --tertiary-darker: var(--muted-light);
+  --black: #000;
+  --white: #fff;
+  --offwhite: var(--brand-bone);
+  --offblack: var(--brand-ink);
+}
+
+:root,
+:where(dialog, .ui-tooltip) {
+  --c-bg: light-dark(var(--brand-bone), var(--brand-ink));
+  --c-text: light-dark(var(--brand-ink), var(--brand-bone));
+  --c-text-muted: light-dark(var(--muted-light), var(--muted-dark));
+  --c-surface: light-dark(var(--surface-light), var(--surface-dark));
+  --c-surface-hover: color-mix(in oklab, var(--c-surface) 85%, var(--c-text));
+  --c-surface-alt: var(--c-surface);
+  --c-border: light-dark(var(--border-light), var(--muted-light));
+  --c-border-strong: var(--c-text-muted);
+  --c-accent: light-dark(var(--accent-light), var(--brand-gold));
+  --c-color-on-accent: light-dark(var(--brand-bone), var(--brand-ink));
+  --c-color-link: var(--c-accent);
+  --c-color-link-hover: light-dark(var(--accent-hover-light), var(--accent-hover-dark));
+  --c-color-focus: var(--c-accent);
+  --c-color-selection: var(--c-accent);
+  --c-color-on-selection: var(--c-color-on-accent);
+  --c-error: light-dark(var(--status-error-base), var(--status-error-dark));
+}

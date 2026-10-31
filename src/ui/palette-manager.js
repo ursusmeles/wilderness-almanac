@@ -1,8 +1,9 @@
 import { openDialog } from './dialog-focus.js';
 import { cloneTemplate } from './templates.js';
 
-export function createPaletteManager({ library, onChange }) {
+export function createPaletteManager({ library, onChange, onChoose }) {
   const dialog = document.getElementById('palette-manager-dialog');
+  document.body.append(dialog);
   const list = document.getElementById('palette-manager-list');
   const message = document.getElementById('palette-manager-message');
   const deleteButton = document.getElementById('delete-palette');
@@ -12,6 +13,9 @@ export function createPaletteManager({ library, onChange }) {
     target.addEventListener(type, handler, { signal: listeners.signal });
   const roles = ['Ground', 'Water', 'Elements'];
   let selectedId = library.default().id;
+  let campaignMode = false;
+  const createdHere = new Set();
+  const editable = (palette) => !palette.builtin && (!campaignMode || createdHere.has(palette.id));
   let deleted;
   const undo = document.createElement('button');
   undo.type = 'button';
@@ -43,13 +47,19 @@ export function createPaletteManager({ library, onChange }) {
       row.querySelectorAll('input').forEach((input) => {
         input.tabIndex = selected ? 0 : -1;
       });
-      row.querySelector('.palette-default').hidden = row.dataset.id !== library.default().id;
+      row.querySelector('.palette-default').hidden =
+        campaignMode || row.dataset.id !== library.default().id;
       labelRow(row, library.get(row.dataset.id));
     }
-    deleteButton.disabled = Boolean(library.get(selectedId)?.builtin);
-    if (deleteButton.disabled) deleteButton.dataset.tooltip = 'You can delete custom palettes only';
+    deleteButton.disabled = !editable(library.get(selectedId));
+    if (deleteButton.disabled)
+      deleteButton.dataset.tooltip = campaignMode
+        ? 'Only palettes created here can be deleted from campaign settings'
+        : 'You can delete custom palettes only';
     else delete deleteButton.dataset.tooltip;
-    defaultButton.disabled = selectedId === library.default().id;
+    defaultButton.disabled =
+      selectedId ===
+      (campaignMode ? document.getElementById('settings-palette').value : library.default().id);
   }
 
   function labelRow(row, palette) {
@@ -82,24 +92,18 @@ export function createPaletteManager({ library, onChange }) {
       row.classList.toggle('is-custom', !palette.builtin);
       const swatches = row.querySelector('.palette-swatches');
       palette.colors.forEach((color, index) => {
-        const swatch = document.createElement(palette.builtin ? 'span' : 'label');
+        const swatch = document.createElement('label');
         swatch.className = 'palette-swatch';
         swatch.style.setProperty('--swatch-color', color);
-        if (palette.builtin) swatch.dataset.tooltip = `${roles[index]} · ${color.toUpperCase()}`;
-        if (palette.builtin) {
-          swatch.setAttribute('role', 'img');
-          swatch.setAttribute('aria-label', swatch.dataset.tooltip);
-        } else {
-          const input = document.createElement('input');
-          input.type = 'color';
-          input.value = color;
-          input.dataset.color = index;
-          swatch.append(input);
-        }
+        const input = document.createElement('input');
+        input.type = 'color';
+        input.value = color;
+        input.dataset.color = index;
+        swatch.append(input);
         swatches.append(swatch);
       });
-      const name = document.createElement(palette.builtin ? 'span' : 'input');
-      if (palette.builtin) name.textContent = palette.name;
+      const name = document.createElement(editable(palette) ? 'input' : 'span');
+      if (!editable(palette)) name.textContent = palette.name;
       else {
         name.type = 'text';
         name.className = 'palette-name';
@@ -116,6 +120,12 @@ export function createPaletteManager({ library, onChange }) {
   }
 
   listen(document.getElementById('open-palette-manager'), 'click', () => {
+    campaignMode = document.getElementById('settings-dialog').dataset.scope === 'campaign';
+    createdHere.clear();
+    undo.hidden = true;
+    deleted = undefined;
+    defaultButton.textContent = campaignMode ? 'Use palette' : 'Use as default';
+    if (campaignMode) selectedId = document.getElementById('settings-palette').value;
     if (!library.get(selectedId)) selectedId = library.default().id;
     render();
     openDialog(dialog);
@@ -149,8 +159,10 @@ export function createPaletteManager({ library, onChange }) {
     const input = event.target;
     if (input.type !== 'color') return;
     const row = input.closest('.palette-row');
-    if (!library.color(row.dataset.id, Number(input.dataset.color), input.value)) return;
+    const palette = library.get(row.dataset.id);
     input.parentElement.style.setProperty('--swatch-color', input.value);
+    if (!editable(palette)) return;
+    if (!library.color(row.dataset.id, Number(input.dataset.color), input.value)) return;
     labelRow(row, library.get(row.dataset.id));
     save('', false);
   });
@@ -158,6 +170,32 @@ export function createPaletteManager({ library, onChange }) {
     const input = event.target;
     if (input.type === 'color') {
       const palette = library.get(input.closest('.palette-row').dataset.id);
+      if (!editable(palette)) {
+        const index = Number(input.dataset.color);
+        if (input.value.toLowerCase() === palette.colors[index].toLowerCase()) return;
+        const copy = library.add(palette.colors);
+        createdHere.add(copy.id);
+        let name = `${palette.name} copy`,
+          suffix = 2;
+        while (
+          library
+            .all()
+            .some(
+              (entry) => entry.id !== copy.id && entry.name.toLowerCase() === name.toLowerCase(),
+            )
+        )
+          name = `${palette.name} copy ${suffix++}`;
+        library.rename(copy.id, name);
+        library.color(copy.id, index, input.value);
+        selectedId = copy.id;
+        render();
+        if (campaignMode) onChoose(copy.id);
+        save(`Created “${copy.name}” from ${palette.name}.`);
+        const row = list.querySelector('[aria-selected="true"]');
+        row.querySelector(`input[data-color="${index}"]`).focus();
+        row.scrollIntoView({ block: 'nearest' });
+        return;
+      }
       save(`${palette.name}: ${roles[Number(input.dataset.color)]} colour saved.`);
     }
     if (input.classList.contains('palette-name')) {
@@ -171,7 +209,11 @@ export function createPaletteManager({ library, onChange }) {
       }
       input.value = palette.name;
       labelRow(row, palette);
-      if (palette.name !== previousName) save(`Palette renamed to “${palette.name}”.`);
+      if (palette.name !== previousName) {
+        render();
+        focusSelection();
+        save(`Palette renamed to “${palette.name}”.`);
+      }
     }
   });
   listen(list, 'keydown', (event) => {
@@ -215,9 +257,11 @@ export function createPaletteManager({ library, onChange }) {
   });
   listen(document.getElementById('add-palette'), 'click', () => {
     selectedId = library.add(library.get(selectedId)?.colors).id;
+    createdHere.add(selectedId);
     render();
+    if (campaignMode) onChoose(selectedId);
     save('Palette added.');
-    const input = list.lastElementChild.querySelector('.palette-name');
+    const input = list.querySelector('[aria-selected="true"] .palette-name');
     input.focus();
     input.select();
   });
@@ -236,6 +280,11 @@ export function createPaletteManager({ library, onChange }) {
     focusSelection();
   });
   listen(defaultButton, 'click', () => {
+    if (campaignMode) {
+      onChoose(selectedId);
+      dialog.close();
+      return;
+    }
     if (!library.setDefault(selectedId)) return;
     if (deleted) deleted.wasDefault = false;
     syncSelection();

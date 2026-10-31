@@ -429,18 +429,13 @@ export function createPanels(root, preferences, onChange) {
       if (journalFirst === value) return;
       journalFirst = value;
       defaultSplit();
-      for (const [id, layout] of campaignLayouts)
-        campaignLayouts.set(id, {
-          ...layout,
-          panelSplit: undefined,
-          panelsCollapsed: { inspector: false, tracker: false },
-        });
       render();
     },
-    enterCampaign(id) {
+    enterCampaign(id, options = {}) {
       finishResize();
       if (campaignId) campaignLayouts.set(campaignId, desktopPreferences());
       campaignId = id;
+      journalFirst = options.journalFirst ?? journalFirst;
       const layout = campaignLayouts.get(id) ?? {};
       collapsed = { ...(layout.panelsCollapsed ?? { inspector: false, tracker: false }) };
       if (collapsed.inspector && collapsed.tracker) collapsed[order()[1]] = false;

@@ -206,8 +206,9 @@ export function createCampaignMenu({
       }).format(new Date(campaign.createdAt));
       card.querySelector('.campaign-palette').textContent = campaign.paletteName;
       card.querySelector('.campaign-week').textContent = String(campaignWeek(campaign));
-      card.querySelector('.campaign-time-label').textContent =
-        timeIncrementLabels(getTimeIncrement()).label;
+      card.querySelector('.campaign-time-label').textContent = timeIncrementLabels(
+        getTimeIncrement(campaign),
+      ).label;
       const ratio = card.querySelector('.campaign-ratio');
       ratio.querySelector('dd').textContent =
         `${data.stats.waterPercent}% / ${data.stats.landPercent}%`;

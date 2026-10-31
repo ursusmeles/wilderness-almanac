@@ -16,7 +16,12 @@ export function createPaletteLibrary(preferences) {
     ids.add(id);
     return { id, name: palette.name.trim(), colors: palette.colors.slice() };
   });
-  const all = () => [...builtins, ...custom];
+  const all = () =>
+    [...builtins, ...custom].sort((a, b) => {
+      if (a.id === DEFAULT_PALETTE) return -1;
+      if (b.id === DEFAULT_PALETTE) return 1;
+      return a.name.localeCompare(b.name, 'en', { sensitivity: 'base', numeric: true });
+    });
   const get = (id) => all().find((palette) => palette.id === id);
   let defaultId = get(preferences.defaultPalette) ? preferences.defaultPalette : DEFAULT_PALETTE;
 

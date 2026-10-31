@@ -71,7 +71,8 @@ export function createHexInspector(
     pending,
     frame,
     previewTile,
-    previewColors;
+    previewColors,
+    previewArtStyle;
   const unsaved = cloneTemplate('unsaved-hex-dialog-template').firstElementChild;
   host.closest('#campaign-workspace').append(unsaved);
 
@@ -290,7 +291,12 @@ export function createHexInspector(
   function refreshPreview() {
     cancelAnimationFrame(frame);
     if (!state || !visible()) return;
-    if (previewTile === state.tile && previewColors === state.colors.join(',')) return;
+    if (
+      previewTile === state.tile &&
+      previewColors === state.colors.join(',') &&
+      previewArtStyle === state.artStyle
+    )
+      return;
     frame = requestAnimationFrame(() => {
       if (!visible()) return;
       const src = preview(state.tile, state.colors);
@@ -298,6 +304,7 @@ export function createHexInspector(
       if (src) {
         previewTile = state.tile;
         previewColors = state.colors.join(',');
+        previewArtStyle = state.artStyle;
         el('preview').src = src;
       }
       el('preview').alt = `Isometric view of ${el('name').textContent}`;

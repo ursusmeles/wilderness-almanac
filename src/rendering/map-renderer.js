@@ -23,6 +23,8 @@ export function createMapRenderer(
     touchMultiSelect = false,
     navigation = true,
     background = null,
+    transparent = false,
+    groundShadow = true,
     artStyle = 'low-poly',
   } = {},
 ) {
@@ -32,7 +34,7 @@ export function createMapRenderer(
   try {
     renderer = new THREE.WebGLRenderer({
       antialias: true,
-      alpha: false,
+      alpha: transparent,
       powerPreference: 'default',
     });
   } catch (error) {
@@ -45,6 +47,8 @@ export function createMapRenderer(
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.autoClear = false;
+  // Snapshots can precede the first frame, which normally installs the clear alpha.
+  if (transparent) renderer.setClearAlpha(0);
   host.append(renderer.domElement);
   renderer.domElement.setAttribute('role', 'img');
   renderer.domElement.tabIndex = 0;
@@ -66,13 +70,17 @@ export function createMapRenderer(
     new THREE.ShadowMaterial({ opacity: 0.17 }),
   );
   shadowFloor.rotation.x = -Math.PI / 2;
-  shadowFloor.position.y = -0.12;
+  // Tile bases end at y=0; a lower catcher makes their shadows appear detached.
+  shadowFloor.position.y = -0.001;
   shadowFloor.receiveShadow = true;
+  shadowFloor.visible = groundShadow;
   scene.add(shadowFloor);
   const palette = createMapMaterials();
   let backgroundColor = background;
   function updateBackground() {
-    scene.background = new THREE.Color(backgroundColor ?? palette.background());
+    scene.background = transparent
+      ? null
+      : new THREE.Color(backgroundColor ?? palette.background());
   }
   const meshes = createMapMeshes(palette, { artStyle });
   scene.add(meshes.group);

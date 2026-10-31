@@ -1,0 +1,39 @@
+/* App adaptations: compact type and controls within the shared foundations. */
+
+:root {
+  --text-control: 0.75rem;
+  --text-body: 0.875rem;
+  --text-subtitle: 1rem;
+  --text-heading: 1.25rem;
+  --text-title: 1.5rem;
+  --lh-reading: 1.5;
+  --control-size: 2.5rem;
+  --control-compact-size: 2rem;
+  --control-font: var(--f-regular) var(--text-control)/var(--lh-medium) var(--f-body);
+  --hex-shape: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  --focus-width: 2px;
+  --button-press-scale: 0.95;
+  --loading-duration: 1.2s;
+  --panel-margin: var(--space-3xs-2xs);
+  --dialog-backdrop: rgb(from var(--brand-ink) r g b / 0.8);
+  /* Open Props circular easing, retained from the app's navigation feedback. */
+  --ease-circ-in: cubic-bezier(0.6, 0.04, 0.98, 0.335);
+  --ease-circ-out: cubic-bezier(0.075, 0.82, 0.165, 1);
+  --ease-out-3: cubic-bezier(0, 0, 0.3, 1);
+}
+
+:root,
+:where(dialog, .ui-tooltip) {
+  --c-danger-hover: light-dark(
+    oklch(from var(--status-error-base) calc(l - 0.06) c h),
+    oklch(from var(--status-error-dark) calc(l + 0.04) c h)
+  );
+  --c-on-danger: light-dark(var(--brand-bone), var(--brand-ink));
+}
+
+@media (max-width: 760px), (max-width: 1024px) and (max-height: 500px), (pointer: coarse) {
+  :root {
+    --control-size: var(--control-min-target);
+    --control-compact-size: var(--control-min-target);
+  }
+}

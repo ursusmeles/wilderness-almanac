@@ -10,6 +10,7 @@ import {
 import { validateHexEdits, variantsFor } from '../generation/hex-edits.js';
 import { replaceCampaignMap } from './campaigns.js';
 import { TIMES_OF_DAY } from './time-of-day.js';
+import { MAP_ART_STYLES } from './map-art-style.js';
 import { timeIncrementLabels } from './campaign-time.js';
 import { settlementJoin, joinSettlements } from '../generation/settlement-edits.js';
 import { hexAddress } from '../generation/hex.js';
@@ -205,6 +206,22 @@ export function createCampaignSession({ persist }) {
       state = { ...state, campaign: { ...state.campaign, timeOfDay: value } };
       save();
       return result('lighting');
+    },
+    appearance({ colors, paletteName, timeOfDay, artStyle }) {
+      if (
+        !Array.isArray(colors) ||
+        colors.length !== 3 ||
+        colors.some((value) => !/^#[\da-f]{6}$/i.test(value)) ||
+        !TIMES_OF_DAY.includes(timeOfDay) ||
+        !MAP_ART_STYLES.includes(artStyle)
+      )
+        return { ok: false, error: 'Choose valid campaign appearance settings.' };
+      state = {
+        ...state,
+        campaign: { ...state.campaign, colors: colors.slice(), paletteName, timeOfDay, artStyle },
+      };
+      save();
+      return result('appearance', 'Campaign appearance saved');
     },
     fogOfWar(enabled) {
       state = { ...state, campaign: { ...state.campaign, fogOfWar: Boolean(enabled) } };

@@ -22,7 +22,7 @@ test('Settings stages defaults and imports, Cancel discards, and Save persists n
   await page.goto('/');
   await page.locator('#open-settings').click();
   await expect(page.locator('#settings-save')).toBeDisabled();
-  await expect(page.locator('#settings-palette')).toHaveValue('forbidden');
+  await expect(page.locator('#settings-palette')).toHaveValue('classic');
   await expect(page.locator('#settings-time input[value="dawn"]')).toBeChecked();
   await page.locator('#settings-palette').selectOption('glacial');
   await page.locator('#settings-time input[value="night"]').check();
@@ -34,7 +34,7 @@ test('Settings stages defaults and imports, Cancel discards, and Save persists n
   await page.locator('#settings-cancel').click();
   await page.locator('#open-settings').click();
   await expect(page.locator('#settings-save')).toBeDisabled();
-  await expect(page.locator('#settings-palette')).toHaveValue('forbidden');
+  await expect(page.locator('#settings-palette')).toHaveValue('classic');
   await expect(page.locator('#settings-time input[value="dawn"]')).toBeChecked();
   await expect(page.locator('#settings-motion input[value="true"]')).toBeChecked();
   await expect(page.locator('#settings-filename')).toHaveText('No file selected');

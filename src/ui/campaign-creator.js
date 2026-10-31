@@ -17,6 +17,7 @@ export function createCampaignCreator({
   freshSeed,
   defaultTimeOfDay,
   defaultMapArtStyle,
+  backgroundFor = () => null,
   onCreate,
 }) {
   const dialog = document.getElementById('create-campaign-dialog');
@@ -176,6 +177,7 @@ export function createCampaignCreator({
     renderer ??= view.createMapRenderer(el('scene'), { motion: false, artStyle: artStyle() });
     if (!renderer) throw new Error('The map preview needs WebGL. Try another browser.');
     renderer.setPalette(library.get(paletteInput.value).colors);
+    renderer.setBackground(backgroundFor(library.get(paletteInput.value).colors));
     renderer.setMap(layout, {
       resetView: initialView,
       artStyle: artStyle(),
@@ -267,6 +269,7 @@ export function createCampaignCreator({
   });
   listen(paletteInput, 'change', () => {
     renderer?.setPalette(library.get(paletteInput.value).colors);
+    renderer?.setBackground(backgroundFor(library.get(paletteInput.value).colors));
     sync();
   });
   listen(artInput, 'change', () => {
@@ -349,6 +352,10 @@ export function createCampaignCreator({
   });
 
   return {
+    refreshTheme() {
+      if (renderer && library.get(paletteInput.value))
+        renderer.setBackground(backgroundFor(library.get(paletteInput.value).colors));
+    },
     open() {
       if (dialog.open || draft?.creating || listeners.signal.aborted) return;
       seedInput.value = freshSeed();

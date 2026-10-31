@@ -628,7 +628,7 @@ export function createPartyJournal(
     const bottom = parseFloat(style.paddingBottom);
     const desired =
       host.getBoundingClientRect().bottom - bottom - appearance.getBoundingClientRect().top;
-    // Preserve room for the log when the appearance controls are expanded or panels reordered.
+    // Preserve room for the log when the tools are resized or reordered.
     const available =
       section.clientHeight -
       bottom -

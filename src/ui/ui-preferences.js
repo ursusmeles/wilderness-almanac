@@ -62,6 +62,34 @@ function pick(value = {}) {
       : {}),
     ...(typeof value.settingsOpen === 'boolean' ? { settingsOpen: value.settingsOpen } : {}),
     ...(Object.keys(campaignPanels).length ? { campaignPanels } : {}),
+    ...(value.campaignSettings &&
+    typeof value.campaignSettings === 'object' &&
+    !Array.isArray(value.campaignSettings)
+      ? {
+          campaignSettings: Object.fromEntries(
+            Object.entries(value.campaignSettings).flatMap(([id, entry]) => {
+              if (
+                !id.trim() ||
+                id.length > 128 ||
+                !entry ||
+                typeof entry !== 'object' ||
+                Array.isArray(entry)
+              )
+                return [];
+              const settings = {
+                ...(typeof entry.motion === 'boolean' ? { motion: entry.motion } : {}),
+                ...(typeof entry.journalFirst === 'boolean'
+                  ? { journalFirst: entry.journalFirst }
+                  : {}),
+                ...(TIME_INCREMENTS.includes(entry.timeIncrement)
+                  ? { timeIncrement: entry.timeIncrement }
+                  : {}),
+              };
+              return Object.keys(settings).length ? [[id, settings]] : [];
+            }),
+          ),
+        }
+      : {}),
   };
 }
 

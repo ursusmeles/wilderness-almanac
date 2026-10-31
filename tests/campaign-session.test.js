@@ -32,6 +32,31 @@ function fixture() {
   };
 }
 
+test('campaign appearance applies as one save, preserves world and edits, and rejects invalid choices', () => {
+  const { session, writes } = fixture();
+  const initial = session.snapshot(),
+    count = writes.length;
+  const appearance = {
+    colors: ['#112233', '#445566', '#778899'],
+    paletteName: 'Custom',
+    timeOfDay: 'dusk',
+    artStyle: 'pixelart',
+  };
+  assert.equal(session.appearance(appearance).ok, true);
+  assert.equal(writes.length, count + 1);
+  assert.equal(session.snapshot().world, initial.world);
+  assert.equal(session.snapshot().dressing, initial.dressing);
+  assert.deepEqual(session.snapshot().campaign.hexEdits, initial.campaign.hexEdits);
+  const restored = importCampaign(exportCampaign(session.snapshot().campaign));
+  assert.equal(restored.artStyle, 'pixelart');
+  assert.equal(restored.timeOfDay, 'dusk');
+  assert.deepEqual(restored.colors, appearance.colors);
+  const validWrites = writes.length;
+  assert.equal(session.appearance({ ...appearance, artStyle: 'invalid' }).ok, false);
+  assert.equal(session.appearance({ ...appearance, colors: ['#000000'] }).ok, false);
+  assert.equal(writes.length, validWrites);
+});
+
 test('time of day is saved per campaign without changing geometry or Undo history', () => {
   const { session, writes, fail } = fixture();
   const initial = session.snapshot(),

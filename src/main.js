@@ -1,14 +1,8 @@
-import { openDialog } from './ui/dialog-focus.js';
 import { generateWorld } from './generation/world.js';
 import { prepareMap } from './generation/presentation.js';
-import {
-  palettes,
-  paletteNames,
-  paletteTheme,
-  createColorScale,
-  hexToOklch,
-  DEFAULT_PALETTE,
-} from './palette.js';
+import { palettes, paletteNames, DEFAULT_PALETTE } from './palette.js';
+import { campaignUITheme } from './ui/campaign-theme.js';
+import { createUITheme } from './ui/theme.js';
 import { readUIPreferences, saveUIPreferences } from './ui/ui-preferences.js';
 import { createBrowserStore } from './persistence/browser-store.js';
 import { readMapLink, describeHex, shortCoordinates } from './ui/map-link.js';
@@ -89,10 +83,14 @@ let partyButtonSignature = '';
 const session = createCampaignSession({ persist: persistCampaign });
 const initialVariant =
   linked.variant ?? (linked.seed && linked.seed !== saved.seed ? 0 : (saved.variant ?? 0));
-let movement = saved.motion ?? true;
+let defaultMovement = saved.motion ?? true;
+let movement = defaultMovement;
+let defaultJournalFirst = saved.journalFirst ?? false;
+const campaignSettings = Object.assign(Object.create(null), saved.campaignSettings);
 let defaultTimeOfDay = saved.defaultTimeOfDay ?? 'dawn';
 let defaultMapArtStyle = saved.defaultMapArtStyle ?? 'low-poly';
-let campaignTimeIncrement = saved.timeIncrement ?? 'week';
+let defaultTimeIncrement = saved.timeIncrement ?? 'week';
+let campaignTimeIncrement = defaultTimeIncrement;
 let campaignHistory;
 const selection = element('selection');
 const preset = element('preset');
@@ -157,16 +155,19 @@ const mapSelection = createMapSelection(root, {
 });
 
 let campaignMenu;
+let campaignCreator;
 let preferencesRevision = 0;
 let preferencesFailed = false;
 function persistPreferences() {
   // Noncritical UI defaults and panel preferences stay in localStorage.
   return saveUIPreferences(storage, {
-    motion: movement,
+    ...panels.preferences(),
+    motion: defaultMovement,
+    journalFirst: defaultJournalFirst,
     defaultTimeOfDay,
     defaultMapArtStyle,
-    timeIncrement: campaignTimeIncrement,
-    ...panels.preferences(),
+    timeIncrement: defaultTimeIncrement,
+    campaignSettings,
   });
 }
 
@@ -237,7 +238,12 @@ async function openCampaign(campaign, { fromHistory = false } = {}) {
       await loadMapView();
       if (disposed) return false;
       const keepView = Boolean(renderer && session.snapshot()?.campaign.id === campaign.id);
-      panels.enterCampaign(campaign.id);
+      const local = campaignSettings[campaign.id] ?? {};
+      movement = local.motion ?? defaultMovement;
+      campaignTimeIncrement = local.timeIncrement ?? defaultTimeIncrement;
+      panels.enterCampaign(campaign.id, {
+        journalFirst: local.journalFirst ?? defaultJournalFirst,
+      });
       session.open(campaign);
       presentCampaign({ resetView: !keepView });
       if (!fromHistory) campaignHistory?.enter(session.snapshot().campaign);
@@ -254,7 +260,6 @@ async function openCampaign(campaign, { fromHistory = false } = {}) {
 
 function presentCampaign({ resetView = false } = {}) {
   const { campaign, world } = session.snapshot();
-  workspaceControls.setSettingsOpen(false);
   inspector.reset();
   batchInspector.reset();
   root.hidden = false;
@@ -352,6 +357,13 @@ function handleAction(result) {
       visibleLayout: displayView.layout,
     });
     if (session.snapshot().partySelected) updateInspector();
+  } else if (result.scope === 'appearance') {
+    viewLayoutSource = undefined;
+    syncTimeOfDay();
+    applyPalette();
+    refreshPresentation();
+    syncSelection();
+    updateInspector();
   } else if (result.scope === 'lighting') syncTimeOfDay();
   else if (result.scope === 'world') renderWorld();
   else {
@@ -361,7 +373,7 @@ function handleAction(result) {
     updateInspector();
   }
   syncParty();
-  if (['world', 'palette', 'icon'].includes(result.scope)) scheduleCampaignIcons();
+  if (['world', 'palette', 'icon', 'appearance'].includes(result.scope)) scheduleCampaignIcons();
   if (result.notification) mapConsole.notify(result.notification);
   return true;
 }
@@ -413,50 +425,35 @@ function renderWorld({ resetView = false } = {}) {
 }
 
 function updatePaletteOptions() {
-  preset.querySelectorAll('[data-saved]').forEach((option) => option.remove());
-  savedPalettes.forEach((palette, index) => {
-    const option = document.createElement('option');
-    option.value = `saved:${index}`;
-    option.textContent = palette.name;
-    option.dataset.saved = '';
-    preset.insertBefore(option, preset.querySelector('option[value="save-new"]'));
-  });
+  preset.replaceChildren(
+    ...paletteLibrary.all().map((palette) => {
+      const option = document.createElement('option');
+      option.value = palette.id;
+      option.textContent = palette.name;
+      return option;
+    }),
+  );
+  const custom = document.createElement('option');
+  custom.value = 'custom';
+  custom.hidden = true;
+  custom.textContent = 'Current campaign colours';
+  preset.append(custom);
 }
 
-function applyMenuTheme() {
-  const palette = paletteLibrary.default();
-  const theme = palette.id === 'forbidden' ? null : paletteTheme(palette.colors);
-  const menu = document.getElementById('campaign-menu');
-  const values = theme
-    ? { ...theme, surface: theme.bg, 'page-bg': theme.bg, focus: theme.text, gold: theme.text }
-    : {};
-  for (const role of ['surface', 'text', 'muted', 'line', 'page-bg', 'focus', 'gold']) {
-    if (values[role]) menu.style.setProperty(`--${role}`, values[role]);
-    else menu.style.removeProperty(`--${role}`);
-  }
-  if (theme) document.documentElement.style.setProperty('--menu-page-bg', theme.bg);
-  else document.documentElement.style.removeProperty('--menu-page-bg');
+function applyWorkspaceTheme() {
+  const colors = session.snapshot()?.campaign.colors ?? initialColors;
+  const { panel, ...roles } = campaignUITheme(colors, document.documentElement.dataset.theme);
+  for (const [role, value] of Object.entries(roles)) root.style.setProperty(`--hp-${role}`, value);
+  root.style.setProperty('--hp-panel-bg', panel);
+  renderer?.setBackground(document.documentElement.dataset.theme === 'light' ? roles.bg : null);
+  campaignCreator?.refreshTheme();
 }
 
 function applyPalette() {
   const colors = session.snapshot()?.campaign.colors ?? initialColors;
   renderer?.setPalette(colors);
   syncParty();
-  Object.entries(paletteTheme(colors)).forEach(([role, value]) =>
-    root.style.setProperty(`--hp-${role}`, value),
-  );
-  const background = paletteTheme(colors).bg;
-  root.style.setProperty(
-    '--hp-panel-bg',
-    createColorScale([background])(0, hexToOklch(background)[0], 0.925),
-  );
-  ['ground', 'water', 'elements'].forEach((name, index) => {
-    element(name).value = colors[index];
-    element(name).closest('.hp-swatch').style.setProperty('--swatch-color', colors[index]);
-    element(`${name}-value`).textContent = colors[index].toUpperCase();
-    element(name).dataset.tooltip =
-      `${name[0].toUpperCase() + name.slice(1)} · ${colors[index].toUpperCase()}`;
-  });
+  applyWorkspaceTheme();
   selectPalette(colors);
 }
 
@@ -491,18 +488,16 @@ function syncParty() {
   }
 }
 
+function paletteId(colors, name) {
+  const matches = paletteLibrary
+    .all()
+    .filter((palette) =>
+      palette.colors.every((color, index) => color.toLowerCase() === colors[index].toLowerCase()),
+    );
+  return (matches.find((palette) => palette.name === name) ?? matches[0])?.id ?? 'custom';
+}
 function selectPalette(colors) {
-  const same = (candidate) =>
-    candidate.every((color, index) => color.toLowerCase() === colors[index].toLowerCase());
-  const builtin = Object.keys(palettes).find((key) => same(palettes[key]));
-  const custom = savedPalettes.findIndex((palette) => same(palette.colors));
-  const namedCustom = savedPalettes.findIndex(
-    (palette) => palette.name === session.snapshot()?.campaign.paletteName && same(palette.colors),
-  );
-  preset.value =
-    namedCustom >= 0
-      ? `saved:${namedCustom}`
-      : (builtin ?? (custom >= 0 ? `saved:${custom}` : 'custom'));
+  preset.value = paletteId(colors, session.snapshot()?.campaign.paletteName);
 }
 
 function paletteLabel(candidate) {
@@ -514,14 +509,6 @@ function paletteLabel(candidate) {
     : (savedPalettes.find((palette) => same(palette.colors))?.name ?? 'Custom');
 }
 
-function updateMovementToggle() {
-  element('motion').setAttribute('aria-checked', String(movement));
-  element('motion-state').textContent = movement ? 'ON' : 'OFF';
-  element('motion').dataset.tooltip = movement
-    ? 'Pause wind, waves, light pulses and lighthouse sweeps'
-    : 'Resume wind, waves, light pulses and lighthouse sweeps';
-}
-updateMovementToggle();
 function syncTimeOfDay() {
   const value = timeOfDay(session.snapshot()?.campaign.timeOfDay);
   const label = value[0].toUpperCase() + value.slice(1);
@@ -540,13 +527,6 @@ function syncTimeOfDay() {
 }
 listen(element('time-of-day'), 'click', () => {
   handleAction(session.setTimeOfDay(nextTimeOfDay(session.snapshot().campaign.timeOfDay)));
-});
-listen(element('motion'), 'click', async () => {
-  movement = !movement;
-  updateMovementToggle();
-  renderer?.setMotion(movement);
-  if ((await session.save()).saved)
-    mapConsole.notify(movement ? 'Movement turned on' : 'Movement turned off');
 });
 listen(element('fog'), 'click', (event) => {
   if (mapAction.isBusy()) return;
@@ -622,76 +602,9 @@ listen(element('back-menu'), 'click', () => {
 listen(element('download-unsaved'), 'click', () =>
   campaignMenu.download(session.snapshot().campaign),
 );
-listen(element('regenerate'), 'click', (event) =>
-  mapAction.run(event.currentTarget, () => handleAction(session.regenerate()), 'Regenerating…'),
-);
 listen(preset, 'change', () => {
-  if (preset.value === 'save-new') {
-    selectPalette(session.snapshot().campaign.colors);
-    element('palette-name').value = '';
-    element('palette-name').setCustomValidity('');
-    syncPaletteSaveLabel();
-    openDialog(element('save-palette-dialog'), element('palette-name'));
-    return;
-  }
-  const savedIndex = Number(preset.value.split(':')[1]);
-  const palette = palettes[preset.value] ?? savedPalettes[savedIndex]?.colors;
-  if (palette) {
-    handleAction(session.palette(palette, preset.selectedOptions[0].textContent));
-  }
-});
-['ground', 'water', 'elements'].forEach((name, index) =>
-  listen(element(name), 'input', (event) => {
-    const colors = session.snapshot().campaign.colors.slice();
-    colors[index] = event.target.value;
-    handleAction({ ...session.palette(colors, 'Custom'), notification: undefined });
-  }),
-);
-for (const name of ['ground', 'water', 'elements'])
-  listen(element(name), 'change', () =>
-    mapConsole.notify(
-      `${name[0].toUpperCase() + name.slice(1)} colour saved: ${element(name).value.toUpperCase()}`,
-    ),
-  );
-function syncPaletteSaveLabel() {
-  const name = element('palette-name').value.trim();
-  const existing = savedPalettes.find(
-    (palette) => palette.name.toLowerCase() === name.toLowerCase(),
-  );
-  element('save-palette').textContent = existing ? `Update ${existing.name}` : 'Save palette';
-  element('save-palette').dataset.tooltip = existing
-    ? `Replace the saved colours in “${existing.name}”; other campaigns keep their colours.`
-    : 'Save these colours as a new custom palette.';
-}
-listen(element('palette-form'), 'submit', (event) => {
-  event.preventDefault();
-  const input = element('palette-name');
-  const name = input.value.trim();
-  if (!name) {
-    input.setCustomValidity('Enter a palette name.');
-    input.reportValidity();
-    return;
-  }
-  const index = savedPalettes.findIndex(
-    (palette) => palette.name.toLowerCase() === name.toLowerCase(),
-  );
-  const colors = session.snapshot().campaign.colors;
-  const palette = index < 0 ? paletteLibrary.add(colors) : savedPalettes[index];
-  paletteLibrary.rename(palette.id, name);
-  palette.colors = colors.slice();
-  updatePaletteOptions();
-  handleAction({
-    ...session.palette(colors, name),
-    notification: index < 0 ? 'Palette created' : 'Palette updated',
-  });
-  input.value = '';
-  syncPaletteSaveLabel();
-  element('save-palette-dialog').close();
-});
-listen(element('cancel-save-palette'), 'click', () => element('save-palette-dialog').close());
-listen(element('palette-name'), 'input', () => {
-  element('palette-name').setCustomValidity('');
-  syncPaletteSaveLabel();
+  const palette = paletteLibrary.get(preset.value);
+  if (palette) handleAction(session.palette(palette.colors, palette.name));
 });
 
 function updateInspector() {
@@ -727,6 +640,7 @@ function updateInspector() {
     tile: displayView.layout.find((entry) => entry.key === selected),
     fogOfWar: Boolean(campaign.fogOfWar),
     colors,
+    artStyle: campaign.artStyle ?? 'low-poly',
     visited: edit?.visited ?? false,
     cropStyle: edit?.cropStyle,
     locked: Boolean(edit?.lock),
@@ -816,7 +730,6 @@ inspector = createHexInspector(singleInspectorHost, {
   visible: panels.inspectorVisible,
   preview: (tile, colors) =>
     mapView?.tilePreview(tile, colors, {
-      fitContent: true,
       artStyle: session.snapshot()?.campaign.artStyle,
     }) ?? '',
   onApply: (patch, button) => mapAction.run(button, () => handleAction(session.apply(patch))),
@@ -875,11 +788,12 @@ batchInspector = createBatchInspector(batchInspectorHost, {
 });
 
 updatePaletteOptions();
-applyMenuTheme();
+const uiTheme = createUITheme({ storage, onChange: applyWorkspaceTheme });
 applyPalette();
 campaignMenu = createCampaignMenu({
   store: browserStore,
-  getTimeIncrement: () => campaignTimeIncrement,
+  getTimeIncrement: (campaign) =>
+    campaignSettings[campaign.id]?.timeIncrement ?? defaultTimeIncrement,
   defaultPalette: () => {
     const palette = paletteLibrary.default();
     return { colors: palette.colors, paletteName: palette.name };
@@ -888,12 +802,14 @@ campaignMenu = createCampaignMenu({
   onNewCampaign: () => campaignCreator.open(),
   saveStatus,
 });
-const campaignCreator = createCampaignCreator({
+campaignCreator = createCampaignCreator({
   library: paletteLibrary,
   loadMapView,
   freshSeed,
   defaultTimeOfDay: () => defaultTimeOfDay,
   defaultMapArtStyle: () => defaultMapArtStyle,
+  backgroundFor: (colors) =>
+    uiTheme.current() === 'light' ? campaignUITheme(colors, 'light').bg : null,
   async onCreate(campaign) {
     await campaignMenu.add(campaign);
     return campaignMenu.enter(campaign);
@@ -901,8 +817,19 @@ const campaignCreator = createCampaignCreator({
 });
 const paletteManager = createPaletteManager({
   library: paletteLibrary,
+  onChoose(id) {
+    const picker = document.getElementById('settings-palette');
+    if (!picker.querySelector(`option[value="${id}"]`)) {
+      const palette = paletteLibrary.get(id);
+      const option = document.createElement('option');
+      option.value = id;
+      option.textContent = palette.name;
+      picker.append(option);
+    }
+    picker.value = id;
+    picker.dispatchEvent(new Event('change', { bubbles: true }));
+  },
   onChange() {
-    applyMenuTheme();
     updatePaletteOptions();
     selectPalette(session.snapshot()?.campaign.colors ?? initialColors);
     return persistPalettes();
@@ -910,24 +837,95 @@ const paletteManager = createPaletteManager({
 });
 const settings = createSettings({
   library: paletteLibrary,
+  canRegenerate: () => !session.snapshot()?.campaign.fogOfWar,
   read: () => ({
     defaultTimeOfDay,
     defaultMapArtStyle,
-    motion: movement,
-    journalFirst: panels.journalFirst(),
-    timeIncrement: campaignTimeIncrement,
+    motion: defaultMovement,
+    journalFirst: defaultJournalFirst,
+    timeIncrement: defaultTimeIncrement,
+    theme: uiTheme.preference(),
   }),
+  readCampaign() {
+    const campaign = session.snapshot().campaign;
+    return {
+      id: campaign.id,
+      defaultPalette: paletteId(campaign.colors, campaign.paletteName),
+      defaultTimeOfDay: campaign.timeOfDay,
+      defaultMapArtStyle: campaign.artStyle ?? 'low-poly',
+      motion: movement,
+      journalFirst: panels.journalFirst(),
+      timeIncrement: campaignTimeIncrement,
+      theme: uiTheme.current(),
+    };
+  },
+  async onCampaignSave(values, id) {
+    const campaign = session.snapshot().campaign;
+    if (root.hidden || campaign.id !== id)
+      throw new Error('Reopen this campaign’s appearance settings.');
+    const palette = paletteLibrary.get(values.defaultPalette);
+    const appearance = {
+      colors: palette?.colors ?? campaign.colors,
+      paletteName: palette?.name ?? campaign.paletteName,
+      timeOfDay: values.defaultTimeOfDay,
+      artStyle: values.defaultMapArtStyle,
+    };
+    const changed =
+      JSON.stringify([
+        appearance.colors,
+        appearance.paletteName,
+        appearance.timeOfDay,
+        appearance.artStyle,
+      ]) !==
+      JSON.stringify([
+        campaign.colors,
+        campaign.paletteName,
+        campaign.timeOfDay,
+        campaign.artStyle ?? 'low-poly',
+      ]);
+    const result = changed ? session.appearance(appearance) : undefined;
+    if (result && !result.ok) throw new Error(result.error);
+    if (
+      values.motion !== movement ||
+      values.journalFirst !== panels.journalFirst() ||
+      values.timeIncrement !== campaignTimeIncrement
+    )
+      campaignSettings[id] = {
+        motion: values.motion,
+        journalFirst: values.journalFirst,
+        timeIncrement: values.timeIncrement,
+      };
+    movement = values.motion;
+    campaignTimeIncrement = values.timeIncrement;
+    panels.setJournalFirst(values.journalFirst);
+    uiTheme.choose(values.theme);
+    renderer?.setMotion(movement);
+    if (result) handleAction(result);
+    else {
+      syncSelection();
+      updateInspector();
+      mapConsole.notify('Appearance saved');
+    }
+    const uiSaved = persistPreferences();
+    const stored = changed ? await session.save() : { saved: true };
+    if (!uiSaved || !stored.saved)
+      throw new Error(
+        'These settings are active but could not be saved. Keep this page open and retry.',
+      );
+  },
+  onRegenerate(button) {
+    return mapAction.run(button, () => handleAction(session.regenerate()), 'Regenerating…');
+  },
   async onSave(values, imported) {
     paletteLibrary.setDefault(values.defaultPalette);
     defaultTimeOfDay = values.defaultTimeOfDay;
     defaultMapArtStyle = values.defaultMapArtStyle;
-    campaignTimeIncrement = timeIncrementLabels(values.timeIncrement).unit;
-    movement = values.motion;
-    panels.setJournalFirst(values.journalFirst);
-    updateMovementToggle();
+    defaultTimeIncrement = timeIncrementLabels(values.timeIncrement).unit;
+    defaultMovement = values.motion;
+    defaultJournalFirst = values.journalFirst;
+    uiTheme.choose(values.theme);
     renderer?.setMotion(false);
     const uiSaved = persistPreferences();
-    applyMenuTheme();
     const revision = ++preferencesRevision;
     const saved = imported
       ? await campaignMenu.add(imported, paletteLibrary.preferences())
@@ -946,6 +944,10 @@ const settings = createSettings({
           ? `Settings saved. Imported “${imported.name}”.`
           : 'Settings saved.';
   },
+});
+listen(element('appearance-settings'), 'click', () => {
+  const open = () => settings.openCampaign();
+  if (!mapAction.isBusy() && activeInspector().beforeLeave(open)) open();
 });
 const accountButton = document.getElementById('open-account');
 accountButton.hidden = import.meta.env.VITE_API_ENABLED !== 'true';
@@ -1046,6 +1048,7 @@ if (import.meta.hot)
     mapAction.dispose();
     mapConsole.dispose();
     controlTooltips.dispose();
+    uiTheme.dispose();
     renderer?.dispose();
     campaignMenu.dispose();
     browserStore.close();

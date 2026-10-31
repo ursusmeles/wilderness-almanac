@@ -88,22 +88,12 @@ test('desktop map divider resizes both columns, folds rails and restores default
   await handle.press('Home');
   expect((await map.boundingBox()).width).toBeGreaterThanOrEqual(320);
   await expect(page.locator('#hp-back-menu')).toBeInViewport();
-  await page.locator('#hp-toggle-settings').click();
-  for (const id of [
-    'ground',
-    'water',
-    'elements',
-    'preset',
-    'regenerate',
-    'motion',
-    'time-of-day',
-  ]) {
+  for (const id of ['preset', 'time-of-day', 'appearance-settings']) {
     const box = await page.locator(`#hp-${id}`).boundingBox(),
       container = await map.boundingBox();
     expect(box.x).toBeGreaterThanOrEqual(container.x);
     expect(box.x + box.width).toBeLessThanOrEqual(container.x + container.width);
   }
-  await page.locator('#hp-toggle-settings').click();
   const narrow = await handle.boundingBox();
   await page.mouse.move(narrow.x + narrow.width / 2, narrow.y + narrow.height / 2);
   await page.mouse.down();

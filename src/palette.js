@@ -10,7 +10,7 @@ export const palettes = {
   forbidden: ['#cdab8f', '#0b365e', '#11b329'],
 };
 
-export const DEFAULT_PALETTE = 'forbidden';
+export const DEFAULT_PALETTE = 'classic';
 
 export const paletteNames = {
   forbidden: 'Forbidden Lands',

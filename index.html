@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -8,7 +8,18 @@
       content="A sandbox campaign tool for creative GMs. Configure, create and explore hex worlds ready for points-of-light type hexcrawl campaigns."
     />
     <meta name="author" content="Mateusz Nowak" />
-    <meta name="theme-color" content="#211c36" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#0f2024" data-dark="#0f2024" data-light="#f1e8db" />
+    <script>
+      try {
+        const theme = localStorage.getItem('wilderness-theme') === 'light' ? 'light' : 'dark';
+        document.documentElement.dataset.theme = theme;
+        const meta = document.querySelector('meta[name="theme-color"]');
+        meta.content = meta.dataset[theme];
+      } catch {
+        /* Dark remains available when browser storage is restricted. */
+      }
+    </script>
     <title>The Wilderness Almanac</title>
     <script type="application/ld+json">
       {
@@ -46,9 +57,14 @@
         overscroll-behavior-y: none;
       }
       html {
-        background: #171321;
+        background: #0f2024;
         color: #f1e8db;
         color-scheme: dark;
+      }
+      html[data-theme='light'] {
+        background: #f1e8db;
+        color: #0f2024;
+        color-scheme: light;
       }
       body {
         margin: 0;
@@ -83,6 +99,17 @@
           <header class="campaign-toolbar cluster">
             <h2 id="campaign-library-title">Your campaigns <span id="campaign-count">0</span></h2>
             <div class="campaign-toolbar-actions">
+              <button
+                type="button"
+                class="icon-button menu-icon-button"
+                data-theme-toggle
+                aria-label="Switch to light mode"
+                data-tooltip="Switch to light mode"
+              >
+                <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <use href="/icons/pixelarticons.svg#lightbulb"></use>
+                </svg>
+              </button>
               <button
                 type="button"
                 id="open-account"
@@ -168,6 +195,38 @@
               </button>
             </header>
             <div class="settings-content stack">
+              <fieldset
+                id="settings-theme"
+                class="settings-group stack"
+                aria-describedby="settings-theme-help"
+              >
+                <legend>App theme</legend>
+                <div class="settings-toggle">
+                  <label
+                    ><input type="radio" name="settings-theme" value="light" /><span
+                      >Light</span
+                    ></label
+                  >
+                  <label
+                    ><input type="radio" name="settings-theme" value="dark" checked /><span
+                      >Dark</span
+                    ></label
+                  >
+                </div>
+                <p id="settings-theme-help" class="settings-theme-help">
+                  Applies to the main menu and all campaigns in this browser.
+                </p>
+              </fieldset>
+              <hr class="settings-divider" />
+              <div id="settings-regeneration" class="settings-regeneration" hidden>
+                <button type="button" id="settings-regenerate">
+                  <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <use href="/icons/pixelarticons.svg#refresh"></use>
+                  </svg>
+                  Regenerate map
+                </button>
+                <hr class="settings-divider" />
+              </div>
               <fieldset id="settings-motion" class="settings-group stack">
                 <legend>Default animation preference</legend>
                 <div class="settings-toggle">
@@ -248,7 +307,7 @@
                       >Low poly</span
                     ></label
                   >
-                  <label
+                  <label data-tooltip="Warning: uses more resources."
                     ><input
                       type="radio"
                       name="settings-art-style"
@@ -256,7 +315,7 @@
                       aria-labelledby="settings-pixelart-label"
                       aria-describedby="settings-pixelart-warning"
                     /><span id="settings-pixelart-label">Pixelart</span
-                    ><small id="settings-pixelart-warning"
+                    ><small id="settings-pixelart-warning" class="sr-only"
                       >Warning: uses more resources.</small
                     ></label
                   >
@@ -280,7 +339,7 @@
                   >
                 </div>
               </fieldset>
-              <div class="settings-group stack">
+              <div class="settings-group stack" id="settings-import-group">
                 <div class="settings-import cluster">
                   <button type="button" id="import-campaign">
                     <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -613,7 +672,7 @@
                       >Low poly</span
                     ></label
                   >
-                  <label
+                  <label data-tooltip="Warning: uses more resources."
                     ><input
                       type="radio"
                       name="cc-art-style"
@@ -621,7 +680,9 @@
                       aria-labelledby="cc-pixelart-label"
                       aria-describedby="cc-pixelart-warning"
                     /><span id="cc-pixelart-label">Pixelart</span
-                    ><small id="cc-pixelart-warning">Warning: uses more resources.</small></label
+                    ><small id="cc-pixelart-warning" class="sr-only"
+                      >Warning: uses more resources.</small
+                    ></label
                   >
                 </div>
               </fieldset>
@@ -909,136 +970,35 @@
           <button type="button" id="hp-retry-save">Retry saving</button>
           <button type="button" id="hp-download-unsaved-data">Download unsaved data</button>
         </div>
-        <section
-          class="hp-map-options is-collapsed"
-          id="hp-map-options"
-          aria-label="Palette and settings"
-        >
-          <div class="hp-palette" id="hp-appearance-controls">
-            <div class="hp-colors stack">
-              <label class="hp-color">
-                <span class="hp-swatch">
-                  <input type="color" id="hp-ground" value="#cdab8f" aria-label="Ground colour" />
-                </span>
-                <span>Ground<code class="hp-hex-code" id="hp-ground-value">#CDAB8F</code></span>
-              </label>
-              <label class="hp-color">
-                <span class="hp-swatch">
-                  <input type="color" id="hp-water" value="#0b365e" aria-label="Water colour" />
-                </span>
-                <span>Water<code class="hp-hex-code" id="hp-water-value">#0B365E</code></span>
-              </label>
-              <label class="hp-color">
-                <span class="hp-swatch">
-                  <input
-                    type="color"
-                    id="hp-elements"
-                    value="#11b329"
-                    aria-label="Elements colour"
-                  />
-                </span>
-                <span>Elements<code class="hp-hex-code" id="hp-elements-value">#11B329</code></span>
-              </label>
-            </div>
-            <div class="hp-palette-controls">
-              <div id="hp-palette-picker" class="hp-palette-picker">
-                <select id="hp-preset" aria-label="Colour palette" data-tooltip="Choose palette">
-                  <option value="forbidden">Forbidden Lands</option>
-                  <option value="dusk">Dusk &amp; gold</option>
-                  <option value="ember">Ember coast</option>
-                  <option value="moss">Moss &amp; bone</option>
-                  <option value="classic">Verdant Kingdoms</option>
-                  <option value="thronefall">Thronefall</option>
-                  <option value="glacial">Frozen synapse</option>
-                  <option value="autumn">Autumn copper</option>
-                  <option value="sand">Sands of time</option>
-                  <option value="custom" hidden>Custom</option>
-                  <option value="save-new">Save as new palette…</option>
-                </select>
-                <button
-                  type="button"
-                  id="hp-time-of-day"
-                  class="hp-time-of-day"
-                  data-tooltip="Change time to Dusk"
-                >
-                  <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
-                    <use href="/icons/pixelarticons.svg#sun"></use>
-                  </svg>
-                  <span id="hp-time-of-day-label" aria-live="polite">Time: Day</span>
-                </button>
-              </div>
-            </div>
-            <div class="hp-map-navigation stack">
-              <div class="hp-map-modes stack">
-                <button
-                  type="button"
-                  id="hp-regenerate"
-                  data-tooltip="Change props and decorations placement on the map"
-                >
-                  <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
-                    <use href="/icons/pixelarticons.svg#refresh"></use>
-                  </svg>
-                  Regenerate map
-                </button>
-                <button
-                  type="button"
-                  id="hp-motion"
-                  class="hp-motion"
-                  role="switch"
-                  aria-checked="true"
-                  aria-label="Movement"
-                  data-tooltip="Pause wind, waves, light pulses and lighthouse sweeps"
-                >
-                  <span class="hp-motion-light" aria-hidden="true"></span>
-                  <span>Movement <span id="hp-motion-state" aria-hidden="true">ON</span></span>
-                </button>
-              </div>
-              <div class="hp-panel-actions">
-                <button
-                  class="icon-button hp-panel-button"
-                  type="button"
-                  id="hp-toggle-settings"
-                  aria-label="Open palette and settings"
-                  aria-expanded="false"
-                  aria-controls="hp-appearance-controls"
-                  data-tooltip="Open panel"
-                >
-                  <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
-                    <use href="/icons/pixelarticons.svg#expand"></use>
-                  </svg>
-                </button>
-              </div>
-            </div>
+        <section class="hp-map-options" id="hp-map-options" aria-label="Map appearance">
+          <div class="hp-palette">
+            <select
+              id="hp-preset"
+              aria-label="Colour palette"
+              data-tooltip="Choose palette"
+            ></select>
+            <button type="button" id="hp-time-of-day" class="hp-time-of-day">
+              <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <use href="/icons/pixelarticons.svg#sun"></use>
+              </svg>
+              <span id="hp-time-of-day-label" aria-live="polite">Time: Day</span>
+            </button>
+            <button
+              type="button"
+              id="hp-appearance-settings"
+              class="appearance-settings-button"
+              aria-haspopup="dialog"
+              aria-controls="settings-dialog"
+              aria-label="Appearance"
+              data-tooltip="Appearance"
+            >
+              <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <use href="/icons/pixelarticons.svg#colors-swatch"></use>
+              </svg>
+              <span>Appearance</span>
+            </button>
           </div>
         </section>
-        <dialog
-          id="hp-save-palette-dialog"
-          class="hp-inspector-dialog"
-          aria-labelledby="hp-save-palette-title"
-        >
-          <form id="hp-palette-form" class="stack">
-            <h2 id="hp-save-palette-title">Save palette</h2>
-            <label for="hp-palette-name">Palette name</label>
-            <input
-              id="hp-palette-name"
-              type="text"
-              maxlength="60"
-              required
-              placeholder="New palette name"
-              autocomplete="off"
-            />
-            <div class="hp-tools cluster">
-              <button type="button" id="hp-cancel-save-palette">Cancel</button>
-              <button
-                type="submit"
-                id="hp-save-palette"
-                data-tooltip="Save these colours as a new custom palette."
-              >
-                Save palette
-              </button>
-            </div>
-          </form>
-        </dialog>
         <dialog
           id="hp-move-party-dialog"
           class="hp-inspector-dialog"

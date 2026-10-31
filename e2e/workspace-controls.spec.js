@@ -54,12 +54,11 @@ test('Find party retains the dirty-draft guard and viewport controls restore foc
   await expect(page.locator('#hp-selection')).toHaveValue('__party__');
   await expect(canvas).toBeFocused();
 
-  await page.locator('#hp-toggle-settings').click();
   const time = page.locator('#hp-time-of-day');
-  await expect(page.locator('.hp-map-modes #hp-time-of-day')).toBeVisible();
+  await expect(page.locator('.hp-palette #hp-time-of-day')).toBeVisible();
   await time.focus();
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(page.locator('#hp-palette-picker #hp-time-of-day')).toBeVisible();
+  await expect(page.locator('.hp-palette #hp-time-of-day')).toBeVisible();
   await expect(time).toBeFocused();
   await page.locator('#hp-expand-map').click();
   await expect(page.locator('.hp-side-panels')).toBeHidden();

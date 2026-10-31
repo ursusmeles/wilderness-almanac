@@ -13,38 +13,20 @@ export function createWorkspaceControls(
   const mobileLayout = document.defaultView.matchMedia(
     '(max-width: 760px), (max-width: 1024px) and (max-height: 500px)',
   );
-  let settingsOpen = false;
   let expanded = false;
   let keyboardNavigation = false;
 
-  function syncAppearanceLayout() {
-    const modes = root.querySelector('.hp-map-modes');
-    const picker = element('palette-picker');
-    const time = element('time-of-day');
-    const focused = document.activeElement;
-    const timeParent = settingsOpen && !mobileLayout.matches ? modes : picker;
-    if (time.parentElement !== timeParent) {
-      if (timeParent === modes) modes.prepend(time);
-      else picker.append(time);
-    }
-    if (focused === time && document.activeElement !== focused)
-      focused.focus({ preventScroll: true });
+  function syncSelectionWidth() {
+    if (root.hidden || expanded) return;
+    const width =
+      element('time-of-day').getBoundingClientRect().right -
+      element('selection').getBoundingClientRect().left;
+    if (width > 0) root.style.setProperty('--map-selection-width', `${width}px`);
   }
-
-  function setSettingsOpen(enabled) {
-    settingsOpen = enabled;
-    element('map-options').classList.toggle('is-collapsed', !enabled);
-    const button = element('toggle-settings');
-    button.setAttribute('aria-expanded', String(enabled));
-    button.setAttribute('aria-label', `${enabled ? 'Close' : 'Open'} palette and settings`);
-    button.dataset.tooltip = enabled ? 'Close panel' : 'Open panel';
-    button
-      .querySelector('use')
-      .setAttribute('href', `/icons/pixelarticons.svg#${enabled ? 'collapse' : 'expand'}`);
-    element('motion').hidden = !enabled;
-    element('regenerate').hidden = !enabled || Boolean(getState()?.campaign.fogOfWar);
-    syncAppearanceLayout();
-  }
+  // Follow map resizing, fonts and the changing Time label without duplicating bar dimensions.
+  const appearanceSize = new ResizeObserver(syncSelectionWidth);
+  appearanceSize.observe(root.querySelector('.hp-map-panel'));
+  appearanceSize.observe(element('time-of-day'));
 
   function setExpanded(enabled) {
     expanded = enabled;
@@ -54,7 +36,10 @@ export function createWorkspaceControls(
     button.setAttribute('aria-label', enabled ? 'Exit expanded map' : 'Expand map to viewport');
     button.setAttribute('aria-pressed', String(enabled));
     button.dataset.tooltip = enabled ? 'Exit expanded map' : 'Expand map';
-    if (!enabled) refreshPreview();
+    if (!enabled) {
+      syncSelectionWidth();
+      refreshPreview();
+    }
   }
 
   function syncPartyKeys() {
@@ -72,10 +57,9 @@ export function createWorkspaceControls(
       root.querySelector('.hp-status').prepend(selection);
     }
     if (!mobileLayout.matches) setExpanded(false);
-    syncAppearanceLayout();
+    syncSelectionWidth();
   }
 
-  listen(element('toggle-settings'), 'click', () => setSettingsOpen(!settingsOpen));
   listen(element('expand-map'), 'click', () => setExpanded(!expanded));
   listen(element('in'), 'click', () => getRenderer()?.zoom(1.2));
   listen(element('out'), 'click', () => getRenderer()?.zoom(1 / 1.2));
@@ -146,11 +130,9 @@ export function createWorkspaceControls(
     }
   });
 
-  setSettingsOpen(false);
   syncMobileLayout();
   return {
     isMobile: () => mobileLayout.matches,
-    setSettingsOpen,
     setExpanded,
     syncPartyKeys,
     syncFog(enabled) {
@@ -158,10 +140,11 @@ export function createWorkspaceControls(
       element('fog-state').textContent = enabled ? 'ON' : 'OFF';
       element('fog').dataset.tooltip = enabled ? 'Turn fog of war off' : 'Turn fog of war on';
       root.dataset.fogOfWar = String(enabled);
-      element('regenerate').hidden = !settingsOpen || enabled;
     },
     dispose() {
       setExpanded(false);
+      appearanceSize.disconnect();
+      root.style.removeProperty('--map-selection-width');
       listeners.abort();
     },
   };

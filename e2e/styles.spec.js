@@ -82,9 +82,7 @@ test('desktop Inspector actions retain two columns with enlarged text and folded
   await expect(page.locator('#campaign-workspace')).toHaveAttribute('data-panel-rails', '2');
 });
 
-test('mobile palette geometry survives appearance toggles and viewport boundaries', async ({
-  page,
-}, testInfo) => {
+test('mobile fixed appearance bar survives viewport boundaries', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'mobile', 'touch workspace geometry');
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await openCampaign(page, { expandInspector: false });
@@ -96,14 +94,9 @@ test('mobile palette geometry survives appearance toggles and viewport boundarie
     [1024, 500],
   ]) {
     await page.setViewportSize({ width, height });
-    for (const expanded of [false, true]) {
-      const toggle = page.locator('#hp-toggle-settings');
-      if (((await toggle.getAttribute('aria-expanded')) === 'true') !== expanded)
-        await toggle.click();
-      await expect(page.locator('.hp-map-options .hp-swatch').first()).toHaveCSS('width', '18px');
-      await expect(page.locator('.hp-map-options .hp-color').first()).toHaveCSS('width', '22px');
+    {
       const palette = await page.locator('.hp-palette').boundingBox();
-      for (const selector of ['#hp-preset', '#hp-time-of-day', '#hp-toggle-settings']) {
+      for (const selector of ['#hp-preset', '#hp-time-of-day', '#hp-appearance-settings']) {
         const box = await page.locator(selector).boundingBox();
         expect(box.x, selector).toBeGreaterThanOrEqual(palette.x);
         expect(box.x + box.width, selector).toBeLessThanOrEqual(palette.x + palette.width);

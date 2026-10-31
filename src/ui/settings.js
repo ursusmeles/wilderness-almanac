@@ -1,8 +1,17 @@
 import { openDialog } from './dialog-focus.js';
 import { importCampaign, MAX_CAMPAIGN_BYTES } from '../application/campaigns.js';
 
-export function createSettings({ library, read, onSave }) {
+export function createSettings({
+  library,
+  read,
+  onSave,
+  readCampaign,
+  onCampaignSave,
+  onRegenerate,
+  canRegenerate = () => true,
+}) {
   const dialog = document.getElementById('settings-dialog');
+  document.body.append(dialog);
   const el = (name) => dialog.querySelector(`#settings-${name}`);
   const fileInput = document.getElementById('campaign-file');
   const importButton = document.getElementById('import-campaign');
@@ -14,6 +23,9 @@ export function createSettings({ library, read, onSave }) {
     reading = false,
     saving = false,
     revision = 0;
+  let mode = 'defaults',
+    campaignId,
+    regenerating = false;
 
   const selected = (name) => el(name).querySelector('input:checked').value;
   function select(name, value) {
@@ -27,19 +39,28 @@ export function createSettings({ library, read, onSave }) {
     motion: selected('motion') === 'true',
     journalFirst: selected('panel-order') === 'tracker',
     timeIncrement: selected('time-increment'),
+    theme: selected('theme'),
   });
-  const current = () => ({ defaultPalette: library.default().id, ...read() });
+  const current = () => {
+    if (mode === 'defaults') return { defaultPalette: library.default().id, ...read() };
+    const { id: _id, ...values } = readCampaign();
+    return values;
+  };
   function sync() {
     const unchanged = !pendingImport && JSON.stringify(values()) === JSON.stringify(current());
-    const disabled = reading || saving || unchanged;
+    const disabled = reading || saving || regenerating || unchanged;
     if (el('save').disabled !== disabled) el('save').disabled = disabled;
     if (unchanged && !reading && !saving) {
       if (el('save-help').dataset.tooltip !== 'No changes made')
         el('save-help').dataset.tooltip = 'No changes made';
     } else delete el('save-help').dataset.tooltip;
     for (const control of dialog.querySelectorAll('button, select, input'))
-      if (control !== el('save') && control.disabled !== saving) control.disabled = saving;
+      if (control !== el('save')) control.disabled = saving || regenerating;
     if (importButton.disabled !== (reading || saving)) importButton.disabled = reading || saving;
+    el('regenerate').disabled = saving || regenerating || (mode === 'campaign' && !canRegenerate());
+    el('regenerate').dataset.tooltip = canRegenerate()
+      ? 'Regenerate this campaign’s props and decorations immediately'
+      : 'Turn off fog of war to regenerate the map';
   }
   function palettes(selected = el('palette').value) {
     const entries = library.all();
@@ -59,7 +80,16 @@ export function createSettings({ library, read, onSave }) {
           return option;
         }),
       );
-    const value = library.get(selected) ? selected : library.default().id;
+    if (mode === 'campaign' && current().defaultPalette === 'custom') {
+      const custom = document.createElement('option');
+      custom.value = 'custom';
+      custom.textContent = 'Current campaign colours';
+      el('palette').append(custom);
+    }
+    const value =
+      library.get(selected) || (mode === 'campaign' && selected === 'custom')
+        ? selected
+        : library.default().id;
     if (el('palette').value !== value) el('palette').value = value;
   }
   function discard() {
@@ -70,7 +100,26 @@ export function createSettings({ library, read, onSave }) {
     fileInput.value = '';
     dialog.close();
   }
-  listen(document.getElementById('open-settings'), 'click', () => {
+  function open(campaign = false) {
+    mode = campaign ? 'campaign' : 'defaults';
+    dialog.dataset.scope = mode;
+    campaignId = campaign ? readCampaign().id : undefined;
+    el('title').textContent = campaign ? 'Appearance' : 'Settings';
+    el('regeneration').hidden = !campaign;
+    el('import-group').hidden = campaign;
+    const labels = {
+      motion: campaign ? 'Campaign animation' : 'Default animation preference',
+      time: campaign ? 'Campaign time of day' : 'Default time of day',
+      'time-increment': campaign ? 'Campaign time increment' : 'Default campaign time increment',
+      'art-style': campaign ? 'Campaign map art style' : 'Default map art style',
+      'panel-order': campaign ? 'Campaign top panel' : 'Top panel',
+      theme: 'App theme',
+    };
+    for (const [name, label] of Object.entries(labels))
+      el(name).querySelector('legend').textContent = label;
+    dialog.querySelector('label[for="settings-palette"]').textContent = campaign
+      ? 'Campaign palette'
+      : 'Default palette';
     const saved = current();
     revision++;
     reading = false;
@@ -83,24 +132,37 @@ export function createSettings({ library, read, onSave }) {
     select('panel-order', saved.journalFirst ? 'tracker' : 'inspector');
     select('time-increment', saved.timeIncrement);
     select('motion', saved.motion);
+    select('theme', saved.theme);
     el('filename').textContent = 'No file selected';
     el('message').textContent = '';
     sync();
     openDialog(dialog, el('motion').querySelector('input:checked'));
-  });
+  }
+  listen(document.getElementById('open-settings'), 'click', () => open());
   listen(el('palette'), 'change', () => {
     paletteEdited = true;
     sync();
   });
-  for (const name of ['motion', 'time', 'art-style', 'time-increment', 'panel-order'])
+  for (const name of ['motion', 'time', 'art-style', 'time-increment', 'panel-order', 'theme'])
     listen(el(name), 'change', sync);
   listen(document.getElementById('palette-manager-dialog'), 'close', () => {
     if (!dialog.open) return;
-    palettes(paletteEdited ? el('palette').value : library.default().id);
+    palettes(mode === 'campaign' || paletteEdited ? el('palette').value : library.default().id);
     sync();
   });
   listen(el('cancel'), 'click', discard);
   listen(el('close'), 'click', discard);
+  listen(el('regenerate'), 'click', async () => {
+    if (mode !== 'campaign' || saving || regenerating || !canRegenerate()) return;
+    regenerating = true;
+    sync();
+    try {
+      await onRegenerate(el('regenerate'));
+    } finally {
+      regenerating = false;
+      sync();
+    }
+  });
   listen(dialog, 'cancel', (event) => {
     event.preventDefault();
     discard();
@@ -159,7 +221,8 @@ export function createSettings({ library, read, onSave }) {
     el('save').classList.add('hp-working');
     sync();
     try {
-      await onSave(values(), pendingImport);
+      if (mode === 'campaign') await onCampaignSave(values(), campaignId);
+      else await onSave(values(), pendingImport);
       pendingImport = null;
       dialog.close();
     } catch (error) {
@@ -173,6 +236,7 @@ export function createSettings({ library, read, onSave }) {
     }
   });
   return {
+    openCampaign: () => open(true),
     dispose() {
       revision++;
       listeners.abort();
