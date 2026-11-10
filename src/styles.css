@@ -68,11 +68,11 @@
   :where(button, select, input[type='color']) {
     cursor: pointer;
   }
-  :where(button, input, select):focus-visible {
+  :where(button, input, select, a.icon-button):focus-visible {
     outline: var(--focus-width) solid var(--c-color-focus, currentColor);
     outline-offset: var(--focus-offset);
   }
-  :where(button, select, input[type='text']) {
+  :where(button, select, input[type='text'], a.icon-button) {
     height: var(--control-size);
     min-height: var(--control-size);
     padding: 0 var(--space-xs);
@@ -81,7 +81,8 @@
     background: var(--c-surface);
     font: var(--control-font);
   }
-  button {
+  button,
+  a.icon-button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -295,8 +296,13 @@
       }
     }
   }
-  [data-theme-toggle] {
+  [data-theme-toggle],
+  #menu-home {
     --icon-size: var(--icon-small);
+  }
+  #menu-home {
+    color: inherit;
+    text-decoration: none;
   }
   #open-settings {
     --icon-size: var(--icon-small);

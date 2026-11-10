@@ -13,6 +13,9 @@ The generation rules below describe the checked-in implementation. They do not
 claim validation of every seed, palette or physical device. Names and rule data
 come from `src/data/world-rules.json`; there is no runtime spreadsheet connection.
 
+The campaign-library toolbar starts with a Home icon linking to `https://wilderness.al/`,
+followed by the theme and settings controls.
+
 ## Coordinates, version and topology
 
 Only generator **10** is supported. Older versions and unversioned seed links are
