@@ -22,6 +22,8 @@ The footer copies the landing's navigation/colophon markup and scoped styles,
 including its responsive container, typography, spacing, forest and theme button.
 The invitation/map and Back to top are omitted. Its separator follows the landing
 content margins, and the background spans the viewport to the page bottom.
+On phones, the logo, navigation, credits and theme control keep separate rows
+despite the shorter navigation and omitted Back to top control.
 
 ## Coordinates, version and topology
 
