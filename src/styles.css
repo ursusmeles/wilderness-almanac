@@ -211,9 +211,9 @@
     display: flex;
     flex-direction: column;
     flex: 1;
-    max-width: 64rem;
+    max-width: var(--library-max-width);
     margin-inline-start: max(
-      calc((100% - 64rem) / 2),
+      calc((100% - var(--library-max-width)) / 2),
       calc(
         var(--panel-margin) + var(--almanac-mark-size) + var(--almanac-mark-gap) - var(--space-xs)
       )
@@ -233,8 +233,7 @@
     isolation: isolate;
     flex: none;
     margin-block-start: var(--space-l-xl);
-    min-height: clamp(24rem, 40vw, 32rem);
-    padding-block: var(--space-l-xl);
+    padding-block: var(--space-l-xl) calc(var(--space-2xl-3xl) * 2);
     overflow: clip;
     & a:focus-visible {
       outline: var(--focus-width) solid var(--c-color-focus);
@@ -243,12 +242,13 @@
   }
   .app-footer-content {
     position: relative;
-    z-index: 1;
+    z-index: var(--z-raised);
     display: grid;
     gap: var(--space-l-xl);
     width: 100%;
     max-width: calc(
-      64rem + 2 * (var(--almanac-mark-size) + var(--almanac-mark-gap) - var(--space-xs)) + 2 *
+      var(--library-max-width) + 2 *
+        (var(--almanac-mark-size) + var(--almanac-mark-gap) - var(--space-xs)) + 2 *
         var(--space-s-m)
     );
     margin-inline: auto;
@@ -283,7 +283,7 @@
       display: block;
       padding-block: var(--space-2xs);
       text-decoration: none;
-      text-decoration-thickness: 0.08em;
+      text-decoration-thickness: var(--link-underline-thickness);
       transition: color var(--d-fast);
       &:is(:hover, :focus-visible) {
         color: var(--c-color-link-hover);
@@ -298,12 +298,16 @@
     }
   }
   .app-footer-brand {
-    /* Landing logo: equal-height mark and wordmark, 358 × 110 artwork at 40 px. */
+    /* Keep the landing logo's intrinsic proportions. */
     display: grid;
-    grid-template-columns: 110fr 232fr;
+    grid-template-columns:
+      calc(100% * var(--brand-lockup-mark-width) / var(--brand-lockup-width))
+      calc(100% * var(--brand-lockup-wordmark-width) / var(--brand-lockup-width));
     align-items: start;
-    gap: calc(100% * 16 / 358);
-    width: calc(2.5rem * 358 / 110);
+    gap: calc(100% * var(--brand-lockup-gap) / var(--brand-lockup-width));
+    width: calc(
+      var(--brand-lockup-height) * var(--brand-lockup-width) / var(--brand-lockup-mark-width)
+    );
     max-width: 100%;
     color: var(--c-accent);
     &:hover {
@@ -320,7 +324,7 @@
     }
     & > :last-child {
       --logo-artwork: url('/brand/figma-wordmark.svg');
-      aspect-ratio: 232 / 110;
+      aspect-ratio: var(--brand-lockup-wordmark-width) / var(--brand-lockup-mark-width);
     }
   }
   .app-footer-colophon small {
@@ -334,14 +338,19 @@
   .app-footer-forest {
     position: absolute;
     inset-inline: 0;
+    inset-block-start: calc(var(--space-l-xl) + var(--brand-lockup-height));
     inset-block-end: 0;
-    /* Scale past the transparent artwork padding so tree tops meet the first row. */
-    height: 190%;
-    opacity: 0.24;
+    opacity: var(--brand-forest-opacity);
     pointer-events: none;
     & > span {
       position: absolute;
-      inset: 0;
+      inset-inline: 0;
+      inset-block-end: 0;
+      /* Crop transparent source padding above the first visible treetop. */
+      height: calc(
+        100% * var(--brand-forest-image-height) /
+          (var(--brand-forest-image-height) - var(--brand-forest-treetop))
+      );
       background: var(--forest-image) left bottom / auto 100% repeat-x var(--brand-ink);
       background-blend-mode: luminosity;
       mask: var(--forest-image) left bottom / auto 100% repeat-x;
