@@ -455,6 +455,7 @@ function refreshPresentation({ resetView = false } = {}) {
   );
   renderer?.setMap(displayView.layout, {
     source: layout,
+    initialKey: campaign.partyToken.key,
     resetView,
     preserveFraming: !resetView,
     artStyle,

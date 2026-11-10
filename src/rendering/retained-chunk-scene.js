@@ -21,8 +21,9 @@ const Chunk = memo(ChunkView);
  * @param {import('three').OrthographicCamera} options.camera
  * @param {import('three').Group} options.container
  * @param {() => void} options.draw
+ * @param {() => void} options.resize Restore the external viewport owner after configuration.
  */
-export function createRetainedChunkScene({ renderer, scene, camera, container, draw }) {
+export function createRetainedChunkScene({ renderer, scene, camera, container, draw, resize }) {
   /** @type {SceneChunk[]} */
   let chunks = [];
   let ready = false,
@@ -65,6 +66,7 @@ export function createRetainedChunkScene({ renderer, scene, camera, container, d
     })
     .then(() => {
       if (disposed) return;
+      resize();
       ready = true;
       render();
       draw();

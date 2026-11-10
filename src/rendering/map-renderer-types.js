@@ -23,7 +23,7 @@
  * a disposal hook. The renderer owns the mesh/material resources in either case.
  * @typedef {object} MapBuilds
  * @property {() => import('./incremental-map-builds.js').Presentation | null} active
- * @property {(layout: import('./incremental-map-builds.js').Tile[], source: import('./incremental-map-builds.js').Tile[], style: string) => void} show
+ * @property {(layout: import('./incremental-map-builds.js').Tile[], source: import('./incremental-map-builds.js').Tile[], style: string, initialKey?: string) => void} show
  * @property {() => void} clear
  * @property {() => void} [flush]
  * @property {(time: number) => boolean} [tick]

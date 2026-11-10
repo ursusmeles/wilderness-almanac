@@ -202,6 +202,12 @@ Preserve orthographic/isometric composition, low-poly geometry, saturated accent
 deep tile sides/trunks/recesses and light token clearance. Shared renderer owners
 must dispose geometry, materials, textures, listeners and scheduled work.
 
+Campaign rendering starts with the party's saved hex and its immediate neighbours
+as one fully visible, unanimated batch. Remaining chunks fill in after its first
+paint. Rendering order preserves generation, fog rules and map detail. The
+controls own canvas sizing so panel/window resizing keeps pointer selection and
+party dragging aligned; incoming chunks preserve stationary hover feedback.
+
 ## Current limitations
 
 - Hex exploration and the hex Journal are reserved UI; Explore hex and `/explore` do nothing.

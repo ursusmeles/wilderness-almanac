@@ -1,7 +1,12 @@
 // @ts-check
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createIncrementalBuilds, partitionChunks } from '../src/rendering/incremental-builds.js';
+import {
+  createIncrementalBuilds,
+  INITIAL_CHUNK_ID,
+  partitionChunks,
+} from '../src/rendering/incremental-builds.js';
+import { DIRECTIONS } from '../src/generation/hex.js';
 
 /** @typedef {import('../src/rendering/incremental-builds.js').ChunkTile} Tile */
 /** @typedef {{id: number, tiles: Tile[], style: string}} Record */
@@ -86,6 +91,78 @@ test('partition uses stable axial 4×4 ownership, including negative coordinates
       ['1,0', 1],
     ],
   );
+});
+
+test('the saved starting hex and its neighbours form one batch without duplicating terrain', () => {
+  const center = { key: '4,-4', q: 4, r: -4 };
+  const neighbours = DIRECTIONS.map(([q, r]) => ({
+    key: `${center.q + q},${center.r + r}`,
+    q: center.q + q,
+    r: center.r + r,
+  }));
+  const source = [...tiles([-8, 8]), ...neighbours, center];
+  const chunks = partitionChunks(source, center.key);
+  assert.deepEqual(chunks.get(INITIAL_CHUNK_ID), [center, ...neighbours]);
+  assert.deepEqual(new Set([...chunks.values()].flat()), new Set(source));
+  assert.equal([...chunks.values()].flat().length, source.length);
+  assert.deepEqual(partitionChunks(source, 'missing'), partitionChunks(source));
+});
+
+test('the starting batch precedes viewport work and gets a paint opportunity before later builds', () => {
+  const h = harness({ priority: (chunk) => -chunk[0].q });
+  const source = tiles([-1, 0, 1, 4, 8]);
+  h.controller.show(source, source, 'low-poly', '0,0');
+  h.tick();
+  assert.deepEqual(
+    h.built[0].tiles.map((tile) => tile.key),
+    ['0,0', '1,0', '-1,0'],
+  );
+  assert.equal(h.built.length, 1);
+  assert.equal(h.view().pending, true);
+  h.tick();
+  assert.equal(h.built.length, 1, 'the queued draw can paint without another build in its frame');
+  h.tick();
+  assert.equal(h.built[1].tiles[0].q, 8, 'remaining chunks keep their viewport priority');
+  h.controller.flush();
+  assert.equal(h.built.length, 3);
+  assert.equal(h.frames.size, 0);
+
+  h.controller.show(source, source, 'low-poly', '8,0');
+  assert.equal(h.built.length, 3, 'party movement does not repartition retained source chunks');
+  assert.equal(h.frames.size, 0);
+  h.controller.clear();
+  assert.equal(h.released.length, h.built.length);
+});
+
+test('cancelling during the starting paint opportunity cannot enqueue stale builds', () => {
+  const h = harness();
+  const source = tiles([0, 1, 4, 8]);
+  h.controller.show(source, source, 'low-poly', '0,0');
+  h.tick();
+  const stale = [...h.frames.values()][0];
+  h.controller.clear();
+  stale(0);
+  assert.equal(h.frames.size, 0);
+  assert.equal(h.built.length, 1);
+  assert.equal(h.released.length, 1);
+  assert.deepEqual(h.view().displayed, []);
+});
+
+test('fog updates invalidate neighbours across the starting batch boundary', () => {
+  const h = harness();
+  const source = tiles([0, 1, 2, 3, 4, 8]);
+  const projected = fog(source);
+  h.controller.show(projected, source, 'low-poly', '1,0');
+  h.controller.flush();
+  const unchanged = h.view().displayed.filter(({ id }) => ['1,0', '2,0'].includes(id));
+  const changed = projected.map((tile) => (tile.q === 2 ? { ...tile, fogState: 'visited' } : tile));
+  h.controller.show(changed, source, 'low-poly', '2,0');
+  assert.deepEqual(h.view().displayed, unchanged);
+  h.controller.flush();
+  assert.equal(h.built.length, 6, 'only the starting batch and adjacent remainder rebuild');
+  assert.equal(h.released.length, 2);
+  h.controller.clear();
+  assert.equal(h.released.length, h.built.length);
 });
 
 test('cold reveal yields between chunks and exposes complete projected metadata immediately', () => {

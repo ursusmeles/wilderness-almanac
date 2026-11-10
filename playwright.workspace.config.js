@@ -14,6 +14,8 @@ export default defineConfig({
     'workspace-controls.spec.js',
     'deferred-previews.spec.js',
     'campaign-preparation.spec.js',
+    'starting-hexes.spec.js',
+    'renderer.spec.js',
   ],
   reporter: 'list',
   use: { ...config.use, baseURL: 'http://127.0.0.1:4180' },

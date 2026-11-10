@@ -203,8 +203,13 @@ cache hits and restrictive concealment apply in the same task. Keep the paint
 opportunity for heavy synchronous actions such as regeneration. Browser checks
 assert switch and renderer state immediately after dispatch, before yielding.
 
-`incremental-builds.js` owns axial 4×4 chunks, with a source and latest fog record
-per chunk. New geometry is built outside React in roughly 8 ms RAF slices (one
+`incremental-builds.js` groups the saved party hex and its existing immediate
+neighbours into one initial chunk. It draws fully visible, without arrival
+materials, and gets a paint opportunity before other geometry builds. The rest
+of the map keeps axial 4×4 chunks. This partition stays fixed for the source
+layout so party movement and warm fog toggles retain their cached records.
+Each chunk has a source and latest fog record.
+New geometry is built outside React in roughly 8 ms RAF slices (one
 chunk can exceed that budget). Fog signatures include neighboring visibility for
 river banks, shorelines and shared edges. Restrictive updates detach stale chunks
 and picking targets synchronously; newer requests cancel queued work. Source or
@@ -214,6 +219,12 @@ against conservative projected footprint/height bounds. Viewport intersections
 rank first, then distance to the centre, with deterministic chunk-ID ties. This
 follows initial party focus and subsequent pan/zoom; it is scheduling, not culling.
 All chunks still build, including offscreen shadow/light dependencies.
+
+The controls and CSS own canvas dimensions. After Fiber configures the shared
+renderer, the controls restore its current viewport and remove fixed inline
+canvas dimensions. Panel and window resizes must keep the displayed canvas and
+pointer coordinate space aligned. Partial chunk commits re-pick the last mouse
+position without clearing hover feedback or cancelling token drags.
 
 `retained-chunk-scene.js` mounts memoized chunk primitives through an R3F portal.
 Primitives use record-identity keys so an outgoing fog record can remain mounted

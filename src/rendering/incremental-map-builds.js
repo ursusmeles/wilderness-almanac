@@ -1,6 +1,6 @@
 // @ts-check
 import { Group, Vector2, Vector3 } from 'three';
-import { createIncrementalBuilds } from './incremental-builds.js';
+import { createIncrementalBuilds, INITIAL_CHUNK_ID } from './incremental-builds.js';
 import { createRetainedChunkScene } from './retained-chunk-scene.js';
 import { createMapPicker } from './map-picking.js';
 import { createChunkTransitions } from './chunk-transitions.js';
@@ -23,6 +23,7 @@ import { chunkPriorityBounds, viewportPriority } from './viewport-priority.js';
  * @property {ReturnType<typeof import('./feature-lighting.js').createFeatureLighting>} featureLighting
  * @property {() => void} onCommit
  * @property {() => void} draw
+ * @property {() => void} resize
  */
 
 /**
@@ -32,10 +33,10 @@ import { chunkPriorityBounds, viewportPriority } from './viewport-priority.js';
  * @param {BuildContext} context
  */
 export function createIncrementalMapBuilds(context) {
-  const { renderer, scene, camera, featureLighting, onCommit, draw } = context;
+  const { renderer, scene, camera, featureLighting, onCommit, draw, resize } = context;
   const container = new Group();
   container.name = 'incremental-map';
-  const owner = createRetainedChunkScene({ renderer, scene, camera, container, draw });
+  const owner = createRetainedChunkScene({ renderer, scene, camera, container, draw, resize });
   const point = new Vector3();
   /** @type {WeakMap<Tile[], import('./viewport-priority.js').ChunkBounds>} */
   const priorityBounds = new WeakMap();
@@ -181,7 +182,7 @@ export function createIncrementalMapBuilds(context) {
       });
       for (const { id, record } of entries) {
         const before = previous.get(id);
-        if (before?.record !== record && animateRequest && !flushing) {
+        if (id !== INITIAL_CHUNK_ID && before?.record !== record && animateRequest && !flushing) {
           const order = record.tiles
             .map((tile) => {
               point.set(tile.wx, tile.top, tile.wz).project(camera);
@@ -267,8 +268,8 @@ export function createIncrementalMapBuilds(context) {
         finishTransitions();
       }
     },
-    /** @param {Tile[]} layout @param {Tile[]} source @param {string} nextStyle @returns {void} */
-    show(layout, source, nextStyle) {
+    /** @param {Tile[]} layout @param {Tile[]} source @param {string} nextStyle @param {string} [initialKey] @returns {void} */
+    show(layout, source, nextStyle, initialKey) {
       const previous = new Map((shownLayout ?? []).map((tile) => [tile.key, tile]));
       /** @param {Tile} tile */
       const visibility = (tile) =>
@@ -279,7 +280,7 @@ export function createIncrementalMapBuilds(context) {
       });
       if (!animateRequest) finishTransitions();
       style = nextStyle;
-      controller.show(layout, source, nextStyle);
+      controller.show(layout, source, nextStyle, initialKey);
     },
     /** @returns {void} */
     dispose() {

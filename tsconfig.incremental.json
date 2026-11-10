@@ -44,6 +44,7 @@
     "src/ui/campaign-theme.js",
     "tests/incremental-builds.test.js",
     "e2e/incremental-renderer.spec.js",
+    "e2e/starting-hexes.spec.js",
     "e2e/deferred-previews.spec.js",
     "playwright.workspace.config.js"
   ]

@@ -154,6 +154,7 @@ export function createMapRenderer(
     renderer,
     scene,
     camera: controls.camera,
+    resize: controls.resize,
     featureLighting,
     draw,
     onCommit() {
@@ -234,7 +235,7 @@ export function createMapRenderer(
     },
     /**
      * @param {import('./incremental-map-builds.js').Tile[]} layout
-     * @param {import('./map-renderer-types.js').RefreshOptions & {source?: import('./incremental-map-builds.js').Tile[], artStyle?: string}} [options]
+     * @param {import('./map-renderer-types.js').RefreshOptions & {source?: import('./incremental-map-builds.js').Tile[], artStyle?: string, initialKey?: string}} [options]
      */
     setMap(layout, options) {
       const previousStyle = artStyle;
@@ -244,7 +245,7 @@ export function createMapRenderer(
       previewPiece = null;
       if (options?.resetView) party?.deselect();
       // A fog projection names its source layout so the source build is kept.
-      builds.show(layout, options?.source ?? layout, artStyle);
+      builds.show(layout, options?.source ?? layout, artStyle, options?.initialKey);
       if (previousStyle === 'pixelart' && artStyle !== previousStyle)
         palette.releasePixelMaterials();
       party?.setArtStyle(artStyle);

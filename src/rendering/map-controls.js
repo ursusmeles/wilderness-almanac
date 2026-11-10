@@ -137,9 +137,14 @@ export function createMapControls({
     resize();
   }
   function resize() {
+    // The host and stylesheet own CSS sizing, including panel/browser resizes.
+    // Fiber may install fixed inline dimensions when configuring this canvas.
+    renderer.domElement.style.removeProperty('width');
+    renderer.domElement.style.removeProperty('height');
     const w = host.clientWidth,
       h = host.clientHeight;
     if (!w || !h) return;
+    pendingHover = hoverPoint;
     renderer.setSize(w, h, false);
     const contentWidth = Math.max(1, w - frameInsets.left - frameInsets.right);
     if (fitContent && fitPreviewCamera(camera, map, contentWidth / h)) {
@@ -256,8 +261,10 @@ export function createMapControls({
   }
   /** @type {import('./map-renderer-types.js').PointerPosition | undefined} */
   let pendingHover;
+  /** @type {import('./map-renderer-types.js').PointerPosition | undefined} */
+  let hoverPoint;
   function cancelHover() {
-    pendingHover = undefined;
+    pendingHover = hoverPoint = undefined;
   }
   function updateHover() {
     if (!pendingHover) return;
@@ -416,7 +423,7 @@ export function createMapControls({
       return;
     }
     if (e.pointerType === 'mouse' && !pointers.size && partyPointer === null) {
-      pendingHover = { x: e.clientX, y: e.clientY };
+      pendingHover = hoverPoint = { x: e.clientX, y: e.clientY };
       requestHover();
     }
   });
@@ -544,17 +551,16 @@ export function createMapControls({
   observer.observe(host);
   return {
     camera,
+    resize,
     updateHover,
     setFrameInsets,
     isInteracting: () => pointers.size > 0 || partyPointer !== null,
     /** Refresh displayed hit targets without cancelling an active drag or reframing. @returns {void} */
     refreshPicking() {
-      hovered = null;
-      hoverRing.visible = false;
-      onHover(null);
       map.updateWorldMatrix(true, true);
       pick = picker();
       showSelection();
+      pendingHover = hoverPoint;
       requestHover();
     },
     /** @param {import('./map-renderer-types.js').RefreshOptions} [options] */
