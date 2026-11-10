@@ -5,16 +5,25 @@ import { createIncrementalMapBuilds } from '../rendering/incremental-map-builds.
 export { createMapRenderer };
 
 /**
- * Campaign scenes use retained incremental chunks; still previews stay synchronous.
+ * Interactive maps share retained incremental chunks. Still images use the
+ * synchronous renderer exported above.
+ * @param {Parameters<typeof createMapRenderer>[0]} host
+ * @param {Parameters<typeof createMapRenderer>[1]} [options]
+ */
+export function createIncrementalMapRenderer(host, options) {
+  return createMapRenderer(host, {
+    ...options,
+    createBuilds: createIncrementalMapBuilds,
+  });
+}
+
+/**
+ * Campaigns composite opaque snapshots over their transparent live canvas.
  * @param {Parameters<typeof createMapRenderer>[0]} host
  * @param {Parameters<typeof createMapRenderer>[1]} [options]
  */
 export function createCampaignMapRenderer(host, options) {
-  const renderer = createMapRenderer(host, {
-    ...options,
-    transparent: true,
-    createBuilds: createIncrementalMapBuilds,
-  });
+  const renderer = createIncrementalMapRenderer(host, { ...options, transparent: true });
   return renderer && { ...renderer, snapshot: () => renderer.snapshot({ opaque: true }) };
 }
 export { tilePreview, partyPreview, disposeTilePreview } from './tile-preview.js';

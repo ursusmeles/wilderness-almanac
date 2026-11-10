@@ -187,15 +187,24 @@ The keyed queue runs one synchronous job per idle opportunity, replaces stale
 Inspector/party requests, and gates each gallery tile. Cancellation settles
 waiting callers; entry, Back and disposal clear pending work. Existing images
 are reused only for matching inputs; otherwise the party button keeps its SVG
-fallback and stale Inspector images stay hidden. Preview rendering APIs remain
-synchronous for creation, embeds and callers outside campaign scheduling.
+fallback and stale Inspector images stay hidden. Still-image preview APIs and
+website embeds retain synchronous rendering.
 
 ## Incremental campaign rendering
 
-`src/ui/map-view.js` exposes `createCampaignMapRenderer` for the campaign and the
-synchronous `createMapRenderer` for creation previews. Inspector thumbnails, party
-previews and website embeds retain the synchronous renderer. React/Fiber stay
+`src/ui/map-view.js` exposes `createIncrementalMapRenderer` for interactive creation
+previews and `createCampaignMapRenderer` for the campaign's transparent canvas and
+opaque snapshots. Inspector thumbnails, party previews and website embeds retain
+the synchronous `createMapRenderer`. React/Fiber stay
 behind this lazy entry; there is one WebGL context per renderer, not one per chunk.
+
+New-campaign previews start with the centre hex and its immediate neighbours, then
+build and animate the remaining chunks. They defer numeric river surfaces like
+campaign maps, honour the default Movement preference and reduced motion, and
+preserve pan/zoom between generations. Preview status observes canvas state and
+reports ready only once geometry and arrivals settle; editing and creation do not
+wait for that optional presentation. Replacing the seed or art style cancels the old
+chunk queue; closing the dialog or creating a campaign disposes the preview owner.
 
 Fog toggles apply directly after the unsaved-edit guard, without the two-frame
 feedback wait in `mapAction.run`. Missing chunks are scheduled by the renderer;

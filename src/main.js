@@ -902,6 +902,7 @@ campaignCreator = createCampaignCreator({
   freshSeed,
   defaultTimeOfDay: () => defaultTimeOfDay,
   defaultMapArtStyle: () => defaultMapArtStyle,
+  defaultMotion: () => defaultMovement,
   backgroundFor: (colors) =>
     uiTheme.current() === 'light' ? campaignUITheme(colors, 'light').bg : null,
   async onCreate(campaign) {

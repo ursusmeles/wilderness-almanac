@@ -15,6 +15,7 @@ export default defineConfig({
     'deferred-previews.spec.js',
     'campaign-preparation.spec.js',
     'starting-hexes.spec.js',
+    'creation-preview.spec.js',
     'renderer.spec.js',
   ],
   reporter: 'list',

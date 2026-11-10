@@ -168,8 +168,8 @@ or backend requests. The 22 card images are by YY Game and retain their
 
 Fog derives visited, visible-unvisited and undiscovered presentation from saved
 visits; structural editing requires fog off. See [fog rules](FOG_OF_WAR.md).
-Campaign maps render incrementally through retained React Three Fiber chunks;
-creation previews, thumbnails and embeds keep the synchronous renderer. Fog
+Campaign maps and interactive new-campaign previews render incrementally through
+retained React Three Fiber chunks; thumbnails and embeds keep the synchronous renderer. Fog
 concealment and stale-work cancellation are immediate, while uncached reveals
 arrive over multiple frames. Each hex independently rises and fades on a nominal
 120 ms timeline, with a short stagger inside each unchanged 4×4 batch. Long
@@ -210,6 +210,9 @@ as one fully visible, unanimated batch. Remaining chunks fill in after its first
 paint. Rendering order preserves generation, fog rules and map detail. The
 controls own canvas sizing so panel/window resizing keeps pointer selection and
 party dragging aligned; incoming chunks preserve stationary hover feedback.
+Creation previews use the same seven-hex start around the map centre, then animate
+remaining chunks. They preserve pan/zoom between generations and honour default
+Movement Off and reduced motion. Closing or creating cancels unfinished preview work.
 
 ## Current limitations
 

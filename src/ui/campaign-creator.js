@@ -17,6 +17,7 @@ export function createCampaignCreator({
   freshSeed,
   defaultTimeOfDay,
   defaultMapArtStyle,
+  defaultMotion = () => true,
   backgroundFor = () => null,
   onCreate,
 }) {
@@ -37,6 +38,7 @@ export function createCampaignCreator({
   let draft;
   let renderer;
   let revision = 0;
+  const previewObserver = new MutationObserver(syncPreviewStatus);
 
   const preferences = () =>
     Object.fromEntries(preferenceNames.map((name) => [name, Number(el(name).value)]));
@@ -53,6 +55,17 @@ export function createCampaignCreator({
   function feedback(text, error = false) {
     if (status.textContent !== text) status.textContent = text;
     status.dataset.kind = error ? 'error' : 'status';
+  }
+
+  function syncPreviewStatus() {
+    if (!draft || draft.busy || draft.needsGeneration || status.dataset.kind === 'error') return;
+    const state = el('scene').querySelector('canvas')?.dataset.renderState;
+    if (state === 'error') {
+      draft.needsGeneration = true;
+      releasePreview();
+      feedback('Could not prepare the preview. Try generating it again.', true);
+      sync();
+    } else feedback(state === 'ready' ? 'Preview ready.' : 'Building preview…');
   }
 
   function sync() {
@@ -104,7 +117,8 @@ export function createCampaignCreator({
       preferenceNames.some(
         (name) => Number(el(name).value) !== draft.generatedSettings.preferences[name],
       );
-    feedback(draft.needsGeneration ? 'Preview needs updating.' : 'Preview ready.');
+    if (draft.needsGeneration) feedback('Preview needs updating.');
+    else syncPreviewStatus();
     sync();
   }
 
@@ -131,6 +145,7 @@ export function createCampaignCreator({
   }
 
   function releasePreview() {
+    previewObserver.disconnect();
     renderer?.dispose();
     renderer = undefined;
   }
@@ -174,22 +189,26 @@ export function createCampaignCreator({
 
   function paintPreview(view, world, layout, { preserveFraming = false } = {}) {
     const initialView = !renderer;
-    renderer ??= view.createMapRenderer(el('scene'), { motion: false, artStyle: artStyle() });
+    renderer ??= view.createIncrementalMapRenderer(el('scene'), {
+      motion: defaultMotion(),
+      artStyle: artStyle(),
+    });
     if (!renderer) throw new Error('The map preview needs WebGL. Try another browser.');
     renderer.setPalette(library.get(paletteInput.value).colors);
     renderer.setBackground(backgroundFor(library.get(paletteInput.value).colors));
     renderer.setMap(layout, {
       resetView: initialView,
+      initialKey: '0,0',
       artStyle: artStyle(),
       preserveFraming: !initialView && preserveFraming,
     });
     if (initialView) renderer.zoom(1.6);
-    el('scene')
-      .querySelector('canvas')
-      .setAttribute(
-        'aria-label',
-        'Map preview. Drag to pan or use arrow keys to jump two hexes. Scroll or pinch to zoom; + and − also zoom.',
-      );
+    const canvas = el('scene').querySelector('canvas');
+    canvas.setAttribute(
+      'aria-label',
+      'Map preview. Drag to pan or use arrow keys to jump two hexes. Scroll or pinch to zoom; + and − also zoom.',
+    );
+    previewObserver.observe(canvas, { attributes: true, attributeFilter: ['data-render-state'] });
     el('scene').dataset.seed = world.seed;
   }
 
@@ -210,7 +229,7 @@ export function createCampaignCreator({
       if (current !== revision || !draft) return;
       const seed = seedInput.value.trim();
       const world = generateWorld(seed, { preferences: preferences() });
-      const layout = prepareMap(world, generateDressing(world, 0));
+      const layout = prepareMap(world, generateDressing(world, 0), { deferRiverSurfaces: true });
       paintPreview(view, world, layout);
       draft.world = world;
       draft.layout = layout;
@@ -221,7 +240,7 @@ export function createCampaignCreator({
       if (!draft.nameEdited) nameInput.value = world.name;
       draft.needsGeneration = false;
       if (initial) draft.initial = snapshot();
-      feedback('Preview ready.');
+      feedback('Building preview…');
     } catch (error) {
       if (current === revision && draft) {
         draft.needsGeneration = true;
@@ -231,6 +250,7 @@ export function createCampaignCreator({
       if (current === revision && draft) {
         draft.busy = false;
         sync();
+        syncPreviewStatus();
       }
     }
   }
@@ -274,8 +294,10 @@ export function createCampaignCreator({
   });
   listen(artInput, 'change', () => {
     if (!draft || draft.busy) return;
-    if (draft.layout)
+    if (draft.layout) {
       paintPreview(draft.view, draft.world, draft.layout, { preserveFraming: true });
+      syncPreviewStatus();
+    }
     sync();
   });
   listen(generateButton, 'click', () => generate());
