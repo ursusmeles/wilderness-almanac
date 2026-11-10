@@ -182,7 +182,16 @@ export function createIncrementalMapBuilds(context) {
       });
       for (const { id, record } of entries) {
         const before = previous.get(id);
-        if (id !== INITIAL_CHUNK_ID && before?.record !== record && animateRequest && !flushing) {
+        const replacesKnownTerrain = before?.record.tiles.some(
+          (tile) => tile.fogState !== 'undiscovered',
+        );
+        if (
+          id !== INITIAL_CHUNK_ID &&
+          before?.record !== record &&
+          !replacesKnownTerrain &&
+          animateRequest &&
+          !flushing
+        ) {
           const order = record.tiles
             .map((tile) => {
               point.set(tile.wx, tile.top, tile.wz).project(camera);

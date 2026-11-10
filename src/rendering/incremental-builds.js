@@ -5,7 +5,7 @@ export const INITIAL_CHUNK_ID = 'initial';
 
 /** @typedef {{key: string, q: number, r: number, fogState?: string}} ChunkTile */
 /** @template T @typedef {{id: string, record: T}} ChunkEntry */
-/** @template T @typedef {{signature: string, record: T}} CachedChunk */
+/** @template T @typedef {{signature: string, exposure: number[], record: T}} CachedChunk */
 /**
  * @template {ChunkTile} Tile
  * @template Record
@@ -67,6 +67,32 @@ export function chunkSignature(tiles, states) {
 }
 
 /**
+ * Track the information in the mounted record, including shared-edge geometry.
+ * The low two bits hold the tile's visibility; the rest hold visible neighbours.
+ * @param {ChunkTile[]} tiles
+ * @param {Map<string, string | undefined>} states
+ * @returns {number[]}
+ */
+function chunkExposure(tiles, states) {
+  return tiles.map((tile) => {
+    const state = states.get(tile.key);
+    const visibility = state === 'undiscovered' ? 0 : state === 'unvisited' ? 1 : 2;
+    return DIRECTIONS.reduce(
+      (mask, [q, r], i) =>
+        mask | (states.get(`${tile.q + q},${tile.r + r}`) !== 'undiscovered' ? 1 << (i + 2) : 0),
+      visibility,
+    );
+  });
+}
+
+/** @param {number[]} before @param {number[]} after @returns {boolean} */
+function conceals(before, after) {
+  return before.some(
+    (exposure, i) => (after[i] & 3) < (exposure & 3) || Boolean((exposure >> 2) & ~(after[i] >> 2)),
+  );
+}
+
+/**
  * Owns at most a source and latest fog record per chunk: a starting hex and its
  * neighbours, then axial 4×4 groups for the remaining map. Builders run
  * outside React; a bounded RAF slice publishes retained objects to scene owners.
@@ -87,7 +113,7 @@ export function createIncrementalBuilds({
 }) {
   /** @type {Map<string, {tiles: Tile[], source?: CachedChunk<Record>, fog?: CachedChunk<Record>}>} */
   const caches = new Map();
-  /** @type {Map<string, Record>} */
+  /** @type {Map<string, CachedChunk<Record>>} */
   const displayed = new Map();
   /** @type {Tile[] | undefined} */
   let origin;
@@ -96,13 +122,13 @@ export function createIncrementalBuilds({
   let style = '',
     frame = 0,
     epoch = 0;
-  /** @type {Array<{id: string, tiles: Tile[], signature: string, role: 'source' | 'fog'}>} */
+  /** @type {Array<{id: string, tiles: Tile[], signature: string, exposure: number[], role: 'source' | 'fog'}>} */
   let jobs = [];
 
   /** Publish one atomic batch, including synchronous concealment. @returns {void} */
   function publish() {
     show(
-      [...displayed].map(([id, record]) => ({ id, record })),
+      [...displayed].map(([id, { record }]) => ({ id, record })),
       target,
       jobs.length > 0,
     );
@@ -148,8 +174,9 @@ export function createIncrementalBuilds({
       if (!cache) throw new Error('Missing incremental chunk cache');
       const record = build(job.tiles, style);
       const previous = cache[job.role];
-      cache[job.role] = { signature: job.signature, record };
-      displayed.set(job.id, record);
+      const cached = { signature: job.signature, exposure: job.exposure, record };
+      cache[job.role] = cached;
+      displayed.set(job.id, cached);
       if (previous) retired.push(previous.record);
       if (job.id === INITIAL_CHUNK_ID) {
         builtInitial = true;
@@ -199,15 +226,19 @@ export function createIncrementalBuilds({
       for (const [id, cache] of caches) {
         const signature = projected ? chunkSignature(cache.tiles, states) : 'source';
         const cached = cache[role];
-        if (cached?.signature === signature) displayed.set(id, cached.record);
+        if (cached?.signature === signature) displayed.set(id, cached);
         else {
+          const exposure = chunkExposure(cache.tiles, states);
           const tiles = cache.tiles.map((tile) => {
             const projectedTile = byKey.get(tile.key);
             if (!projectedTile) throw new Error(`Missing projected tile ${tile.key}`);
             return projectedTile;
           });
-          jobs.push({ id, tiles, signature, role });
-          if (projected) displayed.delete(id);
+          jobs.push({ id, tiles, signature, exposure, role });
+          const mounted = displayed.get(id);
+          // Exploration only adds information: retain known terrain until its
+          // replacement is ready. Concealment must detach it before yielding.
+          if (mounted && conceals(mounted.exposure, exposure)) displayed.delete(id);
         }
       }
       publish();

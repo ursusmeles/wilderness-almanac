@@ -212,8 +212,12 @@ Each chunk has a source and latest fog record.
 New geometry is built outside React in roughly 8 ms RAF slices (one
 chunk can exceed that budget). Fog signatures include neighboring visibility for
 river banks, shorelines and shared edges. Restrictive updates detach stale chunks
-and picking targets synchronously; newer requests cancel queued work. Source or
-art-style changes release both caches. Explicit snapshots flush pending work.
+and picking targets synchronously, including when only a neighbour becomes hidden.
+Exploration retains mounted terrain and its picker until each replacement is ready,
+then swaps it atomically without replaying arrivals on already known terrain.
+Concealment compares against the mounted record, so interrupted builds cannot expose
+stale geometry. Newer requests cancel queued work. Source or art-style changes release
+both caches. Explicit snapshots flush pending work.
 Before each slice, camera matrices refresh and pending chunks are scored once
 against conservative projected footprint/height bounds. Viewport intersections
 rank first, then distance to the centre, with deterministic chunk-ID ties. This
@@ -245,8 +249,9 @@ compare decoded pixels rather than assuming byte-identical PNGs across those pat
 `chunk-transitions.js` reveals individual hexes with a 120 ms quartic ease-out rise
 and fade, starting about six CSS pixels below their resting position. Geometry and
 4×4 batches remain intact. Within each ready chunk, the closest hexes start first,
-8 ms apart: at most 120 ms of stagger, not a whole-map queue. Cached reveals replay
-the same motion without rebuilding geometry; concealment stays instantaneous.
+8 ms apart: at most 120 ms of stagger, not a whole-map queue. Cached reveals from
+fully concealed chunks replay the same motion without rebuilding geometry;
+replacements containing known terrain skip arrivals and concealment stays instantaneous.
 Movement off and reduced motion skip arrivals, and disabling motion settles an
 active arrival on the next frame. Each new arrival anchors its clock after the
 first frame's render submission, so initial shader/setup cost does not consume

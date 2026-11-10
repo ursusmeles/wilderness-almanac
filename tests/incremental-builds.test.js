@@ -154,11 +154,16 @@ test('fog updates invalidate neighbours across the starting batch boundary', () 
   const projected = fog(source);
   h.controller.show(projected, source, 'low-poly', '1,0');
   h.controller.flush();
+  const previous = h.view().displayed;
   const unchanged = h.view().displayed.filter(({ id }) => ['1,0', '2,0'].includes(id));
   const changed = projected.map((tile) => (tile.q === 2 ? { ...tile, fogState: 'visited' } : tile));
   h.controller.show(changed, source, 'low-poly', '2,0');
-  assert.deepEqual(h.view().displayed, unchanged);
+  assert.deepEqual(h.view().displayed, previous, 'retain the mounted records until replacement');
   h.controller.flush();
+  assert.deepEqual(
+    h.view().displayed.filter(({ id }) => ['1,0', '2,0'].includes(id)),
+    unchanged,
+  );
   assert.equal(h.built.length, 6, 'only the starting batch and adjacent remainder rebuild');
   assert.equal(h.released.length, 2);
   h.controller.clear();
@@ -228,9 +233,10 @@ test('neighbor visibility invalidates boundary geometry but retains unrelated ch
   const original = structuredClone(source);
   h.controller.show(projected, source, 'low-poly');
   h.controller.flush();
+  const previous = h.view().displayed;
   const changed = projected.map((tile) => (tile.q === 0 ? { ...tile, fogState: 'visited' } : tile));
   h.controller.show(changed, source, 'low-poly');
-  assert.equal(h.view().displayed.length, 2);
+  assert.deepEqual(h.view().displayed, previous);
   h.controller.flush();
   assert.equal(h.built.length, 6, 'only the changed hex and neighboring chunk rebuild');
   assert.equal(h.released.length, 2, 'keep only the latest projection per chunk');
@@ -238,6 +244,77 @@ test('neighbor visibility invalidates boundary geometry but retains unrelated ch
   h.controller.clear();
   assert.equal(h.released.length, h.built.length);
   h.controller.clear();
+});
+
+test('exploration keeps known terrain mounted until each atomic replacement is ready', () => {
+  const h = harness(),
+    source = tiles([-1, 0, 4]),
+    projected = fog(source, 'unvisited');
+  h.controller.show(projected, source, 'low-poly');
+  h.controller.flush();
+  const before = h.view().displayed;
+  const changed = projected.map((tile) => (tile.q === 0 ? { ...tile, fogState: 'visited' } : tile));
+  h.controller.show(changed, source, 'low-poly');
+  assert.deepEqual(h.view().displayed, before);
+  assert.equal(h.released.length, 0);
+  assert.equal(h.view().pending, true);
+  h.tick();
+  assert.equal(h.view().displayed.length, before.length);
+  assert.notEqual(h.view().displayed.find(({ id }) => id === '0,0')?.record, before[1].record);
+  assert.equal(h.view().displayed.find(({ id }) => id === '-1,0')?.record, before[0].record);
+  assert.equal(h.view().displayed.find(({ id }) => id === '1,0')?.record, before[2].record);
+  assert.equal(h.released.length, 1);
+  assert.equal(h.view().pending, false);
+  h.controller.clear();
+  assert.equal(h.released.length, h.built.length);
+});
+
+test('concealment detaches stale shared-edge geometry even when its own tile stays visited', () => {
+  const h = harness(),
+    source = tiles([-1, 0, 8]),
+    projected = fog(source, 'visited');
+  h.controller.show(projected, source, 'low-poly');
+  h.controller.flush();
+  const unrelated = h.view().displayed.find(({ id }) => id === '2,0');
+  const changed = projected.map((tile) =>
+    tile.q === 0 ? { ...tile, fogState: 'undiscovered' } : tile,
+  );
+  h.controller.show(changed, source, 'low-poly');
+  assert.deepEqual(h.view().displayed, [unrelated]);
+  h.controller.flush();
+  assert.equal(h.built.length, 5);
+  h.controller.clear();
+  assert.equal(h.released.length, h.built.length);
+});
+
+test('interrupted exploration compares concealment with mounted terrain, not the queued target', () => {
+  const h = harness(),
+    source = tiles([0, 4, 8]),
+    projected = fog(source, 'unvisited');
+  h.controller.show(projected, source, 'low-poly');
+  h.controller.flush();
+  const before = h.view().displayed;
+  h.controller.show(fog(source, 'visited'), source, 'low-poly');
+  h.tick();
+  const stale = [...h.frames.values()][0];
+  const latest = projected.map((tile) => (tile.q === 8 ? { ...tile, fogState: 'visited' } : tile));
+  h.controller.show(latest, source, 'low-poly');
+  assert.equal(h.view().displayed.length, 2, 'only the already upgraded chunk must detach');
+  assert.equal(h.view().displayed[0].record, before[1].record);
+  assert.equal(h.view().displayed[1].record, before[2].record);
+  stale(0);
+  assert.equal(h.built.length, 4, 'stale work cannot remount the cancelled projection');
+  h.controller.flush();
+  assert.ok(
+    h
+      .view()
+      .displayed.every(
+        ({ record }) =>
+          record.tiles[0].fogState === (record.tiles[0].q === 8 ? 'visited' : 'unvisited'),
+      ),
+  );
+  h.controller.clear();
+  assert.equal(h.released.length, h.built.length);
 });
 
 test('cancelled RAF callbacks cannot publish or release records from a newer request', () => {
