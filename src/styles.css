@@ -335,15 +335,16 @@
     position: absolute;
     inset-inline: 0;
     inset-block-end: 0;
-    height: 100%;
+    /* Scale past the transparent artwork padding so tree tops meet the first row. */
+    height: 190%;
     opacity: 0.24;
     pointer-events: none;
     & > span {
       position: absolute;
       inset: 0;
-      background: var(--forest-image) center bottom / auto 100% repeat-x var(--brand-ink);
+      background: var(--forest-image) left bottom / auto 100% repeat-x var(--brand-ink);
       background-blend-mode: luminosity;
-      mask: var(--forest-image) center bottom / auto 100% repeat-x;
+      mask: var(--forest-image) left bottom / auto 100% repeat-x;
       image-rendering: pixelated;
     }
     & > :nth-child(1) {
