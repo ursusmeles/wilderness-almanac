@@ -1,7 +1,7 @@
 name: Checks
 
 on:
-  # Automatic push/PR runs are temporarily paused. Run manually when needed.
+  # Comprehensive checks stay manual; pr-checks.yml runs the lightweight PR checks.
   workflow_dispatch:
 
 permissions:

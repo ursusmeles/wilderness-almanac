@@ -23,7 +23,12 @@ Read `README.md`, `docs/DEVELOPMENT.md` and `docs/PROJECT_STATE.md` before makin
 ## Verification and maintenance
 
 - Prefer lightweight, focused verification: review the diff and use targeted checks or browser inspection where useful. State what was checked and any verification limitations.
+- Use `.agents/skills/verify-twa/SKILL.md` to select existing checks for this repository. Read only the recipe relevant to the changed behaviour.
+- Spacing, colour and copy edits need diff review and focused visual inspection where useful; shared layout changes also need a relevant narrow-screen inspection. Do not add tests, build the app, or request an independent review merely for a cosmetic edit.
+- Behaviour changes need the smallest relevant existing tests and a browser scenario when the user interaction matters. Add a regression test only when it would catch a meaningful failure. Saving/imports, generator replay, renderer resource ownership and broad refactors warrant the corresponding regression checks once changes settle.
 - Do not automatically run full test suites, browser suites, repeated builds or `npm run check` on every change. Reserve expensive checks for explicit requests or substantial risk, and run them once after changes settle.
+- Substantive changes get at most one independent review of the changed area, using an available review tool or CodeRabbit when authorized. Keep review focused on concrete regressions, unmet requirements and material architecture problems; require file/line evidence, impact and a remedy. Treat unrelated cleanup and subjective elegance as follow-ups, without arbitrary file-length gates.
+- After review, fix accepted findings and rerun only checks affected by those fixes. Re-review only if a fix introduces substantial new logic or leaves a concrete concern unresolved. Do not start repeated review loops or repository-wide untangling during ordinary edits. If a check times out, report the gap and diagnose before retrying; never equate an incomplete check with a pass.
 - After pushing, do not wait for or poll GitHub Actions. Link CI as pending; investigate only when explicitly asked or when a relevant failure is already known.
 - Update the relevant maintainer docs when behaviour or architecture changes. Avoid chronological task logs and stale test counts in the README.
 - Keep the AGPLv3 application license and bundled third-party font/icon licenses and attribution intact.

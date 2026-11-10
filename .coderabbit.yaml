@@ -1,0 +1,38 @@
+# yaml-language-server: $schema=https://www.coderabbit.ai/integrations/schema.v2.json
+language: en-US
+reviews:
+  profile: quiet
+  request_changes_workflow: false
+  high_level_summary: false
+  poem: false
+  auto_review:
+    enabled: false
+    auto_incremental_review: false
+    drafts: false
+  path_instructions:
+    - path: '**'
+      instructions: >-
+        Follow AGENTS.md. Review the changed behaviour and trace affected callers
+        only as needed. Prioritize concrete regressions, unmet requirements,
+        data-loss/security risks and material architecture problems. Each finding
+        needs file/line evidence, user or maintainer impact and a concrete remedy.
+        Keep unrelated cleanup and subjective style suggestions as optional
+        follow-ups. Do not demand broad rewrites, arbitrary file-length limits,
+        full test suites or repeated review loops for small changes.
+    - path: 'src/generation/**'
+      instructions: >-
+        Preserve generator-10 replay, world/dressing fixtures and independence
+        from Three.js, DOM and persistence adapters. Intentional generation
+        changes require an explicit generator-version decision.
+    - path: 'src/rendering/**'
+      instructions: >-
+        Preserve renderer fixtures on pure refactors, lazy map loading, and
+        explicit ownership/disposal of geometry, materials, textures, listeners
+        and scheduled work. Mesh builders must stay independent of DOM/WebGL
+        lifecycle.
+    - path: 'src/**/*.css'
+      instructions: >-
+        Focus on demonstrable overflow, visibility, responsive, keyboard-focus
+        or readability regressions. Preserve shared tokens and the mobile map
+        footprint. Do not ask for unit tests or architecture work for spacing,
+        colour or other cosmetic changes.
