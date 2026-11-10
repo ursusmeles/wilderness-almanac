@@ -18,6 +18,9 @@ followed by the theme and settings controls.
 Its footer reuses the landing logo, static forest and maker/license credits with
 Home and GitHub navigation. The footer theme control shares the app preference;
 the footer belongs to the library view and is hidden in the campaign workspace.
+Its separator and static background span the viewport and meet the page bottom.
+Footer content aligns with the large logo's outer edge on wide screens, with
+matching right inset and fluid side padding on smaller screens.
 
 ## Coordinates, version and topology
 

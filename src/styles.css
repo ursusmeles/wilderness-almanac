@@ -188,15 +188,10 @@
     --campaign-card-bg: color-mix(in oklab, var(--c-surface) 96%, var(--c-text));
     display: flex;
     flex-direction: column;
-    min-height: calc(100svh - 2 * var(--panel-margin));
+    min-height: calc(100svh - var(--panel-margin));
     color: var(--c-text);
-    max-width: 64rem;
-    margin: 0 auto;
-    margin-inline-start: max(
-      calc((100% - 64rem) / 2),
-      calc(var(--almanac-mark-size) + var(--almanac-mark-gap) - var(--space-xs))
-    );
-    padding: clamp(var(--space-l), 6vh, 4.5rem) var(--space-xs) var(--space-l);
+    margin-inline: calc(-1 * var(--panel-margin));
+    margin-block-end: calc(-1 * var(--panel-margin));
     & button {
       &:hover:not(:disabled) {
         background-color: var(
@@ -210,7 +205,23 @@
     }
     @media (max-width: 640px) {
       --almanac-title-size: clamp(2.5rem, 10.8vw, 3rem);
-      margin-inline: auto;
+    }
+  }
+  .campaign-menu-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    max-width: 64rem;
+    margin-inline-start: max(
+      calc((100% - 64rem) / 2),
+      calc(
+        var(--panel-margin) + var(--almanac-mark-size) + var(--almanac-mark-gap) - var(--space-xs)
+      )
+    );
+    margin-inline-end: var(--panel-margin);
+    padding: clamp(var(--space-l), 6vh, 4.5rem) var(--space-xs) var(--space-l);
+    @media (max-width: 640px) {
+      margin-inline: var(--panel-margin);
       padding: clamp(var(--space-m), 5vw, var(--space-l)) 0 var(--space-m);
     }
   }
@@ -235,6 +246,13 @@
     z-index: 1;
     display: grid;
     gap: var(--space-l-xl);
+    width: 100%;
+    max-width: calc(
+      64rem + 2 * (var(--almanac-mark-size) + var(--almanac-mark-gap) - var(--space-xs)) + 2 *
+        var(--space-s-m)
+    );
+    margin-inline: auto;
+    padding-inline: var(--space-s-m);
   }
   .app-footer-navigation,
   .app-footer-colophon {

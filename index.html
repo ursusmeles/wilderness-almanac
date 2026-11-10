@@ -96,107 +96,116 @@
   <body>
     <main>
       <section id="campaign-menu" class="campaign-menu" aria-labelledby="almanac-title">
-        <hgroup class="almanac-heading">
-          <svg class="almanac-mark" viewBox="212 206 856 906" aria-hidden="true" focusable="false">
-            <use href="/brand/wilderness-antler-mark.svg#antler-mark"></use>
-          </svg>
-          <h1 id="almanac-title">
-            <span class="almanac-article">The</span> <span>Wilderness</span> <span>Almanac</span>
-          </h1>
-          <p>A sandbox campaign tool for creative GMs</p>
-        </hgroup>
-        <section class="campaign-library" aria-labelledby="campaign-library-title">
-          <header class="campaign-toolbar cluster">
-            <h2 id="campaign-library-title">Your campaigns <span id="campaign-count">0</span></h2>
-            <div class="campaign-toolbar-actions">
-              <a
-                id="menu-home"
-                class="icon-button menu-icon-button"
-                href="https://wilderness.al/"
-                aria-label="Home"
-                data-tooltip="Home"
-              >
-                <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
-                  <use href="/icons/pixelarticons.svg#home"></use>
-                </svg>
-              </a>
-              <button
-                type="button"
-                class="icon-button menu-icon-button"
-                data-theme-toggle
-                aria-label="Switch to light mode"
-                data-tooltip="Switch to light mode"
-              >
-                <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
-                  <use href="/icons/pixelarticons.svg#lightbulb"></use>
-                </svg>
+        <div class="campaign-menu-content">
+          <hgroup class="almanac-heading">
+            <svg
+              class="almanac-mark"
+              viewBox="212 206 856 906"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <use href="/brand/wilderness-antler-mark.svg#antler-mark"></use>
+            </svg>
+            <h1 id="almanac-title">
+              <span class="almanac-article">The</span> <span>Wilderness</span> <span>Almanac</span>
+            </h1>
+            <p>A sandbox campaign tool for creative GMs</p>
+          </hgroup>
+          <section class="campaign-library" aria-labelledby="campaign-library-title">
+            <header class="campaign-toolbar cluster">
+              <h2 id="campaign-library-title">Your campaigns <span id="campaign-count">0</span></h2>
+              <div class="campaign-toolbar-actions">
+                <a
+                  id="menu-home"
+                  class="icon-button menu-icon-button"
+                  href="https://wilderness.al/"
+                  aria-label="Home"
+                  data-tooltip="Home"
+                >
+                  <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <use href="/icons/pixelarticons.svg#home"></use>
+                  </svg>
+                </a>
+                <button
+                  type="button"
+                  class="icon-button menu-icon-button"
+                  data-theme-toggle
+                  aria-label="Switch to light mode"
+                  data-tooltip="Switch to light mode"
+                >
+                  <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <use href="/icons/pixelarticons.svg#lightbulb"></use>
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  id="open-account"
+                  aria-haspopup="dialog"
+                  aria-controls="account-dialog"
+                  hidden
+                >
+                  Account &amp; sync
+                </button>
+                <button
+                  type="button"
+                  id="open-settings"
+                  class="icon-button menu-icon-button"
+                  aria-label="Settings"
+                  data-tooltip="Settings"
+                  aria-haspopup="dialog"
+                  aria-controls="settings-dialog"
+                >
+                  <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <use href="/icons/pixelarticons.svg#settings-cog"></use>
+                  </svg>
+                </button>
+              </div>
+            </header>
+            <ul id="campaign-list" class="campaign-list stack" aria-label="Saved campaigns"></ul>
+            <button
+              type="button"
+              id="new-campaign"
+              class="new-campaign cluster"
+              aria-haspopup="dialog"
+              aria-controls="create-campaign-dialog"
+            >
+              <svg class="ui-icon new-campaign-symbol" viewBox="0 0 24 24" aria-hidden="true">
+                <use href="/icons/pixelarticons.svg#plus"></use>
+              </svg>
+              <span><strong>New campaign</strong><span>An unexplored world</span></span>
+              <svg class="ui-icon new-campaign-arrow" viewBox="0 0 24 24" aria-hidden="true">
+                <use href="/icons/pixelarticons.svg#arrow-right"></use>
+              </svg>
+            </button>
+            <p class="campaign-storage-note">
+              Saved on this device. Export a campaign to take it with you.
+            </p>
+            <div id="campaign-save-warning" class="save-warning" role="status" hidden>
+              <p id="campaign-save-message"></p>
+              <button type="button" id="retry-campaign-save" class="menu-button">
+                Retry saving
               </button>
-              <button
-                type="button"
-                id="open-account"
-                aria-haspopup="dialog"
-                aria-controls="account-dialog"
-                hidden
-              >
-                Account &amp; sync
-              </button>
-              <button
-                type="button"
-                id="open-settings"
-                class="icon-button menu-icon-button"
-                aria-label="Settings"
-                data-tooltip="Settings"
-                aria-haspopup="dialog"
-                aria-controls="settings-dialog"
-              >
-                <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
-                  <use href="/icons/pixelarticons.svg#settings-cog"></use>
-                </svg>
+              <button type="button" id="download-unsaved-library" class="menu-button">
+                Download unsaved data
               </button>
             </div>
-          </header>
-          <ul id="campaign-list" class="campaign-list stack" aria-label="Saved campaigns"></ul>
-          <button
-            type="button"
-            id="new-campaign"
-            class="new-campaign cluster"
-            aria-haspopup="dialog"
-            aria-controls="create-campaign-dialog"
-          >
-            <svg class="ui-icon new-campaign-symbol" viewBox="0 0 24 24" aria-hidden="true">
-              <use href="/icons/pixelarticons.svg#plus"></use>
-            </svg>
-            <span><strong>New campaign</strong><span>An unexplored world</span></span>
-            <svg class="ui-icon new-campaign-arrow" viewBox="0 0 24 24" aria-hidden="true">
-              <use href="/icons/pixelarticons.svg#arrow-right"></use>
-            </svg>
-          </button>
-          <p class="campaign-storage-note">
-            Saved on this device. Export a campaign to take it with you.
-          </p>
-          <div id="campaign-save-warning" class="save-warning" role="status" hidden>
-            <p id="campaign-save-message"></p>
-            <button type="button" id="retry-campaign-save" class="menu-button">Retry saving</button>
-            <button type="button" id="download-unsaved-library" class="menu-button">
-              Download unsaved data
-            </button>
-          </div>
-          <div id="campaign-recovery" class="save-warning" role="status" hidden>
-            <p id="campaign-recovery-message"></p>
-            <button type="button" id="download-campaign-recovery" class="menu-button">
-              Download recovery file
-            </button>
-          </div>
-          <div class="campaign-feedback stack">
-            <output id="campaign-message" class="campaign-message" aria-live="polite"></output>
-            <button type="button" id="undo-delete-campaign" class="menu-button" hidden>
-              <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <use href="/icons/pixelarticons.svg#undo"></use>
-              </svg>
-              Undo deletion
-            </button>
-          </div>
-        </section>
+            <div id="campaign-recovery" class="save-warning" role="status" hidden>
+              <p id="campaign-recovery-message"></p>
+              <button type="button" id="download-campaign-recovery" class="menu-button">
+                Download recovery file
+              </button>
+            </div>
+            <div class="campaign-feedback stack">
+              <output id="campaign-message" class="campaign-message" aria-live="polite"></output>
+              <button type="button" id="undo-delete-campaign" class="menu-button" hidden>
+                <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <use href="/icons/pixelarticons.svg#undo"></use>
+                </svg>
+                Undo deletion
+              </button>
+            </div>
+          </section>
+        </div>
         <footer id="app-footer" role="contentinfo" aria-label="Wilderness Almanac">
           <div class="app-footer-forest" aria-hidden="true">
             <span></span><span></span><span></span>
