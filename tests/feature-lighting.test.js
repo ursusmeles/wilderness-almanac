@@ -449,3 +449,42 @@ test('city light crosses shared bevels onto dry neighbours, stopping at water, f
     lighting.dispose();
   }
 });
+
+test('lighting records show, swap back and release the same glow batches', () => {
+  const world = generateWorld('7');
+  const layout = prepareMap(world, generateDressing(world, 0));
+  const registry = createMapMaterials(),
+    meshes = createMapMeshes(registry),
+    lighting = createFeatureLighting(new THREE.Scene());
+  try {
+    const map = meshes.build(layout);
+    const record = lighting.build(map.lightSources, layout);
+    assert.equal(lighting.group.children.length, 0, 'building does not touch the scene');
+    assert.ok(record.glow.length > 0 && record.beams.length > 0);
+    let disposed = 0;
+    for (const mesh of record.glow) mesh.geometry.addEventListener('dispose', () => disposed++);
+    assert.equal(lighting.show(record), null);
+    assert.deepEqual(lighting.group.children, record.glow);
+    assert.deepEqual(lighting.beamGroup.children, record.beams);
+    lighting.setMode('night');
+    lighting.update(0, camera());
+    assert.ok(lighting.points.some((light) => light.intensity > 0));
+    assert.equal(lighting.show(null), record);
+    assert.equal(lighting.group.children.length, 0);
+    lighting.update(0, camera());
+    assert.ok(
+      lighting.points.every((light) => light.intensity === 0),
+      'hidden sources go dark',
+    );
+    assert.equal(disposed, 0);
+    lighting.show(record);
+    assert.deepEqual(lighting.group.children, record.glow);
+    lighting.release(lighting.show(null));
+    assert.equal(disposed, record.glow.length);
+    meshes.release(map);
+  } finally {
+    lighting.dispose();
+    meshes.dispose();
+    registry.dispose();
+  }
+});

@@ -83,3 +83,21 @@ export function createFogView(world, layout, states) {
     layout: tiles,
   };
 }
+
+// Reuse the plain view and the fog projection while their inputs are unchanged.
+// The session hands out the same visibility Map for identical classifications,
+// so toggling fog either way gives the renderer a layout reference it has a
+// retained build for.
+export function createFogViewer() {
+  let plain, fogged;
+  return (world, layout, states) => {
+    if (!states) {
+      if (plain?.world !== world || plain.layout !== layout)
+        plain = createFogView(world, layout, null);
+      return plain;
+    }
+    if (fogged?.world !== world || fogged.layout !== layout || fogged.states !== states)
+      fogged = { world, layout, states, view: createFogView(world, layout, states) };
+    return fogged.view;
+  };
+}

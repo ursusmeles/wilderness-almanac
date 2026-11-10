@@ -1,6 +1,9 @@
+// @ts-check
 import * as THREE from 'three';
 import { createMapMaterials } from './map-materials.js';
 import { createMapMeshes } from './map-meshes.js';
+import { createMapBuilds } from './map-builds.js';
+import { createMapPicker } from './map-picking.js';
 import { createMapControls } from './map-controls.js';
 import { createAmbientLoop } from './ambient-motion.js';
 import { createPartyToken } from './party-token.js';
@@ -12,6 +15,11 @@ import { createFeatureLighting } from './feature-lighting.js';
 import { DAYLIGHT } from '../application/time-of-day.js';
 import { mapArtStyle } from '../application/map-art-style.js';
 
+/**
+ * Coordinate scene resources and an interchangeable map-build lifetime owner.
+ * @param {HTMLElement} host
+ * @param {import('./map-renderer-types.js').RendererOptions} [options]
+ */
 export function createMapRenderer(
   host,
   {
@@ -26,10 +34,13 @@ export function createMapRenderer(
     transparent = false,
     groundShadow = true,
     artStyle = 'low-poly',
+    createBuilds = createMapBuilds,
   } = {},
 ) {
   artStyle = mapArtStyle(artStyle);
-  const loading = host.querySelector('#hp-loading');
+  const loading = /** @type {HTMLElement | null} */ (host.querySelector('#hp-loading'));
+  const hasLoadingBackdrop = Boolean(loading?.querySelector('.hp-map-skeleton'));
+  /** @type {THREE.WebGLRenderer} */
   let renderer;
   try {
     renderer = new THREE.WebGLRenderer({
@@ -65,6 +76,7 @@ export function createMapRenderer(
     needsRender = true,
     disposed = false;
   const featureLighting = createFeatureLighting(scene);
+  /** @type {keyof typeof DAYLIGHT} */
   let dayMode = 'day';
   const shadowFloor = new THREE.Mesh(
     new THREE.PlaneGeometry(100, 100),
@@ -84,20 +96,50 @@ export function createMapRenderer(
       : new THREE.Color(backgroundColor ?? palette.background());
   }
   const meshes = createMapMeshes(palette, { artStyle });
-  scene.add(meshes.group);
+  // The mesh group holds only build records; the stage also frames previews.
+  const stage = new THREE.Group();
+  stage.add(meshes.group);
+  scene.add(stage);
+  /** @type {import('./map-renderer-types.js').MapBuilds} */
+  let builds;
+  /** @type {Pick<import('./incremental-map-builds.js').BuildContext, 'build' | 'show' | 'release'>} */
+  const buildOptions = {
+    build(layout, style, context = layout) {
+      const map = meshes.build(layout, { artStyle: style });
+      const lighting = featureLighting.build(map.lightSources, context, { artStyle: style });
+      return { map, lighting, picker: null };
+    },
+    show(record) {
+      meshes.show(record?.map ?? null);
+      featureLighting.show(record?.lighting ?? null);
+    },
+    release(record) {
+      meshes.release(record.map);
+      featureLighting.release(record.lighting);
+    },
+  };
+  // The picker derives from the shown record and is kept with it.
+  /** @returns {import('./map-renderer-types.js').Picker} */
+  function picker() {
+    const record = builds?.active();
+    return record ? (record.picker ??= createMapPicker([record.map.root])) : createMapPicker([]);
+  }
   const party = onPartyMove
     ? createPartyToken({ host, draw, onMove: onPartyMove, onSelect: onPartySelect, artStyle })
     : null;
   const keyHints = onPartyMove ? createPartyKeyHints(host) : null;
-  let partyKey,
-    showPartyKeys = false;
+  /** @type {string | undefined} */
+  let partyKey;
+  let showPartyKeys = false;
+  /** @type {ReturnType<typeof createPartyPiece> | null | undefined} */
   let previewPiece;
   const controls = createMapControls({
     host,
     renderer,
     scene,
-    map: meshes.group,
+    map: stage,
     cells: meshes.cells,
+    picker,
     materials: palette.materials,
     draw,
     requestHover: queueFrame,
@@ -106,6 +148,19 @@ export function createMapRenderer(
     navigation,
     onHover,
     party,
+  });
+  builds = createBuilds({
+    ...buildOptions,
+    renderer,
+    scene,
+    camera: controls.camera,
+    featureLighting,
+    draw,
+    onCommit() {
+      daylight.sun.shadow.needsUpdate = true;
+      controls.refreshPicking();
+      draw();
+    },
   });
   // Input, token animation and ambient motion may all request the same frame.
   function draw() {
@@ -119,6 +174,10 @@ export function createMapRenderer(
     cancelAnimationFrame(frame);
     frame = 0;
     if (disposed) return;
+    if (builds.tick?.(performance.now())) {
+      needsRender = true;
+      daylight.sun.shadow.needsUpdate = true;
+    }
     // Pick the latest pointer position before painting, without a second RAF.
     const hoverChanged = controls.updateHover();
     if (!needsRender && !hoverChanged) return;
@@ -129,10 +188,20 @@ export function createMapRenderer(
     }
     renderer.domElement.dataset.zoom = String(controls.camera.zoom);
     featureLighting.update(palette.ambientTime.value, controls.camera);
+    shadowFloor.material.depthWrite = !builds.animating?.();
     renderer.clear();
     renderer.render(scene, controls.camera);
     party?.render(renderer, controls.camera);
     keyHints?.render(controls.camera);
+    builds.afterRender?.(performance.now());
+    if (
+      loading &&
+      !host.closest('[data-loading]') &&
+      !builds.animating?.() &&
+      renderer.domElement.dataset.renderState !== 'building'
+    )
+      loading.hidden = true;
+    if (builds.animating?.()) draw();
   }
   const ambientLoop = createAmbientLoop({
     renderer,
@@ -140,16 +209,19 @@ export function createMapRenderer(
     draw,
     motion,
   });
-  if (loading) loading.hidden = true;
+  if (loading && !hasLoadingBackdrop) loading.hidden = true;
   return {
     setMotion: ambientLoop.setMotion,
+    /** @param {THREE.ColorRepresentation | null} value */
     setBackground(value) {
       backgroundColor = value;
       updateBackground();
       draw();
     },
     setFrameInsets: controls.setFrameInsets,
+    /** @param {string} value */
     setTimeOfDay(value) {
+      builds.finishTransitions?.();
       dayMode = daylight.setMode(value);
       palette.setTimeOfDay(dayMode);
       featureLighting.setMode(dayMode);
@@ -160,6 +232,10 @@ export function createMapRenderer(
       draw();
       return dayMode;
     },
+    /**
+     * @param {import('./incremental-map-builds.js').Tile[]} layout
+     * @param {import('./map-renderer-types.js').RefreshOptions & {source?: import('./incremental-map-builds.js').Tile[], artStyle?: string}} [options]
+     */
     setMap(layout, options) {
       const previousStyle = artStyle;
       artStyle = mapArtStyle(options?.artStyle ?? artStyle);
@@ -167,24 +243,26 @@ export function createMapRenderer(
       previewPiece?.dispose();
       previewPiece = null;
       if (options?.resetView) party?.deselect();
-      meshes.setMap(layout, { artStyle });
+      // A fog projection names its source layout so the source build is kept.
+      builds.show(layout, options?.source ?? layout, artStyle);
       if (previousStyle === 'pixelart' && artStyle !== previousStyle)
         palette.releasePixelMaterials();
       party?.setArtStyle(artStyle);
       renderer.domElement.dataset.artStyle = artStyle;
       daylight.sun.shadow.needsUpdate = true;
-      featureLighting.setSources(meshes.lightSources, layout, { artStyle });
       controls.refresh(options);
     },
     cancelInteraction: controls.cancelInteraction,
     select: controls.select,
     focus: controls.focus,
     setSelection: controls.setSelection,
+    /** @param {import('./map-renderer-types.js').PartyToken} token @param {import('./map-renderer-types.js').PaletteSeeds} seeds */
     setParty(token, seeds) {
       partyKey = token.key;
       keyHints?.set(partyKey, meshes.cells, showPartyKeys);
       party?.set(token, meshes.cells, seeds);
     },
+    /** @param {boolean} visible */
     setPartyKeys(visible) {
       if (showPartyKeys === visible) return;
       showPartyKeys = visible;
@@ -192,29 +270,45 @@ export function createMapRenderer(
       draw();
     },
     isInteracting: controls.isInteracting,
+    /** @param {boolean} selected */
     setPartySelected: (selected) => party?.setSelected(selected),
+    /** @param {string} style @param {string} color @param {string} [styleOfArt] */
     setPartyPiece(style, color, styleOfArt = 'low-poly') {
       const previousStyle = artStyle;
       artStyle = mapArtStyle(styleOfArt);
       previewPiece?.group.removeFromParent();
       previewPiece?.dispose();
-      meshes.setMap([], { artStyle });
+      builds.clear();
       if (previousStyle === 'pixelart' && artStyle !== previousStyle)
         palette.releasePixelMaterials();
-      featureLighting.setSources([], [], { artStyle });
       previewPiece = createPartyPiece(PARTY_STYLES.indexOf(style), color, artStyle);
-      meshes.group.add(previewPiece.group);
+      stage.add(previewPiece.group);
       daylight.sun.shadow.needsUpdate = true;
       controls.refresh({ resetView: true, fitContent: true });
     },
     zoom: controls.zoom,
     pan: controls.pan,
-    snapshot() {
+    /** Composite the CSS background for campaign exports, without changing the live canvas.
+     * @param {{opaque?: boolean}} [options]
+     */
+    snapshot({ opaque = false } = {}) {
+      builds.flush?.();
       needsRender = true;
       renderNow();
-      return renderer.domElement.toDataURL('image/png');
+      if (!opaque || !transparent) return renderer.domElement.toDataURL('image/png');
+      const image = document.createElement('canvas');
+      image.width = renderer.domElement.width;
+      image.height = renderer.domElement.height;
+      const context = image.getContext('2d', { alpha: false });
+      if (!context) throw new Error('Unable to create the map snapshot.');
+      context.fillStyle = new THREE.Color(backgroundColor ?? palette.background()).getStyle();
+      context.fillRect(0, 0, image.width, image.height);
+      context.drawImage(renderer.domElement, 0, 0);
+      return image.toDataURL('image/png');
     },
+    /** @param {import('./map-renderer-types.js').PaletteSeeds} seeds */
     setPalette(seeds) {
+      builds.finishTransitions?.();
       palette.setPalette(seeds);
       updateBackground();
       draw();
@@ -227,6 +321,8 @@ export function createMapRenderer(
       keyHints?.dispose();
       previewPiece?.group.removeFromParent();
       previewPiece?.dispose();
+      if (builds.dispose) builds.dispose();
+      else builds.clear();
       controls.dispose();
       meshes.dispose();
       featureLighting.dispose();

@@ -1,7 +1,6 @@
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { addMesh, clearGeometries } from './geometry.js';
-import { windWeight } from './ambient-motion.js';
+import { describePropPart, describePropTemplate, mergePropParts } from './prop-batches.js';
+import { addMesh, disposeGeometries } from './geometry.js';
 import { createTerrainBuilder } from './terrain-meshes.js';
 import { createNatureBuilder } from './nature-props.js';
 import { createNatureBuilder as createPixelNatureBuilder } from './pixel-nature-props.js';
@@ -11,8 +10,8 @@ import { createPoiBuilder } from './poi-props.js';
 import { createSettlementBuilder, roofGeometry } from './settlement-props.js';
 import { createRoadBuilder } from './roads.js';
 import { pixelModelMesh, steppedRoofGeometry } from './pixel-model-geometry.js';
-import { crownGeometry } from './pixel-foliage-geometry.js';
-import { compactFoliageGeometry, installFoliageLOD } from './foliage-lod.js';
+import { crownTemplate } from './pixel-foliage-geometry.js';
+import { installFoliageLOD } from './foliage-lod.js';
 
 // Own map geometry and prop batches; the material registry outlives rebuilds.
 export function createMapMeshes(
@@ -108,15 +107,40 @@ export function createMapMeshes(
     });
   }
   configure(artStyle);
-  function buildMap(layout, options = {}) {
+  // A build is a record with its own group; show replaces whatever is shown
+  // (never with the record already shown) and release disposes a record. The
+  // renderer decides which records to keep (see map-builds.js); setMap is the
+  // plain replace-everything path.
+  let shown = null;
+  function build(layout, options = {}) {
     if (options.artStyle !== undefined && mapArtStyle(options.artStyle) !== style)
       configure(options.artStyle);
-    clearGeometries(map);
+    return buildMap(layout);
+  }
+  function show(record) {
+    const previous = shown;
+    if (previous) map.remove(previous.root);
     cells.length = 0;
     lightSources.length = 0;
+    if (record) {
+      map.add(record.root);
+      cells.push(...record.cells);
+      lightSources.push(...record.lightSources);
+      if (record.wave) waveDirection.value.copy(record.wave);
+    }
+    shown = record;
+    return previous;
+  }
+  function release(record) {
+    if (record) disposeGeometries([record.root]);
+  }
+  const setMap = (layout, options) => release(show(build(layout, options)));
+  function buildMap(layout) {
+    const root = new THREE.Group();
+    const record = { root, cells: [], lightSources: [], wave: null };
     const propBatches = new Map();
     const wave = layout.flatMap((cell) => cell.props).find((prop) => prop.kind === 'wave');
-    if (wave) waveDirection.value.set(Math.cos(wave.angle), Math.sin(wave.angle));
+    if (wave) record.wave = new THREE.Vector2(Math.cos(wave.angle), Math.sin(wave.angle));
     for (const data of layout) {
       pendingLights = [];
       const { g, content } = makeTerrain(data);
@@ -165,7 +189,7 @@ export function createMapMeshes(
       propRoot.updateWorldMatrix(true, true);
       if (!data.fogState || data.fogState === 'visited')
         for (const { parent, ...source } of pendingLights)
-          lightSources.push({ ...source, matrix: parent.matrixWorld.clone(), tile: data });
+          record.lightSources.push({ ...source, matrix: parent.matrixWorld.clone(), tile: data });
       propRoot.traverse((object) => {
         if (!object.isMesh) return;
         const pixelProp = Boolean(
@@ -194,8 +218,8 @@ export function createMapMeshes(
           propBatches.set(batchKey, {
             material: object.material,
             castShadow: object.castShadow,
-            geometries: [],
-            farGeometries: [],
+            parts: [],
+            farParts: [],
             faceRanges: [],
             farFaceRanges: [],
             faces: 0,
@@ -204,32 +228,28 @@ export function createMapMeshes(
           });
         const batch = propBatches.get(batchKey);
         for (const far of foliage ? [false, true] : [false]) {
-          const geometry = far
-            ? crownGeometry(object.userData.foliageFar)
-            : object.geometry.index && !pixelProp
-              ? object.geometry.toNonIndexed()
-              : object.geometry.clone();
-          geometry.applyMatrix4(object.matrixWorld);
-          for (const name of Object.keys(geometry.attributes))
-            if (name !== 'position' && name !== 'normal' && !(name === 'uv' && object.material.map))
-              geometry.deleteAttribute(name);
-          const positions = geometry.attributes.position;
-          const sway = new Float32Array(positions.count);
-          for (let i = 0; i < positions.count; i++)
-            sway[i] = plant ? windWeight(positions.getY(i) - base, plant.userData.wind) : 0;
-          geometry.setAttribute('swayWeight', new THREE.BufferAttribute(sway, 1));
-          if (foliage) compactFoliageGeometry(geometry);
-          else {
-            const phase = new Float32Array(positions.count).fill(object.userData.wavePhase ?? 0);
-            geometry.setAttribute('wavePhase', new THREE.BufferAttribute(phase, 1));
-          }
-          const faces = (geometry.index?.count ?? positions.count) / 3;
+          const options = {
+            expand: !far && Boolean(object.geometry.index && !pixelProp),
+            compact: foliage,
+            base,
+            wind: plant?.userData.wind,
+            phase: object.userData.wavePhase ?? 0,
+            uv: Boolean(object.material.map),
+          };
+          const part = far
+            ? describePropTemplate(
+                crownTemplate(object.userData.foliageFar),
+                object.matrixWorld,
+                options,
+              )
+            : describePropPart(object.geometry, object.matrixWorld, options);
+          const faces = part.faces;
           if (far) {
-            batch.farGeometries.push(geometry);
+            batch.farParts.push(part);
             batch.farFaces += faces;
             batch.farFaceRanges.push({ end: batch.farFaces, key: data.key });
           } else {
-            batch.geometries.push(geometry);
+            batch.parts.push(part);
             batch.faces += faces;
             batch.faceRanges.push({ end: batch.faces, key: data.key });
           }
@@ -245,19 +265,16 @@ export function createMapMeshes(
       g.traverse((o) => {
         if (o.isMesh) o.userData.key = data.key;
       });
-      map.add(g);
-      cells.push({ ...data, g });
+      root.add(g);
+      record.cells.push({ ...data, g });
     }
     pendingLights = [];
     for (const batch of propBatches.values()) {
-      const parts = [...batch.geometries, ...batch.farGeometries];
-      const geometry = mergeGeometries(parts);
-      parts.forEach((part) => part.dispose());
-      if (batch.material.userData.pixelFoliage || batch.material.userData.pixelDressing) {
-        geometry.computeBoundingSphere();
+      const parts = [...batch.parts, ...batch.farParts];
+      const geometry = mergePropParts(parts);
+      if (batch.material.userData.pixelFoliage || batch.material.userData.pixelDressing)
         geometry.boundingSphere.radius += 0.35; // Include the strongest wind gust.
-      }
-      const mesh = addMesh(map, geometry, batch.material);
+      const mesh = addMesh(root, geometry, batch.material);
       mesh.castShadow = batch.castShadow;
       mesh.userData.faceRanges = batch.faceRanges.concat(
         batch.farFaceRanges.map(({ end, key }) => ({ end: end + batch.faces, key })),
@@ -266,16 +283,18 @@ export function createMapMeshes(
         installFoliageLOD(mesh, batch.faces * 3, batch.farFaces * 3, batch.pixelSize);
       if (batch.material.userData.treeSway) mesh.customDepthMaterial = treeDepth;
     }
+    return record;
   }
   return {
     group: map,
     cells,
     lightSources,
-    setMap: buildMap,
+    build,
+    show,
+    release,
+    setMap,
     dispose() {
-      clearGeometries(map);
-      cells.length = 0;
-      lightSources.length = 0;
+      release(show(null));
       pendingLights = [];
     },
   };

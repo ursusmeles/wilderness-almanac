@@ -24,7 +24,7 @@ The additional inland view reveals only water. It does not uncover the skipped l
 
 While fog is on, Hex and Party Inspector proximity calculations consider only discovered features. Switching fog off immediately restores proximity to all actual features; switching it on filters them again. Hidden POIs on unvisited tiles do not qualify; empty results say “None discovered”. Joined settlements retain their existing identity and distance rules, using only discovered footprint hexes as targets. Party visited-land totals use the actual world, including river-bank hexes and excluding open water.
 
-Fog mode supports single/batch visited marking, selection and party movement. Terrain/feature editing, Join, Reset, dressing actions and setting world icons require fog off. Undo of visits and party moves remains available; structural Undo requires fog off. Toggling fog does not enter Undo history and uses the existing dirty-form guard.
+Fog mode supports single/batch visited marking, selection and party movement. Terrain/feature editing, Join, Reset, dressing actions and setting world icons require fog off. Undo of visits and party moves remains available; structural Undo requires fog off. Toggling fog does not enter Undo history and uses the existing dirty-form guard. Fog toggles use the status light without changing the button label, showing loading feedback or dimming unrelated controls.
 
 Drag-and-drop party placement works on desktop and mobile in either fog mode. On mobile only, tapping a destination with the party selected opens a confirmation. Party placement keeps its fresh-pointer activation guard and Cancel-to-select behaviour. Confirmation names come from the filtered dropdown, so unknown destinations remain unnamed. Unknown shells also supply the heights used for selection, focus, picking and party placement.
 
@@ -33,6 +33,8 @@ Drag-and-drop party placement works on desktop and mobile in either fog mode. On
 `application/fog-of-war.js` computes visibility without DOM or Three.js. The session caches its result by effective world and visited flags. `application/fog-view.js` produces masked display cells and numeric render descriptors without changing the authoritative world, dressing or saved locks. It closes shared sides at undiscovered boundaries and removes hidden-owned props before batching and shadow rendering.
 
 The main coordinator retains the full numeric layout for campaign-library thumbnails and a separate display projection for the campaign map and Inspector previews. Tracking does not regenerate worlds or dressing. Identical classifications reuse the display layout; changed classifications rebuild map meshes once while preserving camera framing. Creation previews and menu thumbnail caches remain ordinary GM views.
+
+The renderer (`rendering/map-builds.js`) retains full and fog-projected builds across toggles, preserving camera framing. `createFogViewer` reuses unchanged view references so toggling does not rebuild meshes. A new source layout or art style releases all retained builds.
 
 The renderer's material registry owns cached grayscale and placeholder variants, including tinted props. Grayscale materials retain foliage/wave shaders and update with palette changes; disposal includes all variants. The shared still preview renderer uses the same descriptors, and hidden previews clear immediately to avoid stale full-map details.
 
