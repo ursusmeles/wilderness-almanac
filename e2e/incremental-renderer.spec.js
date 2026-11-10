@@ -121,7 +121,7 @@ for (const artStyle of ['low-poly', 'pixelart']) {
     await expect(page.getByRole('button', { name: 'Find party', exact: true })).toBeEnabled();
   });
 
-  test(`motion-enabled ${artStyle} arrivals cancel while settling and cached hexes replay without rebuilding`, async ({
+  test(`motion-enabled ${artStyle} arrivals cancel while settling and cached views return without arrivals`, async ({
     page,
   }) => {
     await page.emulateMedia({ reducedMotion: 'no-preference' });
@@ -156,16 +156,15 @@ for (const artStyle of ['low-poly', 'pixelart']) {
       'concealment survives beyond the cancelled arrival',
     ).toBe(true);
 
-    for (const concealedAgain of [false, true]) {
+    for (const concealedAgain of [false, true, false, true]) {
       const warm = await observeFogSwap(canvas, fog);
       expect(warm.immediateChecked, 'cached toggles also apply in the same task').toBe(
         String(concealedAgain),
       );
-      expect(warm.immediate).toBe(concealedAgain ? 'ready' : 'settling');
-      expect(
-        warm.states,
-        'cached reveals animate without rebuilding; concealment is instant',
-      ).toEqual(concealedAgain ? ['ready'] : ['settling', 'ready']);
+      expect(warm.immediate, 'cached views return settled before yielding to a frame').toBe(
+        'ready',
+      );
+      expect(warm.states, 'cached toggles never enter building or settling').toEqual(['ready']);
       await expect(fog).toBeChecked({ checked: concealedAgain });
       await expect(canvas).toHaveAttribute('aria-busy', 'false');
       expect((await canvas.screenshot(screenshotOptions)).equals(concealed)).toBe(concealedAgain);

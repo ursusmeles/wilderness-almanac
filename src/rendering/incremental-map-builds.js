@@ -40,6 +40,8 @@ export function createIncrementalMapBuilds(context) {
   const point = new Vector3();
   /** @type {WeakMap<Tile[], import('./viewport-priority.js').ChunkBounds>} */
   const priorityBounds = new WeakMap();
+  /** Cached views return settled, even if their first arrival was interrupted. @type {WeakSet<Group>} */
+  const presented = new WeakSet();
   /** @type {Presentation | null} */
   let active = null;
   /** @type {Tile[] | null} */
@@ -182,11 +184,14 @@ export function createIncrementalMapBuilds(context) {
       });
       for (const { id, record } of entries) {
         const before = previous.get(id);
+        const firstPresentation = !presented.has(record.map.root);
+        presented.add(record.map.root);
         const replacesKnownTerrain = before?.record.tiles.some(
           (tile) => tile.fogState !== 'undiscovered',
         );
         if (
           id !== INITIAL_CHUNK_ID &&
+          firstPresentation &&
           before?.record !== record &&
           !replacesKnownTerrain &&
           animateRequest &&

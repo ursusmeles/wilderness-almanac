@@ -249,9 +249,10 @@ compare decoded pixels rather than assuming byte-identical PNGs across those pat
 `chunk-transitions.js` reveals individual hexes with a 120 ms quartic ease-out rise
 and fade, starting about six CSS pixels below their resting position. Geometry and
 4×4 batches remain intact. Within each ready chunk, the closest hexes start first,
-8 ms apart: at most 120 ms of stagger, not a whole-map queue. Cached reveals from
-fully concealed chunks replay the same motion without rebuilding geometry;
-replacements containing known terrain skip arrivals and concealment stays instantaneous.
+8 ms apart: at most 120 ms of stagger, not a whole-map queue. Each retained record
+only arrives on its first presentation. Switching between cached full-map and fog
+views restores settled terrain in the same task, including interrupted first arrivals.
+Replacements containing known terrain also skip arrivals; concealment stays instantaneous.
 Movement off and reduced motion skip arrivals, and disabling motion settles an
 active arrival on the next frame. Each new arrival anchors its clock after the
 first frame's render submission, so initial shader/setup cost does not consume
@@ -263,9 +264,8 @@ of GPU completion or smooth frames under load.
 
 Batched geometry retains one byte per vertex for stable hex ownership. Per-hex
 delay uniforms drive color, rise and depth shaders; no per-hex draw calls or
-per-frame vertex uploads are added. Temporary materials restore after arrival,
-but their compiled programs remain cached with the build record for warm replay.
-Record release disposes those wrappers. Wind/wave hooks and original geometry
+per-frame vertex uploads are added. Temporary materials restore after arrival;
+record release disposes their cached wrappers. Wind/wave hooks and original geometry
 buffers remain intact. Per-mesh bounding spheres cover the shader displacement;
 picking follows each hex's offset and skips hexes that have not appeared yet.
 Light meshes retain source-hex ranges and native light intensity follows the fade.

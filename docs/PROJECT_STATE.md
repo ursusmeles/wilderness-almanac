@@ -173,8 +173,9 @@ creation previews, thumbnails and embeds keep the synchronous renderer. Fog
 concealment and stale-work cancellation are immediate, while uncached reveals
 arrive over multiple frames. Each hex independently rises and fades on a nominal
 120 ms timeline, with a short stagger inside each unchanged 4×4 batch. Long
-main-thread stalls stretch the timeline rather than skip the rise. Cached reveals from
-fully concealed chunks replay without rebuilding. Exploration keeps known terrain
+main-thread stalls stretch the timeline rather than skip the rise. Switching between
+cached full-map and fog views restores settled terrain without arrival animations.
+Exploration keeps known terrain
 mounted until replacement geometry is ready, then swaps it without arrival animations;
 restrictive updates stay instant. Movement off and reduced motion
 skip arrivals. Campaign entry applies the campaign colors and shows its sized
