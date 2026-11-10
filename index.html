@@ -208,27 +208,37 @@
         </div>
         <footer id="app-footer" role="contentinfo" aria-label="Wilderness Almanac">
           <div class="app-footer-forest" aria-hidden="true">
-            <span></span><span></span><span></span>
+            <span class="footer-forest-layer"></span>
+            <span class="footer-forest-layer"></span>
+            <span class="footer-forest-layer"></span>
           </div>
-          <div class="app-footer-content">
-            <div class="app-footer-navigation">
+          <div class="container stack">
+            <div class="repel footer-navigation">
               <a
-                class="app-footer-brand"
+                class="footer-brand"
                 href="https://wilderness.al/"
                 aria-label="The Wilderness Almanac, home"
                 draggable="false"
               >
-                <span aria-hidden="true"></span><span aria-hidden="true"></span>
+                <span class="logo" aria-hidden="true">
+                  <span data-logo-mark></span><span data-logo-wordmark></span>
+                </span>
               </a>
               <nav aria-label="Footer">
-                <ul role="list">
+                <ul class="cluster" role="list">
                   <li><a href="https://wilderness.al/">Home</a></li>
                   <li>
                     <a
-                      class="app-footer-github"
+                      class="cluster footer-github"
                       href="https://github.com/ursusmeles/wilderness-almanac"
                     >
-                      <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+                      <svg
+                        class="icon"
+                        data-size="small"
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                        focusable="false"
+                      >
                         <use href="/icons/pixelarticons.svg#github"></use>
                       </svg>
                       GitHub
@@ -237,7 +247,7 @@
                 </ul>
               </nav>
             </div>
-            <div class="app-footer-colophon">
+            <div class="repel footer-colophon">
               <small>
                 Made by <a href="https://h62.pl" rel="author">Mateusz Nowak</a> for creative GMs.
                 <br />
@@ -246,17 +256,24 @@
                   >AGPLv3</a
                 >.
               </small>
-              <button
-                type="button"
-                class="menu-button app-footer-theme"
-                data-theme-toggle
-                aria-label="Switch to light mode"
-              >
-                <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
-                  <use href="/icons/pixelarticons.svg#lightbulb"></use>
-                </svg>
-                <span data-theme-label>Light mode</span>
-              </button>
+              <div class="cluster">
+                <div class="cluster" role="group" aria-label="Color theme" data-theme-controls>
+                  <button
+                    type="button"
+                    class="button"
+                    data-variant="secondary"
+                    data-theme-toggle
+                    aria-label="Switch to light mode"
+                  >
+                    <span>
+                      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        <use href="/icons/pixelarticons.svg#lightbulb"></use>
+                      </svg>
+                      <span data-theme-label>Light mode</span>
+                    </span>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </footer>

@@ -18,12 +18,10 @@ followed by the theme and settings controls.
 Its footer reuses the landing logo, static forest and maker/license credits with
 Home and GitHub navigation. The footer theme control shares the app preference;
 the footer belongs to the library view and is hidden in the campaign workspace.
-Its static background spans the viewport and meets the page bottom; the separator
-ends at the footer content margins. Fluid spacing tokens leave room below the
-content, and the forest's visible treetops start at the first row's base using its
-source-image bounds. Navigation links underline on hover or keyboard focus.
-Footer content aligns with the large logo's outer edge on wide screens, with
-matching right inset and fluid side padding on smaller screens.
+The footer copies the landing's navigation/colophon markup and scoped styles,
+including its responsive container, typography, spacing, forest and theme button.
+The invitation/map and Back to top are omitted. Its separator follows the landing
+content margins, and the background spans the viewport to the page bottom.
 
 ## Coordinates, version and topology
 

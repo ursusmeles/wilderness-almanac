@@ -16,19 +16,6 @@
   --loading-duration: 1.2s;
   --panel-margin: var(--space-3xs-2xs);
   --library-max-width: 64rem;
-  --link-underline-thickness: 0.08em;
-  --brand-lockup-height: 2.5rem;
-  /* Intrinsic logo geometry from the landing SVGs. */
-  --brand-lockup-mark-width: 110;
-  --brand-lockup-wordmark-width: 232;
-  --brand-lockup-gap: 16;
-  --brand-lockup-width: calc(
-    var(--brand-lockup-mark-width) + var(--brand-lockup-wordmark-width) + var(--brand-lockup-gap)
-  );
-  /* Forest PNGs are 240 px tall; the first visible treetop is at row 135. */
-  --brand-forest-image-height: 240;
-  --brand-forest-treetop: 135;
-  --brand-forest-opacity: 0.24;
   --dialog-backdrop: rgb(from var(--brand-ink) r g b / 0.8);
   /* Open Props circular easing, retained from the app's navigation feedback. */
   --ease-circ-in: cubic-bezier(0.6, 0.04, 0.98, 0.335);

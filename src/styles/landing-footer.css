@@ -1,0 +1,358 @@
+/* Scoped copy of wilderness-landing's Footer, Logo and ThemeSwitch styles, plus
+   the base/composition rules they consume. The invitation/map and Back to top
+   are omitted; navigation is Home and GitHub. Shared foundations stay shared. */
+
+#app-footer {
+  --section-space: var(--space-xl-2xl);
+  --layout-max: 105rem;
+  --layout-gutter-min: var(--space-xs);
+  --layout-gutter-max: var(--space-2xl);
+  --layout-viewport-min: 24rem;
+  --layout-viewport-max: 90rem;
+  --footer-forest-size: calc(clamp(18rem, 34vw, 28rem) + var(--space-l-xl));
+  --footer-forest-opacity: 0.24;
+  position: relative;
+  isolation: isolate;
+  flex: none;
+  margin-block-start: var(--space-l-xl);
+  /* Start at the landing's divider below the omitted invitation/map. */
+  padding-block: var(--space-l-xl) calc(var(--section-space) + var(--space-l-xl));
+  overflow: clip;
+  font: var(--f-regular) var(--step-0)/var(--lh-medium) var(--f-body);
+  color: var(--c-text);
+
+  & :focus-visible {
+    outline: var(--b-thick) var(--c-color-focus);
+    outline-offset: var(--focus-offset);
+  }
+
+  & a {
+    color: var(--c-color-link);
+    text-decoration: none;
+    text-decoration-thickness: 0.08em;
+    text-underline-offset: var(--link-underline-offset);
+    transition: var(--t-color);
+
+    &:is(:hover, :focus-visible) {
+      color: var(--c-color-link-hover);
+      text-decoration-line: underline;
+    }
+  }
+
+  & small {
+    font-size: var(--step-m1);
+    line-height: var(--lh-large);
+    color: var(--c-text-muted);
+
+    & a {
+      text-decoration-line: underline;
+    }
+  }
+
+  & .container {
+    --layout-width: var(--layout-max);
+    --layout-progress: tan(
+      atan2(
+        calc(100vw - var(--layout-viewport-min)),
+        calc(var(--layout-viewport-max) - var(--layout-viewport-min))
+      )
+    );
+    --layout-gutter: clamp(
+      var(--layout-gutter-min),
+      calc(
+        var(--layout-gutter-min) + (var(--layout-gutter-max) - var(--layout-gutter-min)) *
+          var(--layout-progress)
+      ),
+      var(--layout-gutter-max)
+    );
+    --layout-canvas: min(100%, var(--layout-width));
+    --layout-inset: min(var(--layout-gutter), calc(var(--layout-canvas) / 2));
+    --gutter: var(--space-l-xl);
+    position: relative;
+    z-index: var(--z-raised);
+    min-inline-size: 0;
+    inline-size: var(--layout-canvas);
+    margin-inline: auto;
+    padding-inline: var(--layout-inset);
+
+    &::before {
+      content: '';
+      position: absolute;
+      inset-inline: var(--layout-inset);
+      inset-block-start: calc(-1 * var(--space-l-xl));
+      border-block-start: var(--b-thin) var(--c-border);
+      pointer-events: none;
+    }
+  }
+
+  & .stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gutter);
+  }
+
+  & .cluster {
+    --gutter: var(--space-m);
+    --cluster-align: center;
+    --cluster-justify: flex-start;
+    --cluster-gap-y: var(--gutter);
+    --cluster-gap-x: var(--gutter);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: var(--cluster-align);
+    justify-content: var(--cluster-justify);
+    gap: var(--cluster-gap-y) var(--cluster-gap-x);
+
+    &:has(> :is(button, .button, .icon, [data-action-icon])) {
+      --cluster-gap-y: var(--space-xs);
+      --cluster-gap-x: var(--space-xs);
+    }
+  }
+
+  & .repel {
+    --gutter: var(--space-s);
+    --repel-align: center;
+    --repel-gap-y: var(--gutter);
+    --repel-gap-x: var(--gutter);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: var(--repel-align);
+    justify-content: space-between;
+    gap: var(--repel-gap-y) var(--repel-gap-x);
+  }
+
+  & .footer-navigation {
+    --repel-gap-y: var(--space-l-xl);
+    align-items: center;
+
+    & ul {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      --cluster-gap-y: var(--space-3xs);
+    }
+
+    & nav a {
+      display: block;
+      padding-block: var(--space-2xs);
+    }
+
+    & nav .footer-github {
+      display: flex;
+    }
+  }
+
+  & .footer-navigation,
+  & .footer-colophon {
+    position: relative;
+    z-index: var(--z-raised);
+  }
+
+  & .footer-colophon {
+    --gutter: var(--space-m);
+    align-items: center;
+  }
+
+  & .footer-brand {
+    display: inline-flex;
+    flex: none;
+    color: var(--c-accent);
+  }
+
+  & .logo {
+    /* Default equal-height Logo.astro artwork, at its native 40 px size. */
+    --logo-width: calc(358 * 40 / 110 * 1px);
+    --logo-ratio: 358 / 110;
+    --logo-mark-width: calc(110 / 358 * 100%);
+    --logo-wordmark-width: calc(232 / 358 * 100%);
+    --logo-gap: calc(16 / 358 * 100%);
+    display: inline-flex;
+    flex: 0 1 auto;
+    align-items: flex-start;
+    gap: var(--logo-gap);
+    inline-size: var(--logo-width);
+    max-inline-size: 100%;
+    aspect-ratio: var(--logo-ratio);
+    color: var(--c-accent);
+
+    & > span {
+      display: block;
+      flex: none;
+      background: currentColor;
+      mask: var(--logo-artwork) center / contain no-repeat;
+    }
+
+    & > [data-logo-mark] {
+      --logo-artwork: url('/brand/figma-mark-bordered.svg');
+      inline-size: var(--logo-mark-width);
+      aspect-ratio: 1;
+    }
+
+    & > [data-logo-wordmark] {
+      --logo-artwork: url('/brand/figma-wordmark.svg');
+      inline-size: var(--logo-wordmark-width);
+      aspect-ratio: 232 / 110;
+    }
+  }
+
+  & .app-footer-forest {
+    position: absolute;
+    inset-block-end: 0;
+    inset-inline: 0;
+    block-size: var(--footer-forest-size);
+    opacity: var(--footer-forest-opacity);
+    pointer-events: none;
+  }
+
+  & .footer-forest-layer {
+    position: absolute;
+    inset: 0;
+    background: var(--forest-image) center bottom / auto 100% repeat-x var(--brand-ink);
+    background-blend-mode: luminosity;
+    mask: var(--forest-image) center bottom / auto 100% repeat-x;
+    image-rendering: pixelated;
+
+    &:nth-child(1) {
+      --forest-image: url('/images/footer-forest/far-trees.png');
+    }
+    &:nth-child(2) {
+      --forest-image: url('/images/footer-forest/mist.png');
+    }
+    &:nth-child(3) {
+      --forest-image: url('/images/footer-forest/near-trees.png');
+    }
+  }
+
+  & .icon {
+    display: block;
+    flex: none;
+    inline-size: var(--icon-size);
+    block-size: var(--icon-size);
+    fill: currentColor;
+
+    &[data-size='small'] {
+      inline-size: var(--icon-small);
+      block-size: var(--icon-small);
+    }
+  }
+
+  & .button {
+    --button-radius: var(--r-medium);
+    --button-padding-block: 0;
+    --button-padding-inline: var(--space-xs);
+    --button-gap: var(--space-2xs);
+    --button-min-height: 2.5rem;
+    --button-hit-size: 2.5rem;
+    --button-icon-size: var(--icon-small);
+    --button-press-scale: 0.8;
+    --button-lift: -2px;
+    --button-bg: var(--c-surface);
+    --button-color: var(--c-text);
+    --button-border: var(--c-border);
+    --button-hover-bg: var(--c-surface-hover);
+    --button-hover-color: var(--c-text);
+    --button-hover-border: var(--c-text-muted);
+    --button-y: 0px;
+    --button-scale: 1;
+    --button-ease: var(--ease-out-3);
+    --button-duration: var(--d-normal);
+    --button-surface: var(--button-bg);
+    --button-edge: var(--button-border);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: normal;
+    block-size: auto;
+    min-block-size: var(--button-hit-size);
+    max-inline-size: 100%;
+    padding: 0;
+    border: 0;
+    border-radius: var(--button-radius);
+    vertical-align: middle;
+    font-family: var(--f-body);
+    font-size: var(--step-m1);
+    font-weight: var(--f-regular);
+    line-height: var(--lh-small);
+    text-align: center;
+    text-decoration: none;
+    color: var(--button-color);
+    background: transparent;
+    appearance: none;
+    user-select: none;
+    transition: none;
+    scale: 1;
+
+    & > span {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--button-gap);
+      inline-size: 100%;
+      min-inline-size: 0;
+      min-block-size: var(--button-min-height);
+      padding: var(--button-padding-block) var(--button-padding-inline);
+      border: var(--b-thin) var(--button-edge);
+      border-radius: inherit;
+      overflow-wrap: anywhere;
+      color: inherit;
+      background-color: var(--button-surface);
+      pointer-events: none;
+      transform: translateY(var(--button-y)) scale(var(--button-scale));
+      transition:
+        transform var(--button-duration) var(--button-ease),
+        border-color var(--d-fast) var(--ease-out-3);
+
+      & > svg {
+        inline-size: var(--button-icon-size);
+        block-size: var(--button-icon-size);
+      }
+    }
+
+    &:focus-visible:not(:disabled) {
+      --button-y: var(--button-lift);
+      --button-surface: var(--button-hover-bg);
+      --button-edge: var(--button-hover-border);
+      color: var(--button-hover-color);
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      &:hover:not(:disabled) {
+        --button-y: var(--button-lift);
+        --button-surface: var(--button-hover-bg);
+        --button-edge: var(--button-hover-border);
+        color: var(--button-hover-color);
+      }
+    }
+
+    &:active:not(:disabled) {
+      --button-y: var(--button-lift);
+      --button-scale: var(--button-press-scale);
+      --button-ease: var(--ease-circ-out);
+      --button-duration: var(--d-fast);
+      --button-surface: var(--button-hover-bg);
+      --button-edge: var(--button-hover-border);
+      color: var(--button-hover-color);
+    }
+
+    @media (max-width: 760px), (pointer: coarse) {
+      --button-hit-size: var(--control-min-target);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      --button-lift: 0px;
+      --button-press-scale: 1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &,
+    & *,
+    & *::before,
+    & *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
