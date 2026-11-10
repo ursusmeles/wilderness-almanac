@@ -38,12 +38,50 @@ explicit requests or substantial risk, once changes settle. Report actual checks
 and limitations. Browser viewport emulation does not verify physical-phone touch
 behavior or hardware performance.
 
+The `PR checks` workflow runs lint and formatting for non-draft pull requests,
+cancels superseded runs and has a five-minute job limit. It installs no browsers
+and runs no builds or test suites. Behaviour checks are selected locally from
+the [verification skill](../.agents/skills/verify-twa/SKILL.md); a green PR check
+alone does not establish that a feature works.
+
 The manually dispatched workflow in `.github/workflows/checks.yml` runs lint,
 formatting, frontend/backend Node tests, build, account checks and desktop browser
-tests. Automatic push/PR triggers and mobile CI runs are paused. Storage checks
+tests. Broad automatic push runs and mobile CI runs remain paused. Storage checks
 are available separately and are not part of that workflow. Browser suites use one
 worker; map tests use software WebGL, a 20-minute overall limit, and ignored trace,
-screenshot and HTML-report directories. Map checks request reduced motion by default; renderer and navigation suites explicitly exercise motion and transitions. Do not poll Actions after pushing.
+screenshot and HTML-report directories. Map checks request reduced motion by default;
+renderer and navigation suites explicitly exercise motion and transitions.
+Do not poll Actions after pushing.
+
+### Review scope and cost
+
+Follow the change-sized verification and review rules in [AGENTS.md](../AGENTS.md).
+Cosmetic edits use diff review and focused visual inspection where useful; shared
+layout changes also get a relevant narrow-screen inspection. Behaviour changes
+use the smallest relevant checks. Saving/imports, replay, renderer lifecycle and
+broad refactors warrant their corresponding regression checks once changes settle.
+Avoid new tests for margins or copy, repeated builds, and repository-wide cleanup
+during ordinary feature work.
+
+Substantive work gets one independent review of the changed area when an
+authorized review service or tool is available. Require evidence, impact and a
+remedy for concrete regressions, unmet requirements or material architecture
+problems. Unrelated cleanup remains a follow-up; file length alone is not a
+failure. Fix accepted findings, rerun affected checks, and re-review only if the
+fix adds substantial logic or leaves a concrete concern unresolved. Report an
+unavailable reviewer or incomplete check instead of claiming it passed.
+
+`.coderabbit.yaml` configures quiet, manually requested reviews with automatic
+and per-push reviews disabled. The GitHub App must be installed on the repository
+for this configuration to take effect; adding the file does not install it.
+When review is authorized, request `@coderabbitai review` once on a ready,
+substantive PR. Cosmetic edits do not need it. See the
+[CodeRabbit configuration reference](https://docs.coderabbit.ai/reference/configuration).
+
+ESLint rejects direct UI, renderer, persistence-adapter and Three.js imports in
+world/campaign core modules, including literal dynamic imports, and direct use
+of `document`, `window` or `navigator` there. These checks enforce module boundaries
+without model review; they do not replace behaviour or renderer fixture checks.
 
 ## Architecture
 

@@ -182,5 +182,7 @@ must dispose geometry, materials, textures, listeners and scheduled work.
 - No additional tokens, billing, arbitrary map sizes, ground-level walking, rainfall/erosion,
   elevated watercourses, waterfalls or through-flow river lakes.
 - Renderer bundle size can trigger the build's chunk-size advisory; map code loads lazily.
-- Automated checks are available, but automatic CI and mobile CI runs remain paused.
+- Lightweight lint/format checks run for non-draft PRs; comprehensive checks stay
+  manual and mobile CI runs remain paused. CodeRabbit reviews are configured for
+  manual requests and require its GitHub App to be installed on the repository.
   See [verification commands and limits](DEVELOPMENT.md#setup-and-verification).
