@@ -15,6 +15,9 @@ come from `src/data/world-rules.json`; there is no runtime spreadsheet connectio
 
 The campaign-library toolbar starts with a Home icon linking to `https://wilderness.al/`,
 followed by the theme and settings controls.
+Its footer reuses the landing logo, static forest and maker/license credits with
+Home and GitHub navigation. The footer theme control shares the app preference;
+the footer belongs to the library view and is hidden in the campaign workspace.
 
 ## Coordinates, version and topology
 

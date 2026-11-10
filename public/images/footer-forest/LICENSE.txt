@@ -1,0 +1,12 @@
+Mountain Dusk Parallax background
+Luis Zuno aka Ansimuz
+https://ansimuz.itch.io/mountain-dusk-parallax-background
+
+License statement from public-license.pdf supplied with Super Mountain Dusk Files:
+
+All assets included in this package are licensed under the Creative Commons Zero (CC0)
+license, which means you can use them freely in any project, whether personal or
+commercial, without the need for attribution. There are no restrictions on use,
+modification, or redistribution of these assets.
+
+CC0 Universal 1.0: https://creativecommons.org/publicdomain/zero/1.0/

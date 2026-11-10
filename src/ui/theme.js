@@ -26,6 +26,8 @@ export function createUITheme({ storage, onChange }) {
       const label = `Switch to ${scheme === 'dark' ? 'light' : 'dark'} mode`;
       button.setAttribute('aria-label', label);
       button.dataset.tooltip = label;
+      const text = button.querySelector('[data-theme-label]');
+      if (text) text.textContent = scheme === 'dark' ? 'Light mode' : 'Dark mode';
       button
         .querySelector('use')
         .setAttribute(

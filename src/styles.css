@@ -186,6 +186,9 @@
     --almanac-mark-size: calc(var(--almanac-title-size) * 1.4);
     --almanac-mark-gap: var(--space-s);
     --campaign-card-bg: color-mix(in oklab, var(--c-surface) 96%, var(--c-text));
+    display: flex;
+    flex-direction: column;
+    min-height: calc(100svh - 2 * var(--panel-margin));
     color: var(--c-text);
     max-width: 64rem;
     margin: 0 auto;
@@ -209,6 +212,116 @@
       --almanac-title-size: clamp(2.5rem, 10.8vw, 3rem);
       margin-inline: auto;
       padding: clamp(var(--space-m), 5vw, var(--space-l)) 0 var(--space-m);
+    }
+  }
+  .campaign-library {
+    flex: 1;
+  }
+  #app-footer {
+    position: relative;
+    isolation: isolate;
+    flex: none;
+    margin-block-start: var(--space-l-xl);
+    padding-block: var(--space-l-xl);
+    border-block-start: var(--b-thin) var(--c-border);
+    overflow: clip;
+    & a:focus-visible {
+      outline: var(--focus-width) solid var(--c-color-focus);
+      outline-offset: var(--focus-offset);
+    }
+  }
+  .app-footer-content {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    gap: var(--space-l-xl);
+  }
+  .app-footer-navigation,
+  .app-footer-colophon {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-m-l);
+  }
+  .app-footer-navigation {
+    & ul {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: var(--space-m-l);
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    & nav a {
+      display: block;
+      padding-block: var(--space-2xs);
+    }
+    & nav .app-footer-github {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2xs);
+      --icon-size: var(--icon-small);
+    }
+  }
+  .app-footer-brand {
+    /* Landing logo: equal-height mark and wordmark, 358 × 110 artwork at 40 px. */
+    display: grid;
+    grid-template-columns: 110fr 232fr;
+    align-items: start;
+    gap: calc(100% * 16 / 358);
+    width: calc(2.5rem * 358 / 110);
+    max-width: 100%;
+    color: var(--c-accent);
+    &:hover {
+      color: var(--c-accent);
+    }
+    & > span {
+      display: block;
+      background: currentColor;
+      mask: var(--logo-artwork) center / contain no-repeat;
+    }
+    & > :first-child {
+      --logo-artwork: url('/brand/figma-mark-bordered.svg');
+      aspect-ratio: 1;
+    }
+    & > :last-child {
+      --logo-artwork: url('/brand/figma-wordmark.svg');
+      aspect-ratio: 232 / 110;
+    }
+  }
+  .app-footer-colophon small {
+    font-size: var(--text-control);
+    line-height: var(--lh-reading);
+    color: var(--c-text-muted);
+  }
+  .app-footer-theme {
+    --icon-size: var(--icon-small);
+  }
+  .app-footer-forest {
+    position: absolute;
+    inset-inline: 0;
+    inset-block-end: 0;
+    height: clamp(18rem, 34vw, 28rem);
+    opacity: 0.24;
+    pointer-events: none;
+    & > span {
+      position: absolute;
+      inset: 0;
+      background: var(--forest-image) center bottom / auto 100% repeat-x var(--brand-ink);
+      background-blend-mode: luminosity;
+      mask: var(--forest-image) center bottom / auto 100% repeat-x;
+      image-rendering: pixelated;
+    }
+    & > :nth-child(1) {
+      --forest-image: url('/images/footer-forest/far-trees.png');
+    }
+    & > :nth-child(2) {
+      --forest-image: url('/images/footer-forest/mist.png');
+    }
+    & > :nth-child(3) {
+      --forest-image: url('/images/footer-forest/near-trees.png');
     }
   }
   .almanac-heading {

@@ -174,9 +174,6 @@
           <p class="campaign-storage-note">
             Saved on this device. Export a campaign to take it with you.
           </p>
-          <p class="campaign-storage-note">
-            Created by <a href="https://h62.pl" rel="author">Mateusz Nowak</a>.
-          </p>
           <div id="campaign-save-warning" class="save-warning" role="status" hidden>
             <p id="campaign-save-message"></p>
             <button type="button" id="retry-campaign-save" class="menu-button">Retry saving</button>
@@ -200,6 +197,60 @@
             </button>
           </div>
         </section>
+        <footer id="app-footer" role="contentinfo" aria-label="Wilderness Almanac">
+          <div class="app-footer-forest" aria-hidden="true">
+            <span></span><span></span><span></span>
+          </div>
+          <div class="app-footer-content">
+            <div class="app-footer-navigation">
+              <a
+                class="app-footer-brand"
+                href="https://wilderness.al/"
+                aria-label="The Wilderness Almanac, home"
+                draggable="false"
+              >
+                <span aria-hidden="true"></span><span aria-hidden="true"></span>
+              </a>
+              <nav aria-label="Footer">
+                <ul role="list">
+                  <li><a href="https://wilderness.al/">Home</a></li>
+                  <li>
+                    <a
+                      class="app-footer-github"
+                      href="https://github.com/ursusmeles/wilderness-almanac"
+                    >
+                      <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <use href="/icons/pixelarticons.svg#github"></use>
+                      </svg>
+                      GitHub
+                    </a>
+                  </li>
+                </ul>
+              </nav>
+            </div>
+            <div class="app-footer-colophon">
+              <small>
+                Made by <a href="https://h62.pl" rel="author">Mateusz Nowak</a> for creative GMs.
+                <br />
+                Free and open source under
+                <a href="https://github.com/ursusmeles/wilderness-almanac/blob/main/LICENSE"
+                  >AGPLv3</a
+                >.
+              </small>
+              <button
+                type="button"
+                class="menu-button app-footer-theme"
+                data-theme-toggle
+                aria-label="Switch to light mode"
+              >
+                <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <use href="/icons/pixelarticons.svg#lightbulb"></use>
+                </svg>
+                <span data-theme-label>Light mode</span>
+              </button>
+            </div>
+          </div>
+        </footer>
         <dialog id="settings-dialog" aria-labelledby="settings-title">
           <form id="settings-form" method="dialog">
             <header class="palette-manager-header">

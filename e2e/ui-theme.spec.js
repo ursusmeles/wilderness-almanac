@@ -12,7 +12,7 @@ test('library theme controls persist, match Settings icon size and synchronise a
   await page.goto('/');
   const root = page.locator('html');
   await expect(root).toHaveAttribute('data-theme', 'dark');
-  await page.getByRole('button', { name: 'Switch to light mode', exact: true }).click();
+  await page.locator('.campaign-toolbar-actions [data-theme-toggle]').click();
   await expect(root).toHaveAttribute('data-theme', 'light');
   await page.reload();
   await expect(root).toHaveAttribute('data-theme', 'light');
@@ -20,17 +20,17 @@ test('library theme controls persist, match Settings icon size and synchronise a
   const other = await context.newPage();
   await other.goto('/');
   await expect(other.locator('html')).toHaveAttribute('data-theme', 'light');
-  await other.getByRole('button', { name: 'Switch to dark mode', exact: true }).click();
+  await other.locator('#app-footer [data-theme-toggle]').click();
   await expect(root).toHaveAttribute('data-theme', 'dark');
 
-  await other.getByRole('button', { name: 'Switch to light mode', exact: true }).click();
+  await other.locator('#app-footer [data-theme-toggle]').click();
   await expect(root).toHaveAttribute('data-theme', 'light');
-  await expect(page.locator('[data-theme-toggle] .ui-icon')).toHaveCSS('width', '16px');
-  await page.getByRole('button', { name: 'Switch to dark mode', exact: true }).click();
-  await expect(page.locator('[data-theme-toggle] use')).toHaveAttribute(
-    'href',
-    '/icons/pixelarticons.svg#lightbulb',
-  );
+  for (const icon of await page.locator('[data-theme-toggle] .ui-icon').all())
+    await expect(icon).toHaveCSS('width', '16px');
+  await page.locator('.campaign-toolbar-actions [data-theme-toggle]').click();
+  for (const icon of await page.locator('[data-theme-toggle] use').all())
+    await expect(icon).toHaveAttribute('href', '/icons/pixelarticons.svg#lightbulb');
+  await expect(page.locator('#app-footer [data-theme-label]')).toHaveText('Light mode');
   expect(errors).toEqual([]);
 });
 
@@ -48,7 +48,7 @@ test('restricted theme storage still allows an in-memory manual switch', async (
     };
   });
   await page.goto('/');
-  await page.getByRole('button', { name: 'Switch to light mode', exact: true }).click();
+  await page.locator('.campaign-toolbar-actions [data-theme-toggle]').click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pageshow')));
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
